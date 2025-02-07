@@ -4,3 +4,5 @@ dist
 uploads
 logs
 .git
+.github
+app/database
