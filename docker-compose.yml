@@ -1,0 +1,138 @@
+services:
+  alist:
+    image: 'xhofe/alist:latest'
+    container_name: alist
+    volumes:
+      - ${DATA_PATH}/alist/data:/opt/alist/data
+      - ${RESOURCE_PATH}:/myresource
+    restart: unless-stopped
+    ports:
+      - 5244:5244
+    networks:
+      - default
+  aria2:
+    image: 'johngong/aria2:latest'
+    container_name: aria2
+    volumes:
+      - ${DATA_PATH}/aria2/config:/config
+      - ${RESOURCE_PATH}:/Downloads
+    environment:
+      - UID=${PUID}
+      - GID=${PGID}
+      - ARIA2_RPC_LISTEN_PORT=6800
+      - ARIA2_LISTEN_PORT=6882
+    ports:
+      - 6800:6800
+      - 6880:8080
+      - 6882:6882
+      - 6882:6882/udp
+    networks:
+      - default
+    restart: unless-stopped
+  homeassistant:
+    image: 'homeassistant/home-assistant:latest'
+    container_name: homeassistant
+    ports:
+      - 8123:8123
+    volumes:
+      - ${DATA_PATH}/homeassistant/config:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+    privileged: true
+    restart: unless-stopped
+    networks:
+      - default
+  jellyfin:
+    image: 'jellyfin/jellyfin:latest'
+    container_name: jellyfin
+    ports:
+      - 8096:8096
+    volumes:
+      - ${DATA_PATH}/jellyfin/config:/config
+      - ${DATA_PATH}/jellyfin/cache:/cache
+      - ${DATA_PATH}/jellyfin/media:/media
+      - ${RESOURCE_PATH}:/myresource
+    privileged: true
+    restart: unless-stopped
+    depends_on:
+      - metatube
+    networks:
+      - default
+  metatube:
+    image: 'metatube/metatube-server:latest'
+    container_name: metatube
+    command: -dsn /config/metatube.db
+    restart: unless-stopped
+    volumes:
+      - ${DATA_PATH}/metatube/config:/config
+    networks:
+      - default
+  komga:
+    image: gotson/komga
+    container_name: komga
+    volumes:
+      - ${DATA_PATH}/komga/config:/config
+      - ${DATA_PATH}/komga/data:/data
+      - ${DATA_PATH}/komga/tmp:/tmp
+      - ${RESOURCE_PATH}:/myresource
+    ports:
+      - 25600:25600
+    user: '${PUID}:${PGID}'
+    restart: unless-stopped
+    networks:
+      - default
+  qbittorent:
+    image: superng6/qbittorrentee:latest
+    container_name: qbittorent
+    environment:
+      - WEB_USER=admin
+      - WEB_PASSWORD=123456
+    volumes:
+      - ${DATA_PATH}/qbittorent/config:/config
+      - ${RESOURCE_PATH}/qbitdownloads:/downloads
+    ports:
+      - 6881:6881
+      - 6881:6881/udp
+      - 6801:8080
+    restart: unless-stopped
+    networks:
+      - default
+  pixiv:
+    image: zzcabc/pixivbiu:latest
+    container_name: pixiv
+    user: '${PUID}:${PGID}'
+    volumes:
+      - ${DATA_PATH}/pixiv/config.yml:/Pixiv/config.yml
+      - ${DATA_PATH}/pixiv/.token:/Pixiv/usr/.token
+      - ${RESOURCE_PATH}/pixiv:/Pixiv/downloads
+    ports:
+      - 4001:4001
+    restart: unless-stopped
+    networks:
+      - default
+  music-tag:
+    image: xhongc/music_tag_web:latest
+    container_name: music-tag-web
+    ports:
+      - '8002:8002'
+    volumes:
+      - ${RESOURCE_PATH}/音乐:/app/media:rw
+      - ${DATA_PATH}/music-tag/config:/app/data
+    restart: unless-stopped
+  stirling-pdf:
+    image: stirlingtools/stirling-pdf:latest
+    container_name: stirling-pdf
+    ports:
+      - '8003:8080'
+    volumes:
+      - ${DATA_PATH}/StirlingPDF/trainingData:/usr/share/tessdata
+      - ${DATA_PATH}/StirlingPDF/extraConfigs:/configs
+      - ${DATA_PATH}/StirlingPDF/customFiles:/customFiles/
+      - ${DATA_PATH}/StirlingPDF/logs:/logs/
+      - ${DATA_PATH}/StirlingPDF/pipeline:/pipeline/
+    environment:
+      - DOCKER_ENABLE_SECURITY=false
+      - LANGS=zh_CN
+    restart: unless-stopped
+networks:
+  default:
