@@ -12,7 +12,7 @@ class ConfigService {
       });
       return res?.dataValues?.configContent;
     } catch (e) {
-      console.log(e);
+      // console.log(e);
     }
   }
 
