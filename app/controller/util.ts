@@ -114,6 +114,7 @@ class UtilController {
       return;
     }
     const config = await ConfigService.getConfig('115_picture_info');
+    let pathTemp = config?.paths ?? [];
     if (config?.loading) {
       resError(ctx, {
         code: 400,
@@ -123,11 +124,12 @@ class UtilController {
     }
     if (type === 'delete') {
       await File115Service.clearAll();
+      pathTemp = [];
     }
 
     await ConfigService.setConfig('115_picture_info', {
       count: type === 'delete' ? 0 : config?.count,
-      paths,
+      paths: pathTemp.concat(paths),
       loading: true,
     });
 
