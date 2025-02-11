@@ -70,6 +70,8 @@ services:
   komga:
     image: gotson/komga
     container_name: komga
+    environment:
+      - JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
     volumes:
       - ${DATA_PATH}/komga/config:/config
       - ${DATA_PATH}/komga/data:/data
@@ -133,6 +135,7 @@ services:
     environment:
       - DOCKER_ENABLE_SECURITY=false
       - LANGS=zh_CN
+      - JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
     restart: unless-stopped
 networks:
   default:
