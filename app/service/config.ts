@@ -1,6 +1,6 @@
 import configModel from '../models/config';
 
-type ConfigNameType = '115_login_info' | '115_picture_info';
+type ConfigNameType = '115_login_info' | '115_picture_info' | 'backup_config';
 
 class ConfigService {
   static async getConfig(configName: ConfigNameType) {
@@ -24,7 +24,7 @@ class ConfigService {
         },
       });
       if (config) {
-        const res = await configModel.update(
+        await configModel.update(
           {
             configContent,
           },
@@ -34,13 +34,13 @@ class ConfigService {
             },
           }
         );
-        return res;
+        return configContent;
       } else {
         const res = await configModel.create({
           configName,
           configContent,
         });
-        return res;
+        return res.dataValues?.configContent;
       }
     } catch (e) {
       console.log(e);

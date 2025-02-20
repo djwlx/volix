@@ -146,7 +146,6 @@ class UtilController {
 
   static randomPic: MyMiddleware = async (ctx, next) => {
     const ua = ctx.request.headers['user-agent'];
-    let start = Date.now();
 
     const { mode } = ctx.query || {};
     const isDirect = mode === 'direct';
@@ -154,13 +153,7 @@ class UtilController {
     const index = generateRandomNumber(0, len);
     const fileInfo = await File115Service.getFileByIndex(index);
     const pc = fileInfo?.pc;
-    let end = Date.now();
-    console.log('获取数据', calculateTimeDifference(start, end));
-
     const result = await driver115.getFile(pc as string, ua as string);
-    let end2 = Date.now();
-    console.log('获取图片', calculateTimeDifference(end, end2));
-
     const metaInfo: any = Object.values(result)[0];
     const url = metaInfo?.url?.url;
     const setuHtml = `${getRootPath()}/app/views/setu.ejs`;
@@ -168,8 +161,6 @@ class UtilController {
       url: url,
     });
     ctx.set('Content-Type', 'text/html');
-    console.log('返回数据', calculateTimeDifference(end2, Date.now()));
-
     ctx.body = html;
   };
   static test: MyMiddleware = async (ctx, next) => {
