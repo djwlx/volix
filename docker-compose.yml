@@ -137,5 +137,18 @@ services:
       - LANGS=zh_CN
       - JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
     restart: unless-stopped
+  live-record:
+    image: ihmily/douyin-live-recorder:latest
+    container_name: live-record
+    environment:
+      - TERM=xterm-256color
+    tty: true
+    stdin_open: true
+    volumes:
+      - ${DATA_PATH}/live-record/config:/app/config
+      - ${DATA_PATH}/live-record/logs:/app/logs
+      - ${DATA_PATH}/live-record/backup_config:/app/backup_config
+      - ${RESOURCE_PATH}/live-record:/app/downloads
+    restart: no
 networks:
   default:
