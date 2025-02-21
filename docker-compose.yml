@@ -102,7 +102,7 @@ services:
     environment:
       - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
     ports:
-      - '5000:5000'
+      - '25700:5000'
     restart: unless-stopped
     networks:
       - default
