@@ -1,8 +1,7 @@
 import { getRootPath } from './path';
 import fs from 'fs';
-// import '../schedule';
-// import jobManager from '../schedule/job-manager';
 import { syncModels } from '../models';
+import jobManager from '../schedule/job-manager';
 
 const initApp = async () => {
   const rootPath = getRootPath();
@@ -31,6 +30,9 @@ const initApp = async () => {
 
   // 创建数据库
   await syncModels();
+
+  // 启动定时任务
+  jobManager.run();
 };
 
 export default initApp;

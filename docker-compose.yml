@@ -1,4 +1,5 @@
 services:
+  # 云盘聚合
   alist:
     image: 'xhofe/alist:latest'
     container_name: alist
@@ -12,6 +13,7 @@ services:
       - 5244:5244
     networks:
       - default
+  # 多线程下载器
   aria2:
     image: 'johngong/aria2:latest'
     container_name: aria2
@@ -31,6 +33,7 @@ services:
     networks:
       - default
     restart: unless-stopped
+  # 智能家居
   homeassistant:
     image: 'homeassistant/home-assistant:latest'
     container_name: homeassistant
@@ -44,6 +47,7 @@ services:
     restart: unless-stopped
     networks:
       - default
+  # 媒体服务器
   jellyfin:
     image: 'jellyfin/jellyfin:latest'
     container_name: jellyfin
@@ -60,6 +64,7 @@ services:
       - metatube
     networks:
       - default
+  # 媒体服务器插件
   metatube:
     image: 'metatube/metatube-server:latest'
     container_name: metatube
@@ -69,6 +74,7 @@ services:
       - ${DATA_PATH}/metatube/config:/config
     networks:
       - default
+  # 漫画服务器1
   komga:
     image: gotson/komga
     container_name: komga
@@ -85,9 +91,27 @@ services:
     restart: unless-stopped
     networks:
       - default
-  qbittorent:
+  # 漫画服务器2
+  kavita:
+    image: jvmilazz0/kavita:latest
+    container_name: kavita
+    volumes:
+      - ${DATA_PATH}/kavita/manga:/manga
+      - ${DATA_PATH}/kavita/comics:/comics
+      - ${DATA_PATH}/kavita/books:/books
+      - ${DATA_PATH}/kavita/config:/kavita/config
+      - ${RESOURCE_PATH}:/myresource
+    environment:
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
+    ports:
+      - '25700:5000'
+    restart: unless-stopped
+    networks:
+      - default
+  # bittorent服务器
+  qbittorrent:
     image: superng6/qbittorrentee:latest
-    container_name: qbittorent
+    container_name: qbittorrent
     environment:
       - WEB_USER=admin
       - WEB_PASSWORD=123456
@@ -101,6 +125,7 @@ services:
     restart: unless-stopped
     networks:
       - default
+  # p站
   pixiv:
     image: zzcabc/pixivbiu:latest
     container_name: pixiv
@@ -114,6 +139,7 @@ services:
     restart: unless-stopped
     networks:
       - default
+  # 音乐标签
   music-tag:
     image: xhongc/music_tag_web:latest
     container_name: music-tag-web
@@ -123,6 +149,7 @@ services:
       - ${RESOURCE_PATH}/音乐:/app/media:rw
       - ${DATA_PATH}/music-tag/config:/app/data
     restart: unless-stopped
+  # pdf处理
   stirling-pdf:
     image: stirlingtools/stirling-pdf:latest
     container_name: stirling-pdf
@@ -139,5 +166,19 @@ services:
       - LANGS=zh_CN
       - JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
     restart: unless-stopped
+  # 直播录制
+  live-record:
+    image: ihmily/douyin-live-recorder:latest
+    container_name: live-record
+    environment:
+      - TERM=xterm-256color
+    tty: true
+    stdin_open: true
+    volumes:
+      - ${DATA_PATH}/live-record/config:/app/config
+      - ${DATA_PATH}/live-record/logs:/app/logs
+      - ${DATA_PATH}/live-record/backup_config:/app/backup_config
+      - ${RESOURCE_PATH}/live-record:/app/downloads
+    restart: no
 networks:
   default:
