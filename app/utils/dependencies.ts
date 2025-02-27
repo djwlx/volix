@@ -32,7 +32,7 @@ const initApp = async () => {
   await syncModels();
 
   // 启动定时任务
-  jobManager.run();
+  // jobManager.run();
 };
 
 export default initApp;
