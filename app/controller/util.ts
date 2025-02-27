@@ -9,6 +9,7 @@ import File115Service from '../service/file115';
 import { generateRandomNumber } from '../utils/number';
 import { calculateTimeDifference } from '../utils/date';
 import Util115 from './115driver/util';
+import { uniq } from 'es-toolkit';
 class UtilController {
   static get115QrCode: MyMiddleware = async (ctx, next) => {
     const result = await driver115.getQrCode();
@@ -129,7 +130,7 @@ class UtilController {
 
     await ConfigService.setConfig('115_picture_info', {
       count: type === 'delete' ? 0 : config?.count,
-      paths: pathTemp.concat(paths),
+      paths: uniq(pathTemp.concat(paths)),
       loading: true,
     });
 
