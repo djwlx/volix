@@ -193,5 +193,14 @@ services:
       - JWT_SECRET=
       - INIT_TABLE=true
       - ENABLE_CACHE=true
+  # 机器人
+  koishi:
+    image: koishijs/koishi:latest
+    container_name: koishi
+    restart: unless-stopped
+    ports:
+      - '5140:5140'
+    volumes:
+      - ${DATA_PATH}/koishi:/koishi
 networks:
   default:
