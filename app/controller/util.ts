@@ -10,6 +10,7 @@ import { generateRandomNumber } from '../utils/number';
 import { calculateTimeDifference } from '../utils/date';
 import Util115 from './115driver/util';
 import { uniq } from 'es-toolkit';
+import request from '../utils/request';
 class UtilController {
   static get115QrCode: MyMiddleware = async (ctx, next) => {
     const result = await driver115.getQrCode();
@@ -147,7 +148,6 @@ class UtilController {
 
   static randomPic: MyMiddleware = async (ctx, next) => {
     const ua = ctx.request.headers['user-agent'];
-
     const { mode } = ctx.query || {};
     const isDirect = mode === 'direct';
     const len = await File115Service.getFileLen();
@@ -157,6 +157,19 @@ class UtilController {
     const result = await driver115.getFile(pc as string, ua as string);
     const metaInfo: any = Object.values(result)[0];
     const url = metaInfo?.url?.url;
+    const fileName = metaInfo?.file_name || 'unkonwn.jpg';
+    if (isDirect) {
+      const result = await request.get(url, {
+        responseType: 'stream',
+        headers: {
+          'User-Agent': ua,
+        },
+      });
+      ctx.set('Content-Type', mime.lookup(fileName) || 'image/png');
+      ctx.body = result.data;
+      return;
+    }
+
     const setuHtml = `${getRootPath()}/app/views/setu.ejs`;
     const html = await ejs.renderFile(setuHtml, {
       url: url,
