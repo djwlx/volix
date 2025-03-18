@@ -202,6 +202,8 @@ services:
       - '5140:5140'
     volumes:
       - ${DATA_PATH}/koishi:/koishi
+    networks:
+      - default
   #javApi
   javapi:
     image: ovnrain/javbus-api:latest
@@ -209,5 +211,7 @@ services:
     ports:
       - '8922:3000'
     restart: unless-stopped
+    networks:
+      - default
 networks:
   default:
