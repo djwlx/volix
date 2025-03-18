@@ -204,13 +204,26 @@ services:
       - ${DATA_PATH}/koishi:/koishi
     networks:
       - default
-  #javApi
+  # javApi
   javapi:
     image: ovnrain/javbus-api:latest
     container_name: javapi
     ports:
       - '8922:3000'
     restart: unless-stopped
+    networks:
+      - default
+  # 我的工具
+  volix:
+    image: djwl/volix:latest
+    container_name: volix
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - ${DATA_PATH}/volix/database:/app/app/database
+      - ${DATA_PATH}/volix/logs:/app/logs
+      - ${DATA_PATH}/volix/uploads:/app/uploads
     networks:
       - default
 networks:
