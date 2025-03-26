@@ -66,7 +66,7 @@ services:
       - default
   # 媒体服务器插件
   metatube:
-    image: 'metatube/metatube-server:latest'
+    image: 'ghcr.io/metatube-community/metatube-server:latest'
     container_name: metatube
     command: -dsn /config/metatube.db
     restart: unless-stopped
