@@ -226,5 +226,17 @@ services:
       - ${DATA_PATH}/volix/uploads:/app/uploads
     networks:
       - default
+  # 云盘资源搜索
+  cloudsaver:
+    image: jiangrui1994/cloudsaver:latest
+    container_name: cloud-saver
+    ports:
+      - '8008:8008'
+    volumes:
+      - ${DATA_PATH}/cloudsaver/data:/app/data
+      - ${DATA_PATH}/cloudsaver/config:/app/config
+    restart: unless-stopped
+    networks:
+      - default
 networks:
   default:
