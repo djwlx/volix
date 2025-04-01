@@ -114,13 +114,13 @@ services:
     container_name: qbittorrent
     environment:
       - WEBUI_PORT=6801
-      - TORRENTING_PORT=6881
+      - TORRENTING_PORT=41408
     volumes:
       - ${DATA_PATH}/qbittorrent/appdata:/config
       - ${RESOURCE_PATH}/qbitdownloads:/downloads
     ports:
-      - 6881:6881
-      - 6881:6881/udp
+      - 41408:41408
+      - 41408:41408/udp
       - 6801:6801
     restart: unless-stopped
     networks:
