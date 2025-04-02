@@ -11,6 +11,7 @@ import { calculateTimeDifference } from '../utils/date';
 import Util115 from './115driver/util';
 import { uniq } from 'es-toolkit';
 import request from '../utils/request';
+import qbittorrent from './qbittorrent';
 class UtilController {
   static get115QrCode: MyMiddleware = async (ctx, next) => {
     const result = await driver115.getQrCode();
@@ -178,7 +179,7 @@ class UtilController {
     ctx.body = html;
   };
   static test: MyMiddleware = async (ctx, next) => {
-    const token = await driver115.getQrCode();
+    const result = await qbittorrent.pauseAll();
   };
 }
 
