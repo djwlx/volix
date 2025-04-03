@@ -6,3 +6,5 @@ logs
 .git
 .github
 app/database
+frontend
+test
