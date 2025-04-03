@@ -19,6 +19,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: master
+
+      - name: cat tag
+        run: |
+          echo ${{ github.ref_name }}
       - name: Build Frontend
         run: |
           cd frontend
@@ -46,4 +50,6 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/volix:latest
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/volix:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/volix:${{ github.ref_name }}

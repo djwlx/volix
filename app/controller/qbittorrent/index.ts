@@ -1,7 +1,7 @@
 import { AxiosRequestConfig } from 'axios';
 import request, { getCookieValue } from '../../utils/request';
 class Qbittorrent {
-  private apiHost = 'http://localhost:6801';
+  private apiHost = 'http://qbittorrent:6801';
 
   private cookie: string | null = '';
 
