@@ -20,9 +20,6 @@ jobs:
         with:
           ref: master
 
-      - name: cat tag
-        run: |
-          echo ${{ github.ref_name }}
       - name: Build Frontend
         run: |
           cd frontend
