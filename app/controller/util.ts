@@ -178,6 +178,18 @@ class UtilController {
     ctx.set('Content-Type', 'text/html');
     ctx.body = html;
   };
+  static startQbit: MyMiddleware = async (ctx, next) => {
+    const result = await qbittorrent.startAll();
+    resSuccess(ctx, {
+      data: result,
+    });
+  };
+  static pauseQbit: MyMiddleware = async (ctx, next) => {
+    const result = await qbittorrent.pauseAll();
+    resSuccess(ctx, {
+      data: result,
+    });
+  };
   static test: MyMiddleware = async (ctx, next) => {
     resSuccess(ctx);
   };

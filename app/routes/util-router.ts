@@ -17,6 +17,8 @@ router
   .get('/115-files', UtilController.get115FileList)
   .get('/115-file-info', UtilController.get115File)
   .get('/115-pictures', UtilController.get115PicInfo)
-  .post('/115-pictures', UtilController.set115Pic);
+  .post('/115-pictures', UtilController.set115Pic)
+  .get('/qbit-pause', UtilController.pauseQbit)
+  .get('/qbit-start', UtilController.startQbit);
 
 export default router;
