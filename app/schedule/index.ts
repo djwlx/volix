@@ -1,47 +1,62 @@
 import schedule from 'node-schedule';
-import { $, cd, glob } from 'zx';
+import qbittorrent from '../controller/qbittorrent';
+import { log } from '../utils/logger';
 import { getNowTimeStrinng } from '../utils/date';
 
-const root = process.cwd();
+export const jobList: {
+  name: string;
+  job: schedule.Job;
+}[] = [];
 
-// 自动备份docker数据
-// const testJob = schedule.scheduleJob('aaaa', '*/5 * * * * *', async () => {
-//   const time = getNowTimeStrinng();
-//   console.log('执行自动备份功能', time);
-//   console.log('下次执行时间：', getNowTimeStrinng(testJob.nextInvocation()));
+interface JobParam {
+  key: string;
+  description: string;
+  cron: schedule.Spec;
+  callback: () => Promise<void>;
+}
 
-//   // 待开发
-// });
-// process.on('SIGINT', () => {
-//   console.log('接收到 SIGINT 信号');
+export const createJob = (params: JobParam) => {
+  const { key, description, cron, callback } = params;
+  const job = schedule.scheduleJob(cron, async () => {
+    await callback();
+    log.info(`${description} 执行完成，下次执行时间 ${getNowTimeStrinng(job.nextInvocation())}`);
+  });
 
-//   process.exit(0); // 正常退出
-// });
-// process.on('SIGTERM', () => {
-//   console.log('接收到 SIGTERM 信号1111');
+  if (description) {
+    log.info(`定时任务 ${description} 创建成功，下一次执行时间 ${getNowTimeStrinng(job.nextInvocation())} `);
+  }
 
-//   process.exit(0); // 正常退出
-// });
-// process.on('exit', code => {
-//   console.log(`进程即将退出，退出码: ${code}`);
-// });
+  jobList.push({
+    name: key,
+    job,
+  });
+};
 
-// console.log(testJob.name, 'name');
+export const initSchedule = () => {
+  createJob({
+    key: 'autoRefreshQbitCookie',
+    description: '每天0点和12点刷新qbit的cookie',
+    cron: '0 0,12 * * *',
+    callback: async () => {
+      await qbittorrent.login();
+    },
+  });
 
-// 自动更新docker镜像
-// 待思路
+  createJob({
+    key: 'autoOpenQbit',
+    description: '每天早上9点30打开qbit',
+    cron: '30 9 * * *',
+    callback: async () => {
+      await qbittorrent.startAll();
+    },
+  });
 
-// 自动删除移动硬盘中mac的元数据（防止docker访问出错）
-// schedule.scheduleJob('0 0 */1 * *', async () => {
-//   console.log('执行自动删除元数据功能');
-//   try {
-//     cd('/Volumes/MyResource');
-//     const paths = await glob('**/._*', { dot: true });
-//     console.log(paths, '匹配到文件路径');
-//     if (paths.length) {
-//       await $`rm ${paths}`;
-//       console.log(paths, '已经删除');
-//     }
-//     cd(root);
-//   } catch (e) {}
-// });
+  createJob({
+    key: 'autoCloseQbit',
+    description: '每天凌晨1点关闭qbit',
+    cron: '0 1 * * *',
+    callback: async () => {
+      await qbittorrent.pauseAll();
+    },
+  });
+};

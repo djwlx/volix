@@ -2,6 +2,7 @@ import { calculateTimeDifference, getNowTimeStrinng, waitTime } from '../../util
 import driver115 from './index';
 import File115Service from '../../service/file115';
 import ConfigService from '../../service/config';
+import { log } from '../../utils/logger';
 
 class Util115 {
   // 缓存到数据库，下次直接调接口
@@ -32,7 +33,7 @@ class Util115 {
     const timer = 3000;
     const start = Date.now();
     let resultNum = 0;
-    console.log('开始缓存图片', start);
+    log.info('开始缓存图片');
     const getPicFileList = async (cid: string) => {
       const result = await driver115.getFileList(0, 1, cid);
       const count = result.count;
@@ -70,8 +71,7 @@ class Util115 {
       await getPicFileList(uidList[i]);
     }
     const end = Date.now();
-    console.log('缓存完成', end);
-    console.log('缓存耗时', calculateTimeDifference(start, end), '数量', resultNum);
+    log.info('缓存图片完成,耗时:', calculateTimeDifference(start, end), '数量:', resultNum);
     this.updateConfig(uidList);
   }
 

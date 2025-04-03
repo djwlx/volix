@@ -1,7 +1,8 @@
 import { getRootPath } from './path';
 import fs from 'fs';
 import { syncModels } from '../models';
-import jobManager from '../schedule/job-manager';
+import { initSchedule } from '../schedule';
+import { log } from './logger';
 
 const initApp = async () => {
   const rootPath = getRootPath();
@@ -22,7 +23,7 @@ const initApp = async () => {
     const { filePath, type } = pathItem;
     if (type === 'dir') {
       if (!fs.existsSync(filePath)) {
-        console.info('生成文件夹', filePath);
+        log.info(`生成文件夹 ${filePath}`);
         fs.mkdirSync(filePath, { recursive: true });
       }
     }
@@ -32,7 +33,7 @@ const initApp = async () => {
   await syncModels();
 
   // 启动定时任务
-  // jobManager.run();
+  initSchedule();
 };
 
 export default initApp;

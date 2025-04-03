@@ -179,7 +179,7 @@ class UtilController {
     ctx.body = html;
   };
   static test: MyMiddleware = async (ctx, next) => {
-    const result = await qbittorrent.pauseAll();
+    resSuccess(ctx);
   };
 }
 

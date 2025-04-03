@@ -8,6 +8,7 @@ import config from '../config';
 import getGlobalInfo from './middleware/global-info';
 import staticMiddleware from './middleware/static';
 import initApp from './utils/dependencies';
+import { log } from './utils/logger';
 
 async function startApp() {
   // 启动前操作
@@ -35,7 +36,7 @@ async function startApp() {
   app.use(router.routes());
 
   app.listen(config.port, () => {
-    console.log('应用启动在端口：', config.port);
+    log.info('应用启动在端口：', config.port);
   });
 }
 

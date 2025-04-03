@@ -1,4 +1,5 @@
 import configModel from '../models/config';
+import { log } from '../utils/logger';
 
 type ConfigNameType = '115_login_info' | '115_picture_info' | 'backup_config';
 
@@ -11,9 +12,7 @@ class ConfigService {
         },
       });
       return res?.dataValues?.configContent;
-    } catch (e) {
-      // console.log(e);
-    }
+    } catch (e) {}
   }
 
   static async setConfig(configName: ConfigNameType, configContent: any) {
@@ -43,7 +42,7 @@ class ConfigService {
         return res.dataValues?.configContent;
       }
     } catch (e) {
-      console.log(e);
+      log.error(e);
     }
   }
 
@@ -56,7 +55,7 @@ class ConfigService {
       });
       return res;
     } catch (e) {
-      console.log(e);
+      log.error(e);
     }
   }
 }

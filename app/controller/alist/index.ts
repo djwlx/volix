@@ -6,6 +6,7 @@ import { getRootPath } from '../../utils/path';
 import fs from 'fs';
 import ejs from 'ejs';
 import { getOrMakeDir } from '../../utils/file';
+import { log } from '../../utils/logger';
 
 class Alist {
   private token: string;
@@ -75,7 +76,7 @@ class Alist {
     // 异步保存在本地
     fs.writeFile(savePath, file.data, (error) => {
       if (error) {
-        console.log(error);
+        log.error(error);
       }
     });
     return Buffer.from(file.data);
