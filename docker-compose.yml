@@ -8,8 +8,6 @@ services:
     volumes:
       - ${DATA_PATH}/alist/data:/opt/alist/data
       - ${RESOURCE_PATH}:/myresource
-      - /Volumes/Move:/moveresource
-      - /Users/djwl/istore:/itoreresource
     restart: unless-stopped
     ports:
       - 5244:5244
