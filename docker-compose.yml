@@ -3,6 +3,8 @@ services:
   alist:
     image: 'xhofe/alist:latest'
     container_name: alist
+    environment:
+      - TZ=${TZ}
     volumes:
       - ${DATA_PATH}/alist/data:/opt/alist/data
       - ${RESOURCE_PATH}:/myresource
@@ -23,6 +25,7 @@ services:
     environment:
       - UID=${PUID}
       - GID=${PGID}
+      - TZ=${TZ}
       - ARIA2_RPC_LISTEN_PORT=6800
       - ARIA2_LISTEN_PORT=6882
     ports:
@@ -51,6 +54,8 @@ services:
   jellyfin:
     image: 'jellyfin/jellyfin:latest'
     container_name: jellyfin
+    environment:
+      - TZ=${TZ}
     ports:
       - 8096:8096
     volumes:
@@ -68,6 +73,8 @@ services:
   metatube:
     image: 'ghcr.io/metatube-community/metatube-server:latest'
     container_name: metatube
+    environment:
+      - TZ=${TZ}
     command: -dsn /config/metatube.db
     restart: unless-stopped
     volumes:
@@ -80,6 +87,7 @@ services:
     container_name: komga
     environment:
       - JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
+      - TZ=${TZ}
     volumes:
       - ${DATA_PATH}/komga/config:/config
       - ${DATA_PATH}/komga/data:/data
@@ -103,6 +111,7 @@ services:
       - ${RESOURCE_PATH}:/myresource
     environment:
       - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=true
+      - TZ=${TZ}
     ports:
       - '25700:5000'
     restart: unless-stopped
@@ -115,6 +124,7 @@ services:
     environment:
       - WEBUI_PORT=6801
       - TORRENTING_PORT=41408
+      - TZ=${TZ}
     volumes:
       - ${DATA_PATH}/qbittorrent/appdata:/config
       - ${RESOURCE_PATH}/qbitdownloads:/downloads
@@ -130,6 +140,8 @@ services:
     image: zzcabc/pixivbiu:latest
     container_name: pixiv
     user: '${PUID}:${PGID}'
+    environment:
+      - TZ=${TZ}
     volumes:
       - ${DATA_PATH}/pixiv/config.yml:/Pixiv/config.yml
       - ${DATA_PATH}/pixiv/.token:/Pixiv/usr/.token
@@ -143,6 +155,8 @@ services:
   music-tag:
     image: xhongc/music_tag_web:latest
     container_name: music-tag-web
+    environment:
+      - TZ=${TZ}
     ports:
       - '8002:8002'
     volumes:
@@ -165,6 +179,7 @@ services:
       - DOCKER_ENABLE_SECURITY=false
       - LANGS=zh_CN
       - JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
+      - TZ=${TZ}
     restart: unless-stopped
   # 直播录制
   live-record:
@@ -172,6 +187,7 @@ services:
     container_name: live-record
     environment:
       - TERM=xterm-256color
+      - TZ=${TZ}
     tty: true
     stdin_open: true
     volumes:
@@ -193,11 +209,14 @@ services:
       - JWT_SECRET=
       - INIT_TABLE=true
       - ENABLE_CACHE=true
+      - TZ=${TZ}
   # 机器人
   koishi:
     image: koishijs/koishi:latest
     container_name: koishi
     restart: unless-stopped
+    environment:
+      - TZ=${TZ}
     ports:
       - '5140:5140'
     volumes:
@@ -208,6 +227,8 @@ services:
   javapi:
     image: ovnrain/javbus-api:latest
     container_name: javapi
+    environment:
+      - TZ=${TZ}
     ports:
       - '8922:3000'
     restart: unless-stopped
@@ -218,6 +239,8 @@ services:
     image: djwl/volix:latest
     container_name: volix
     restart: unless-stopped
+    environment:
+      - TZ=${TZ}
     ports:
       - '3000:3000'
     volumes:
@@ -230,6 +253,8 @@ services:
   cloudsaver:
     image: jiangrui1994/cloudsaver:latest
     container_name: cloud-saver
+    environment:
+      - TZ=${TZ}
     ports:
       - '8008:8008'
     volumes:
