@@ -54,6 +54,9 @@ services:
     container_name: jellyfin
     environment:
       - TZ=${TZ}
+      - HTTP_PROXY=${HTTP_PROXY}
+      - HTTPS_PROXY=${HTTPS_PROXY}
+      - NO_PROXY=${NO_PROXY}
     ports:
       - 8096:8096
     volumes:
@@ -73,6 +76,9 @@ services:
     container_name: metatube
     environment:
       - TZ=${TZ}
+      - HTTP_PROXY=${HTTP_PROXY}
+      - HTTPS_PROXY=${HTTPS_PROXY}
+      - NO_PROXY=${NO_PROXY}
     command: -dsn /config/metatube.db
     restart: unless-stopped
     volumes:
@@ -140,6 +146,9 @@ services:
     user: '${PUID}:${PGID}'
     environment:
       - TZ=${TZ}
+      - HTTP_PROXY=${HTTP_PROXY}
+      - HTTPS_PROXY=${HTTPS_PROXY}
+      - NO_PROXY=${NO_PROXY}
     volumes:
       - ${DATA_PATH}/pixiv/config.yml:/Pixiv/config.yml
       - ${DATA_PATH}/pixiv/.token:/Pixiv/usr/.token
@@ -215,6 +224,9 @@ services:
     restart: unless-stopped
     environment:
       - TZ=${TZ}
+      - HTTP_PROXY=${HTTP_PROXY}
+      - HTTPS_PROXY=${HTTPS_PROXY}
+      - NO_PROXY=${NO_PROXY}
     ports:
       - '5140:5140'
     volumes:
@@ -227,6 +239,9 @@ services:
     container_name: javapi
     environment:
       - TZ=${TZ}
+      - HTTP_PROXY=${HTTP_PROXY}
+      - HTTPS_PROXY=${HTTPS_PROXY}
+      - NO_PROXY=${NO_PROXY}
     ports:
       - '8922:3000'
     restart: unless-stopped
