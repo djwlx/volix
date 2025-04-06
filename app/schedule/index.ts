@@ -15,6 +15,10 @@ interface JobParam {
   callback: () => Promise<void>;
 }
 
+export const jobStatus = {
+  qbit: true,
+};
+
 export const createJob = (params: JobParam) => {
   const { key, description, cron, callback } = params;
   const job = schedule.scheduleJob(cron, async () => {
@@ -38,7 +42,11 @@ export const initSchedule = () => {
     description: '每天0点和12点刷新qbit的cookie',
     cron: '0 0,12 * * *',
     callback: async () => {
-      await qbittorrent.login();
+      if (jobStatus.qbit) {
+        await qbittorrent.login();
+      } else {
+        console.log('已经手动暂停定时任务');
+      }
     },
   });
 
@@ -47,7 +55,11 @@ export const initSchedule = () => {
     description: '每天早上9点30打开qbit',
     cron: '30 9 * * *',
     callback: async () => {
-      await qbittorrent.startAll();
+      if (jobStatus.qbit) {
+        await qbittorrent.startAll();
+      } else {
+        console.log('已经手动暂停定时任务');
+      }
     },
   });
 
@@ -56,7 +68,21 @@ export const initSchedule = () => {
     description: '每天凌晨1点关闭qbit',
     cron: '0 1 * * *',
     callback: async () => {
-      await qbittorrent.pauseAll();
+      if (jobStatus.qbit) {
+        await qbittorrent.pauseAll();
+      } else {
+        console.log('已经手动暂停定时任务');
+      }
     },
   });
+  // const rule = new schedule.RecurrenceRule();
+  // rule.second = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]; // 每分钟的 0,5,10,...55 秒执行
+  // createJob({
+  //   key: 'testtest',
+  //   description: '测试测试',
+  //   cron: rule,
+  //   callback: async () => {
+  //     console.log(jobStatus, 'status');
+  //   },
+  // });
 };

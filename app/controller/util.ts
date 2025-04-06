@@ -12,6 +12,7 @@ import Util115 from './115driver/util';
 import { uniq } from 'es-toolkit';
 import request from '../utils/request';
 import qbittorrent from './qbittorrent';
+import { jobStatus } from '../schedule';
 class UtilController {
   static get115QrCode: MyMiddleware = async (ctx, next) => {
     const result = await driver115.getQrCode();
@@ -188,6 +189,22 @@ class UtilController {
     const result = await qbittorrent.pauseAll();
     resSuccess(ctx, {
       data: result,
+    });
+  };
+  static changeJob: MyMiddleware = async (ctx, next) => {
+    const body = ctx.request.body;
+    if (body.qbit) {
+      jobStatus.qbit = true;
+    } else {
+      jobStatus.qbit = false;
+    }
+    resSuccess(ctx, {
+      data: jobStatus,
+    });
+  };
+  static getJob: MyMiddleware = async (ctx, next) => {
+    resSuccess(ctx, {
+      data: jobStatus,
     });
   };
   static test: MyMiddleware = async (ctx, next) => {

@@ -1,7 +1,7 @@
 import configModel from '../models/config';
 import { log } from '../utils/logger';
 
-type ConfigNameType = '115_login_info' | '115_picture_info' | 'backup_config';
+type ConfigNameType = '115_login_info' | '115_picture_info' | 'job_config';
 
 class ConfigService {
   static async getConfig(configName: ConfigNameType) {

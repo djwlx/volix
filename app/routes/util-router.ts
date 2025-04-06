@@ -19,6 +19,8 @@ router
   .get('/115-pictures', UtilController.get115PicInfo)
   .post('/115-pictures', UtilController.set115Pic)
   .get('/qbit-pause', UtilController.pauseQbit)
-  .get('/qbit-start', UtilController.startQbit);
+  .get('/qbit-start', UtilController.startQbit)
+  .get('/job-get', UtilController.getJob)
+  .post('/job-change', UtilController.changeJob);
 
 export default router;
