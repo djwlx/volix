@@ -1,7 +1,7 @@
 import { calculateTimeDifference, getNowTimeStrinng, waitTime } from '../../utils/date';
 import driver115 from './index';
 import File115Service from '../../service/file115';
-import ConfigService from '../../service/config';
+import { configService } from '../../service/config';
 import { log } from '../../utils/logger';
 
 class Util115 {
@@ -10,7 +10,6 @@ class Util115 {
     const list = dataList.map((item) => {
       return {
         name: item.n,
-        json: item,
         class: item.class,
         pc: item.pc,
       };
@@ -28,7 +27,7 @@ class Util115 {
   async initRandomPic(paths?: string[]) {
     // '2823447377226661136' setu
     // '3068034200407132056' 图包
-    const uidList = paths ? paths : ['3068034200407132056', '2823447377226661136'];
+    const cidList = paths ? paths : ['3068034200407132056', '2823447377226661136'];
     const limit = 500;
     const timer = 3000;
     const start = Date.now();
@@ -67,22 +66,20 @@ class Util115 {
       }
     };
 
-    for (let i = 0; i < uidList.length; i++) {
-      await getPicFileList(uidList[i]);
+    for (let i = 0; i < cidList.length; i++) {
+      await getPicFileList(cidList[i]);
     }
     const end = Date.now();
     log.info('缓存图片完成,耗时:', calculateTimeDifference(start, end), '数量:', resultNum);
-    this.updateConfig(uidList);
+    this.updateConfig(cidList);
   }
 
   // 完成之后更新config
-  async updateConfig(paths?: string[]) {
-    const len = await File115Service.getFileLen();
-    await ConfigService.setConfig('115_picture_info', {
-      count: len,
-      paths,
-      loading: false,
-    });
+  updateConfig(paths?: string[]) {
+    configService.setConfig('is_picture_115_caching', 'false');
+    if (paths) {
+      configService.setConfig('picture_115_cids', paths?.join(','));
+    }
   }
 }
 

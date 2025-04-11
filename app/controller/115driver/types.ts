@@ -30,11 +30,6 @@ export interface UserData {
   is_trusted: boolean | null;
 }
 
-export interface ApiResponse {
-  state: number;
-  data: UserData;
-}
-
 export interface TokenType {
   uid: string;
   sign: string;

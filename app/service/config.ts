@@ -1,56 +1,80 @@
 import configModel from '../models/config';
 import { log } from '../utils/logger';
+import { Model, Op } from 'sequelize';
 
-type ConfigNameType = '115_login_info' | '115_picture_info' | 'job_config';
+interface AppConfigType {
+  // 115登录信息
+  cookie_115: string;
+  // 115图片信息
+  is_picture_115_caching: string;
+  // 115图片缓存目录cid,
+  picture_115_cids: string;
+}
+
+type ConfigKeyType = keyof AppConfigType;
 
 class ConfigService {
-  static async getConfig(configName: ConfigNameType) {
+  // 组装成json
+  private getConfigJson(data: Model<any, any>[]) {
+    if (!data || data.length === 0) {
+      return null;
+    }
+    const configJson: Partial<AppConfigType> = data.reduce((acc, item) => {
+      const { config_name, config_content } = item.dataValues;
+      acc[config_name] = config_content;
+      return acc;
+    }, {});
+    return configJson;
+  }
+  // 获取配置
+  async getConfig(configName: ConfigKeyType | ConfigKeyType[]) {
     try {
-      const res = await configModel.findOne({
+      const res = await configModel.findAll({
+        attributes: ['config_name', 'config_content'],
         where: {
-          configName,
+          config_name: {
+            [Op.in]: Array.isArray(configName) ? configName : [configName],
+          },
         },
       });
-      return res?.dataValues?.configContent;
-    } catch (e) {}
+      return this.getConfigJson(res);
+    } catch (e) {
+      log.error(e);
+    }
   }
-
-  static async setConfig(configName: ConfigNameType, configContent: any) {
+  // 设置配置
+  async setConfig(configName: ConfigKeyType, configContent: string) {
     try {
       const config = await configModel.findOne({
         where: {
-          configName,
+          config_name: configName,
         },
       });
       if (config) {
-        await configModel.update(
-          {
-            configContent,
-          },
-          {
-            where: {
-              configName,
-            },
-          }
-        );
-        return configContent;
+        await config.update({
+          config_content: configContent,
+        });
+        const result = await config.save();
+        return result.dataValues;
       } else {
         const res = await configModel.create({
-          configName,
-          configContent,
+          config_name: configName,
+          config_content: configContent,
         });
-        return res.dataValues?.configContent;
+        return res.dataValues;
       }
     } catch (e) {
       log.error(e);
     }
   }
-
-  static async clearConfig(configName: ConfigNameType) {
+  // 清除配置
+  async clearConfig(configName: ConfigKeyType | ConfigKeyType[]) {
     try {
       const res = await configModel.destroy({
         where: {
-          configName,
+          config_name: {
+            [Op.in]: Array.isArray(configName) ? configName : [configName],
+          },
         },
       });
       return res;
@@ -60,4 +84,6 @@ class ConfigService {
   }
 }
 
-export default ConfigService;
+const configService = new ConfigService();
+
+export { configService };

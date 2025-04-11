@@ -2,13 +2,13 @@ import sequelize from '../utils/sequelize';
 import { DataTypes } from 'sequelize';
 
 const config = sequelize.define('app_config', {
-  configName: {
+  config_name: {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
   },
-  configContent: {
-    type: DataTypes.JSON,
+  config_content: {
+    type: DataTypes.STRING,
   },
 });
 // config.sync({ alter: true });

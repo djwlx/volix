@@ -1,9 +1,9 @@
 import request from '../../utils/request';
 import QRCode from 'qrcode';
 import FormData from 'form-data';
-import ConfigService from '../../service/config';
+import { configService } from '../../service/config';
 import { secret } from './secret';
-import { TokenType, UserData } from './types';
+import { TokenType, UserCookie } from './types';
 
 type AppType = 'web' | 'android' | 'ios' | 'tv';
 
@@ -22,8 +22,9 @@ class Driver115 {
     loginCheck: 'https://passportapi.115.com/app/1.0/web/1.0/check/sso',
     fileList: 'https://webapi.115.com/files',
     downloadUrl: 'https://proapi.115.com/app/chrome/downurl',
+    userInfo: 'https://my.115.com/?ct=ajax&ac=nav',
   };
-  private userInfo?: UserData;
+  private cookie?: string;
 
   constructor() {
     this.init();
@@ -31,19 +32,17 @@ class Driver115 {
 
   private async init() {
     // 数据库读取用户的登录信息
-    const config115 = await ConfigService.getConfig('115_login_info');
-    if (config115) {
-      this.userInfo = config115?.data;
+    const cookie115 = await configService.getConfig('cookie_115');
+    if (cookie115) {
+      this.cookie = cookie115.cookie_115;
     }
   }
 
   private async getCookie() {
-    if (!this.userInfo) {
+    if (!this.cookie) {
       await this.init();
     }
-    const cookie = this.userInfo?.cookie;
-    const formatterCookie = `UID=${cookie?.UID};SEID=${cookie?.SEID};KID=${cookie?.KID};CID=${cookie?.CID}`;
-    return formatterCookie;
+    return this.cookie;
   }
 
   private async getToken() {
@@ -78,6 +77,22 @@ class Driver115 {
     return result.data;
   }
 
+  // 获取用户信息
+  async getUserInfo() {
+    if (!this.cookie) {
+      return null;
+    }
+    const result = await request.get(this.api.userInfo, {
+      params: {
+        _: Math.floor(Date.now() / 1000),
+      },
+      headers: {
+        Cookie: await this.getCookie(),
+      },
+    });
+    return result.data?.data;
+  }
+
   // 推荐使用app进行登录，cookie过期时间很长，缺点是只能同时有一处登录
   async LoginQrCodeWithApp(uid: string, paramApp: AppType) {
     const app = paramApp || 'ios';
@@ -87,8 +102,12 @@ class Driver115 {
     form.append('app', app);
     const result = await request.post(url, form);
     // 登陆成功之后保存cookie到数据库
-    await ConfigService.setConfig('115_login_info', result?.data);
-    await this.init();
+    const resCookie = result?.data?.data?.cookie;
+    const cookieString = Object.entries(resCookie)
+      .map(([key, value]) => `${key}=${value}`)
+      .join(';');
+    this.cookie = cookieString;
+    await configService.setConfig('cookie_115', cookieString);
     return result;
   }
 
@@ -124,7 +143,6 @@ class Driver115 {
     const { data, key } = secret.encode(JSON.stringify({ pickcode: pc }), timestamp);
     const formData = new FormData();
     formData.append('data', data);
-
     const result = await request.post(this.api.downloadUrl, formData, {
       headers: {
         'User-Agent': ua,
@@ -132,15 +150,13 @@ class Driver115 {
         Cookie: await this.getCookie(),
       },
     });
-
     var str = secret.decode(result.data?.data, key);
-
     const meta = JSON.parse(str);
     return meta;
   }
 
   async exit() {
-    await ConfigService.clearConfig('115_login_info');
+    await configService.clearConfig('cookie_115');
   }
 }
 

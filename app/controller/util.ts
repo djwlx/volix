@@ -1,18 +1,15 @@
 import mime from 'mime-types';
 import driver115 from './115driver';
 import { resError, resSuccess } from '../utils/response';
-import ConfigService from '../service/config';
 import ejs from 'ejs';
-import fs from 'fs';
 import { getRootPath } from '../utils/path';
 import File115Service from '../service/file115';
 import { generateRandomNumber } from '../utils/number';
-import { calculateTimeDifference } from '../utils/date';
 import Util115 from './115driver/util';
-import { uniq } from 'es-toolkit';
 import request from '../utils/request';
 import qbittorrent from './qbittorrent';
 import { jobStatus } from '../schedule';
+import { configService } from '../service/config';
 class UtilController {
   static get115QrCode: MyMiddleware = async (ctx, next) => {
     const result = await driver115.getQrCode();
@@ -50,10 +47,10 @@ class UtilController {
     });
   };
   static get115UserInfo: MyMiddleware = async (ctx, next) => {
-    const result = await ConfigService.getConfig('115_login_info');
+    const result = await driver115.getUserInfo();
     if (result) {
       resSuccess(ctx, {
-        data: result?.data,
+        data: result,
       });
     } else {
       resSuccess(ctx, {
@@ -89,21 +86,12 @@ class UtilController {
 
   static get115PicInfo: MyMiddleware = async (ctx, next) => {
     const count = await File115Service.getFileLen();
-    const config = await ConfigService.getConfig('115_picture_info');
-    let paths = [];
-    if (!config) {
-      await ConfigService.setConfig('115_picture_info', {
-        count,
-        paths,
-        loading: false,
-      });
-    }
-
+    const picConfig = await configService.getConfig(['is_picture_115_caching', 'picture_115_cids']);
     resSuccess(ctx, {
       data: {
-        count: config?.count ?? count,
-        paths: config?.paths ?? paths,
-        loading: config?.loading ?? false,
+        count,
+        paths: picConfig?.picture_115_cids?.split(',') || [],
+        loading: Boolean(picConfig?.is_picture_115_caching === 'true'),
       },
     });
   };
@@ -117,26 +105,22 @@ class UtilController {
       });
       return;
     }
-    const config = await ConfigService.getConfig('115_picture_info');
-    let pathTemp = config?.paths ?? [];
-    if (config?.loading) {
+    const picConfig = await configService.getConfig(['is_picture_115_caching', 'picture_115_cids']);
+
+    if (picConfig?.is_picture_115_caching === 'true') {
       resError(ctx, {
         code: 400,
         message: '正在缓存中，请稍后再试',
       });
       return;
     }
+
     if (type === 'delete') {
       await File115Service.clearAll();
-      pathTemp = [];
     }
 
-    await ConfigService.setConfig('115_picture_info', {
-      count: type === 'delete' ? 0 : config?.count,
-      paths: uniq(pathTemp.concat(paths)),
-      loading: true,
-    });
-
+    configService.setConfig('is_picture_115_caching', 'true');
+    // 开始缓存
     Util115.initRandomPic(paths);
 
     resSuccess(ctx, {
