@@ -38,19 +38,6 @@ export const createJob = (params: JobParam) => {
 
 export const initSchedule = () => {
   createJob({
-    key: 'autoRefreshQbitCookie',
-    description: '每天0点和12点刷新qbit的cookie',
-    cron: '0 0,12 * * *',
-    callback: async () => {
-      if (jobStatus.qbit) {
-        await qbittorrent.login();
-      } else {
-        console.log('已经手动暂停定时任务');
-      }
-    },
-  });
-
-  createJob({
     key: 'autoOpenQbit',
     description: '每天早上9点30打开qbit',
     cron: '30 9 * * *',
