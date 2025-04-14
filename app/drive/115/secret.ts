@@ -222,4 +222,5 @@ class Secret {
   }
 }
 
-export const secret = new Secret();
+const secret = new Secret();
+export { secret };

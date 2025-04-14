@@ -1,5 +1,5 @@
 import Koa from 'koa';
-import router from './routes';
+import router from './route';
 import cors from '@koa/cors';
 import { koaBody } from 'koa-body';
 import logMark from './middleware/log';

@@ -1,13 +1,15 @@
-import userModel from '../models/user';
+import { UserModel } from '../model';
 
 class UserService {
-  static query = (param: any) => {
-    return userModel.findOne({ where: param });
+  query = async (param: any) => {
+    return UserModel.findOne({ where: param });
   };
 
-  static add = (param: any) => {
-    return userModel.create(param);
+  add = async (param: any) => {
+    return UserModel.create(param);
   };
 }
 
-export default UserService;
+const userService = new UserService();
+
+export { userService };

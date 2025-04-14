@@ -6,6 +6,7 @@ interface MyContext extends Context {
     };
   };
 }
+
 // 全局类型
 declare global {
   type MyMiddleware = (ctx: MyContext, next: (result?: any) => Promise<any>) => Promise<any>;
@@ -13,4 +14,10 @@ declare global {
   type AsyncObject = Record<string, MyMiddleware>;
 
   type KeyObject<T> = Record<T, MyMiddleware>;
+
+  declare namespace NodeJS {
+    interface ProcessEnv {
+      NODE_ENV: 'development' | 'production';
+    }
+  }
 }

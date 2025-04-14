@@ -3,7 +3,7 @@ import QRCode from 'qrcode';
 import FormData from 'form-data';
 import { configService } from '../../service/config';
 import { secret } from './secret';
-import { TokenType, UserCookie } from './types';
+import { TokenType } from './types';
 
 type AppType = 'web' | 'android' | 'ios' | 'tv';
 
@@ -32,9 +32,9 @@ class Driver115 {
 
   private async init() {
     // 数据库读取用户的登录信息
-    const cookie115 = await configService.getConfig('cookie_115');
-    if (cookie115) {
-      this.cookie = cookie115.cookie_115;
+    const configs = await configService.getConfig('cookie_115');
+    if (configs) {
+      this.cookie = configs.cookie_115;
     }
   }
 
@@ -160,4 +160,5 @@ class Driver115 {
   }
 }
 
-export default new Driver115();
+const one15Driver = new Driver115();
+export { one15Driver };

@@ -1,5 +1,5 @@
 import schedule from 'node-schedule';
-import qbittorrent from '../controller/qbittorrent';
+import { qbitDriver } from '../drive';
 import { log } from '../utils/logger';
 import { getNowTimeStrinng } from '../utils/date';
 
@@ -43,7 +43,7 @@ export const initSchedule = () => {
     cron: '30 9 * * *',
     callback: async () => {
       if (jobStatus.qbit) {
-        await qbittorrent.startAll();
+        await qbitDriver.startAll();
       } else {
         console.log('已经手动暂停定时任务');
       }
@@ -56,7 +56,7 @@ export const initSchedule = () => {
     cron: '0 1 * * *',
     callback: async () => {
       if (jobStatus.qbit) {
-        await qbittorrent.pauseAll();
+        await qbitDriver.pauseAll();
       } else {
         console.log('已经手动暂停定时任务');
       }

@@ -136,4 +136,5 @@ class Alist {
     this.token = token;
   };
 }
-export default Alist;
+const alistDriver = new Alist();
+export { alistDriver };

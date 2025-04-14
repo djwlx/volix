@@ -1,7 +1,13 @@
 import sequelize from '../utils/sequelize';
-import { DataTypes } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 
-const file115Model = sequelize.define('115_file', {
+type File115Type = Model<{
+  pc: string;
+  name: string;
+  class: string;
+}>;
+
+const File115Model = sequelize.define<File115Type>('115_file', {
   pc: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -15,6 +21,5 @@ const file115Model = sequelize.define('115_file', {
     type: DataTypes.STRING,
   },
 });
-// file115Model.sync({ alter: true });
 
-export default file115Model;
+export { File115Model };

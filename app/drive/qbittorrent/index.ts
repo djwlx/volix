@@ -1,6 +1,6 @@
 import { AxiosRequestConfig } from 'axios';
 import request, { getCookieValue } from '../../utils/request';
-class Qbittorrent {
+class QbittorrentDriver {
   private apiHost = 'http://qbittorrent:6801';
 
   private cookie: string | null = '';
@@ -73,4 +73,6 @@ class Qbittorrent {
   }
 }
 
-export default new Qbittorrent();
+const qbitDriver = new QbittorrentDriver();
+
+export { qbitDriver };

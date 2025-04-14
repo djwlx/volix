@@ -1,6 +1,5 @@
 import { getRootPath } from './path';
 import fs from 'fs';
-import { syncModels } from '../models';
 import { initSchedule } from '../schedule';
 import { log } from './logger';
 
@@ -28,9 +27,6 @@ const initApp = async () => {
       }
     }
   }
-
-  // 创建数据库
-  await syncModels();
 
   // 启动定时任务
   initSchedule();

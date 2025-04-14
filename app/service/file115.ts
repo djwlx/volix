@@ -1,28 +1,30 @@
-import file115Model from '../models/driver115';
+import { File115Model } from '../model';
 
 class File115Service {
   async getFileLen() {
-    const result = await file115Model.count();
+    const result = await File115Model.count();
     return result;
   }
 
   async getFileByIndex(index: number) {
-    const result = await file115Model.findOne({
+    const result = await File115Model.findOne({
       offset: index,
     });
     return result?.dataValues;
   }
 
   async setFileList(list: any) {
-    const result = await file115Model.bulkCreate(list, { ignoreDuplicates: true });
+    const result = await File115Model.bulkCreate(list, { ignoreDuplicates: true });
     return result;
   }
   async clearAll() {
-    const result = await file115Model.destroy({
+    const result = await File115Model.destroy({
       where: {},
     });
     return result;
   }
 }
 
-export default new File115Service();
+const file115Service = new File115Service();
+
+export { file115Service };

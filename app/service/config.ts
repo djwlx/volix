@@ -1,4 +1,4 @@
-import configModel from '../models/config';
+import { ConfigModel } from '../model';
 import { log } from '../utils/logger';
 import { Model, Op } from 'sequelize';
 
@@ -11,7 +11,7 @@ interface AppConfigType {
   picture_115_cids: string;
 }
 
-type ConfigKeyType = keyof AppConfigType;
+export type ConfigKeyType = keyof AppConfigType;
 
 class ConfigService {
   // 组装成json
@@ -29,7 +29,7 @@ class ConfigService {
   // 获取配置
   async getConfig(configName: ConfigKeyType | ConfigKeyType[]) {
     try {
-      const res = await configModel.findAll({
+      const res = await ConfigModel.findAll({
         attributes: ['config_name', 'config_content'],
         where: {
           config_name: {
@@ -45,7 +45,7 @@ class ConfigService {
   // 设置配置
   async setConfig(configName: ConfigKeyType, configContent: string) {
     try {
-      const config = await configModel.findOne({
+      const config = await ConfigModel.findOne({
         where: {
           config_name: configName,
         },
@@ -57,7 +57,7 @@ class ConfigService {
         const result = await config.save();
         return result.dataValues;
       } else {
-        const res = await configModel.create({
+        const res = await ConfigModel.create({
           config_name: configName,
           config_content: configContent,
         });
@@ -70,7 +70,7 @@ class ConfigService {
   // 清除配置
   async clearConfig(configName: ConfigKeyType | ConfigKeyType[]) {
     try {
-      const res = await configModel.destroy({
+      const res = await ConfigModel.destroy({
         where: {
           config_name: {
             [Op.in]: Array.isArray(configName) ? configName : [configName],
