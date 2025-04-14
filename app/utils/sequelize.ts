@@ -9,7 +9,7 @@ const dbPath = path.resolve(rootPath, 'app/database/index.db');
 const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: dbPath,
-  logging: sql => baseLog.info(sql),
+  logging: (sql) => baseLog.info(sql),
   define: {
     freezeTableName: true,
     createdAt: 'created_at',
@@ -18,9 +18,7 @@ const sequelize = new Sequelize({
 });
 
 try {
-  sequelize.authenticate().then(() => {
-    log.info('连接数据库成功');
-  });
+  sequelize.authenticate().then(() => {});
 } catch (error) {
   log.error('连接数据库错误', error);
 }

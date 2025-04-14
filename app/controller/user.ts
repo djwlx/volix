@@ -1,4 +1,4 @@
-import UserService from '../service/user';
+import { userService } from '../service/user';
 import jwt from '../utils/jwt';
 import { resError, resSuccess } from '../utils/response';
 
@@ -16,7 +16,7 @@ const UserController: UserControllerType = {
         message: '用户名或密码不能为空',
       });
     } else {
-      const findOne: any = await UserService.query(param);
+      const findOne: any = await userService.query(param);
       if (findOne) {
         const token = jwt.setToken({ id: findOne.id });
         resSuccess(ctx, {
@@ -40,14 +40,14 @@ const UserController: UserControllerType = {
         message: '用户名或密码错误',
       });
     } else {
-      const findOne = await UserService.query(param);
+      const findOne = await userService.query(param);
       if (findOne) {
         resError(ctx, {
           code: 400,
           message: '用户已存在',
         });
       } else {
-        const registerUser = await UserService.add(param);
+        const registerUser = await userService.add(param);
         resSuccess(ctx, {
           message: '注册成功',
         });
