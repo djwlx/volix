@@ -1,3 +1,4 @@
+import { log } from '../utils/logger';
 import { resError, resSuccess } from '../utils/response';
 
 class BaseController {
@@ -11,6 +12,7 @@ class BaseController {
           });
         }
       } catch (err) {
+        log.error(err);
         resError(ctx, {
           code: 500,
           message: '服务器错误',
