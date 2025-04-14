@@ -11,6 +11,7 @@ import { calculateTimeDifference, waitTime } from '../utils/date';
 import { BaseController } from './base-controller';
 
 class One15Controller extends BaseController {
+  // 文件信息存到数据库中
   private saveFile = async (dataList: any[]) => {
     const list = dataList.map((item) => {
       return {
@@ -21,7 +22,7 @@ class One15Controller extends BaseController {
     });
     await file115Service.setFileList(list);
   };
-
+  // 根据路径遍历缓存图片
   private initRandomPic = async (paths?: string[]) => {
     const cidList = paths ? paths : ['3068034200407132056', '2823447377226661136'];
     const limit = 500;
@@ -72,7 +73,7 @@ class One15Controller extends BaseController {
       configService.setConfig('picture_115_cids', paths?.join(','));
     }
   };
-
+  // 随机图片
   randowPic = this.res(async (ctx, next) => {
     const ua = ctx.request.headers['user-agent'];
     const { mode } = ctx.query || {};
@@ -103,7 +104,7 @@ class One15Controller extends BaseController {
     ctx.set('Content-Type', 'text/html');
     ctx.body = html;
   });
-
+  // 获取缓存的图片信息
   get115PicInfo = this.res(async (ctx, next) => {
     const count = await file115Service.getFileLen();
     const picConfig = await configService.getConfig(['is_picture_115_caching', 'picture_115_cids']);
@@ -113,7 +114,7 @@ class One15Controller extends BaseController {
       loading: Boolean(picConfig?.is_picture_115_caching === 'true'),
     };
   });
-
+  // 设置图片缓存
   set115PicInfo = this.res(async (ctx, next) => {
     const { paths, type } = ctx.request.body;
     if (!paths || paths?.length === 0 || !type) {
@@ -123,7 +124,7 @@ class One15Controller extends BaseController {
       });
       return;
     }
-    const picConfig = await configService.getConfig(['is_picture_115_caching', 'picture_115_cids']);
+    const picConfig = await configService.getConfig(['is_picture_115_caching']);
 
     if (picConfig?.is_picture_115_caching === 'true') {
       resError(ctx, {
