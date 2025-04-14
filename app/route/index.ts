@@ -9,10 +9,9 @@ const router = new Router({
 });
 
 router.use(router115.routes());
-// router.use(routerUtil.routes());
+router.use(routerUtil.routes());
 
 // router.use(routerUser.routes());
-
 // router.use(routerFile.routes());
 
 export default router;

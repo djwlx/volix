@@ -5,7 +5,7 @@ class BaseController {
     return async (ctx, next) => {
       try {
         const result = await handler(ctx, next);
-        if (result) {
+        if (result !== undefined) {
           return resSuccess(ctx, {
             data: result,
           });

@@ -5,10 +5,11 @@ import { generateRandomNumber } from '../utils/number';
 import { getRootPath } from '../utils/path';
 import request from '../utils/request';
 import mime from 'mime-types';
-import { resError } from '../utils/response';
+import { resError, resSuccess } from '../utils/response';
 import { log } from '../utils/logger';
 import { calculateTimeDifference, waitTime } from '../utils/date';
 import { BaseController } from './base-controller';
+import { TokenType } from '../drive/115/types';
 
 class One15Controller extends BaseController {
   // 文件信息存到数据库中
@@ -74,7 +75,7 @@ class One15Controller extends BaseController {
     }
   };
   // 随机图片
-  randowPic = this.res(async (ctx, next) => {
+  randowPic = this.res(async (ctx) => {
     const ua = ctx.request.headers['user-agent'];
     const { mode } = ctx.query || {};
     const isDirect = mode === 'direct';
@@ -105,7 +106,7 @@ class One15Controller extends BaseController {
     ctx.body = html;
   });
   // 获取缓存的图片信息
-  get115PicInfo = this.res(async (ctx, next) => {
+  get115PicInfo = this.res(async () => {
     const count = await file115Service.getFileLen();
     const picConfig = await configService.getConfig(['is_picture_115_caching', 'picture_115_cids']);
     return {
@@ -115,7 +116,7 @@ class One15Controller extends BaseController {
     };
   });
   // 设置图片缓存
-  set115PicInfo = this.res(async (ctx, next) => {
+  set115PicInfo = this.res(async (ctx) => {
     const { paths, type } = ctx.request.body;
     if (!paths || paths?.length === 0 || !type) {
       resError(ctx, {
@@ -146,6 +147,64 @@ class One15Controller extends BaseController {
       paths,
       loading: true,
     };
+  });
+  // 获取115登录信息;
+  get115UserInfo = this.res(async (ctx) => {
+    const result = await one15Driver.getUserInfo();
+    if (result) {
+      resSuccess(ctx, {
+        data: result,
+      });
+    } else {
+      resSuccess(ctx, {
+        code: 1,
+        message: '未登录',
+      });
+    }
+  });
+  // 退出115
+  exit115 = this.res(async () => {
+    await one15Driver.exit();
+    return true;
+  });
+  // 获取115登录二维码
+  get115QrCode = this.res(async (ctx, next) => {
+    const result = await one15Driver.getQrCode();
+    return result;
+  });
+  // 查询二维码登录状态
+  get115QrCodeStatus = this.res(async (ctx, next) => {
+    const { query } = ctx.request;
+    const result = await one15Driver.getQrStatus(query as unknown as TokenType);
+    return result;
+  });
+  // 登录到115
+  login115WithApp = this.res(async (ctx, next) => {
+    const { body } = ctx.request;
+    const { uid, app } = body;
+    if (uid && app) {
+      const result = await one15Driver.LoginQrCodeWithApp(uid, app);
+      return result;
+    } else {
+      resError(ctx, {
+        code: 400,
+        message: 'uid或app不能为空',
+      });
+    }
+  });
+  // 获取文件列表
+  get115FileList = this.res(async (ctx, next) => {
+    const { offset, pageSize } = ctx.query || {};
+    const { cid } = ctx.params;
+    const result = await one15Driver.getFileList(Number(offset), Number(pageSize), cid as string);
+    return result;
+  });
+  // 获取文件信息
+  get115File = this.res(async (ctx, next) => {
+    const { pc } = ctx.params;
+    const ua = ctx.request.headers['user-agent'];
+    const result = await one15Driver.getFile(pc as string, ua as string);
+    return result;
   });
 }
 

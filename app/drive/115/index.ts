@@ -108,7 +108,7 @@ class Driver115 {
       .join(';');
     this.cookie = cookieString;
     await configService.setConfig('cookie_115', cookieString);
-    return result;
+    return result.data;
   }
 
   async getFileList(offset?: number, pageSize?: number, cid?: string) {
@@ -156,6 +156,7 @@ class Driver115 {
   }
 
   async exit() {
+    this.cookie = undefined;
     await configService.clearConfig('cookie_115');
   }
 }

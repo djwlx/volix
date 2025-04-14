@@ -29,7 +29,7 @@ const initApp = async () => {
   }
 
   // 启动定时任务
-  initSchedule();
+  // initSchedule();
 };
 
 export default initApp;
