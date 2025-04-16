@@ -61,7 +61,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: ${{ secrets.DOCKERHUB_USERNAME }}/volix
-          short-descriptionn: Volix is a All in One
+          short-description: Volix is a All in One
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
