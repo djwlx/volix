@@ -5,12 +5,14 @@
 
 echo "开始构建前端..."
 
-# 进入前端目录
-cd frontend || { echo "无法进入frontend目录"; exit 1; }
+
 
 # 安装pnpm
 echo "安装pnpm..."
 npm install -g pnpm@8.15.9 || { echo "pnpm安装失败"; exit 1; }
+
+# 进入前端目录
+cd frontend || { echo "无法进入frontend目录"; exit 1; }
 
 # 安装依赖
 echo "安装依赖..."
