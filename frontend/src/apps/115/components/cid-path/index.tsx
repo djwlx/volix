@@ -17,7 +17,7 @@ function CidPath(props: CidPathProps) {
       return;
     }
 
-    get115FileList({ cid: cid }).then(res => {
+    get115FileList({ cid: cid }).then((res) => {
       const result = res.data?.data?.path;
       const items = result?.map((item: any) => ({
         title: <Text type="secondary">{item.name}</Text>,

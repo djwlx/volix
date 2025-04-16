@@ -101,6 +101,7 @@ class One15Controller extends BaseController {
     const setuHtml = `${getRootPath()}/app/views/setu.ejs`;
     const html = await ejs.renderFile(setuHtml, {
       url: url,
+      fileName,
     });
     ctx.set('Content-Type', 'text/html');
     ctx.body = html;

@@ -21,7 +21,7 @@ function FileList() {
     pagination: {
       current: 1,
       pageSize: 10,
-      showTotal: total => `共 ${total} 条`,
+      showTotal: (total) => `共 ${total} 条`,
     },
   });
   const [filePath, setFilePath] = useState<FilePath[]>([
@@ -120,7 +120,7 @@ function FileList() {
       pageSize: tableParams.pagination?.pageSize || 10,
       cid,
     })
-      .then(res => {
+      .then((res) => {
         const result = res.data?.data?.data;
         setData(result);
         setTableParams({
@@ -142,7 +142,7 @@ function FileList() {
       pagination: {
         ...pagination,
         current: hasChangePageSize ? 1 : pagination.current,
-        showTotal: total => `共 ${total} 条`,
+        showTotal: (total) => `共 ${total} 条`,
       },
       filters,
       sortOrder: Array.isArray(sorter) ? undefined : sorter.order,
@@ -153,7 +153,7 @@ function FileList() {
   const breadItems = useMemo(() => {
     return filePath.map((pathItem, index) => {
       return {
-        title: <a onClick={e => e.preventDefault()}>{pathItem.name}</a>,
+        title: <a onClick={(e) => e.preventDefault()}>{pathItem.name}</a>,
         onClick: () => {
           if (index === filePath.length - 1) {
             return;
@@ -185,6 +185,7 @@ function FileList() {
         pagination={tableParams.pagination}
         columns={columns}
         dataSource={data}
+        scroll={{ x: 'max-content' }}
       />
     </Card>
   );

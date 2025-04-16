@@ -9,6 +9,8 @@ interface AppConfigType {
   is_picture_115_caching: string;
   // 115图片缓存目录cid,
   picture_115_cids: string;
+  // qbit自动停启任务
+  qbit_task_enable: string;
 }
 
 export type ConfigKeyType = keyof AppConfigType;

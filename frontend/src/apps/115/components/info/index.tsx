@@ -1,4 +1,4 @@
-import { get115LoginStatus, get115UserInfo, exit115 as exit115Service } from '@/services/115';
+import { get115UserInfo, exit115 as exit115Service } from '@/services/115';
 import { CheckCircleTwoTone, PoweroffOutlined } from '@ant-design/icons';
 import { Avatar, Button, Card, Space } from 'antd';
 import { useEffect, useState } from 'react';
@@ -22,13 +22,7 @@ function UserInfo(props: UserInfoProps) {
     try {
       const result = await get115UserInfo();
       if (result.data?.code === 0) {
-        const status = await get115LoginStatus();
-        const loginSuccess = status.data?.data?.check_ssd;
-        if (loginSuccess) {
-          setUserInfo?.(result.data?.data);
-        } else {
-          setUserInfo?.(undefined);
-        }
+        setUserInfo?.(result.data?.data);
       } else {
         setUserInfo?.(undefined);
       }
@@ -67,7 +61,7 @@ function UserInfo(props: UserInfoProps) {
     >
       {userInfo ? (
         <Meta
-          avatar={<Avatar src={userInfo?.face?.face_s} />}
+          avatar={<Avatar src={userInfo?.face} />}
           title={
             <Space>
               <span>{userInfo?.user_name}</span>
