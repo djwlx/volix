@@ -1,10 +1,11 @@
 import { Space } from 'antd';
-import Qbittorrent from '../../components/Qbittorrent';
+// import Qbittorrent from '../../components/Qbittorrent';
 
 function JobMain() {
   return (
     <Space direction="vertical" style={{ width: '100%' }}>
-      <Qbittorrent />
+      待开发
+      {/* <Qbittorrent /> */}
     </Space>
   );
 }
