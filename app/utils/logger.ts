@@ -1,77 +1,61 @@
 import path from 'path';
 import log4js from 'log4js';
 import { getRootPath } from './path';
-
-// 对日志进行级别分类,生产环境才会记录日志
 const { NODE_ENV } = process.env;
+
+const isProd = NODE_ENV === 'production';
 
 const rootPath = getRootPath();
 const LOG_PATH = path.resolve(rootPath, 'logs');
 
 log4js.configure({
   appenders: {
-    info: {
-      type: 'file',
-      pattern: 'yyyy-MM-dd.log',
-      alwaysIncludePattern: true,
-      maxLogSize: 10485760,
-      filename: path.join(LOG_PATH, 'info'), //生成文件名
-    },
-    error: {
-      type: 'file',
-      pattern: 'yyyy-MM-dd.log',
-      alwaysIncludePattern: true,
-      maxLogSize: 10485760,
-      filename: path.join(LOG_PATH, 'error'),
-    },
-    dataBase: {
-      type: 'file',
-      pattern: 'yyyy-MM-dd.log',
-      alwaysIncludePattern: true,
-      maxLogSize: 10485760,
-      filename: path.join(LOG_PATH, 'dataBase'),
-    },
-    errorFilter: {
-      type: 'logLevelFilter',
-      level: 'error',
-      appender: 'error',
-    },
-    infoFilter: {
-      type: 'logLevelFilter',
-      level: 'info',
-      appender: 'info',
-    },
-    consoleFilter: {
-      type: 'logLevelFilter',
-      level: 'error',
-      appender: 'out',
-    },
-    out: {
+    console: {
       type: 'console',
+    },
+    normal: {
+      type: 'dateFile',
+      alwaysIncludePattern: true,
+      maxLogSize: 10485760,
+      filename: path.join(`${LOG_PATH}/normal`, 'normal'), //生成文件名
+    },
+    database: {
+      type: 'dateFile',
+      alwaysIncludePattern: true,
+      maxLogSize: 10485760,
+      filename: path.join(`${LOG_PATH}/databse`, 'database'), //生成文件名
+    },
+    task: {
+      type: 'dateFile',
+      alwaysIncludePattern: true,
+      maxLogSize: 10485760,
+      filename: path.join(`${LOG_PATH}/task`, 'task'), //生成文件名
     },
   },
   categories: {
-    development: {
-      appenders: ['out'],
+    prodNormal: {
+      appenders: ['normal', 'console'],
       level: 'all',
     },
-    production: {
-      appenders: ['out'],
+    devNormal: {
+      appenders: ['console'],
       level: 'all',
     },
     dataBase: {
-      appenders: ['dataBase'],
+      appenders: ['database'],
       level: 'all',
     },
-    default: {
-      appenders: ['out'],
+    taskInfo: {
+      appenders: ['task'],
       level: 'all',
     },
   },
 });
 // 普通日志
-const log = log4js.getLogger(NODE_ENV || 'development');
+const log = log4js.getLogger(isProd ? 'prodNormal' : 'devNormal');
 // 数据库日志
 const baseLog = log4js.getLogger('dataBase');
+// 任务日志
+const taskLog = log4js.getLogger('taskInfo');
 
-export { log, baseLog };
+export { log, baseLog, taskLog };
