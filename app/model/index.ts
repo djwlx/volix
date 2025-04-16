@@ -4,3 +4,4 @@ export * from './config-model';
 export * from './file115-model';
 export * from './file-model';
 export * from './user-model';
+export * from './task-model';

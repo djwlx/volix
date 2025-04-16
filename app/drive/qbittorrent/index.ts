@@ -1,7 +1,16 @@
 import { AxiosRequestConfig } from 'axios';
 import request, { getCookieValue } from '../../utils/request';
+import config from '../../../config';
 class QbittorrentDriver {
-  private apiHost = 'http://qbittorrent:6801';
+  private apiHost: string;
+  private username: string;
+  private password: string;
+
+  constructor() {
+    this.apiHost = config.qbitApi.url;
+    this.username = config.qbitApi.username;
+    this.password = config.qbitApi.password;
+  }
 
   private cookie: string | null = '';
 
@@ -24,8 +33,8 @@ class QbittorrentDriver {
     const result = await request.post(
       `${this.apiHost}/api/v2/auth/login`,
       {
-        username: 'admin',
-        password: '123456',
+        username: this.username,
+        password: this.password,
       },
       {
         headers: {
@@ -36,6 +45,7 @@ class QbittorrentDriver {
     this.cookie = getCookieValue(result.headers['set-cookie']?.[0] as string, 'SID');
   }
 
+  // 暂停所有任务
   async pauseAll() {
     try {
       await this.qbitRequest({
@@ -53,6 +63,7 @@ class QbittorrentDriver {
       }
     }
   }
+  // 开始所有任务
 
   async startAll() {
     try {
