@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon",
     "start": "tsc && cross-env NODE_ENV=production node dist/app/app.js",
-    "init": "ts-node app/script/sync-database.ts"
+    "init": "ts-node app/script/sync-database.ts",
+    "build": "sh ./bin/build_frontend.sh "
   },
   "keywords": [
     "koa",

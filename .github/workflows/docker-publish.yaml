@@ -22,14 +22,7 @@ jobs:
 
       - name: Build Frontend
         run: |
-          cd frontend
-          npm install -g pnpm
-          pnpm install
-          pnpm run build
-          cd ..
-          rm -rf public
-          mv -f frontend/dist public
-          ls public/assets
+          npm run build
 
       - name: Login to DockerHub
         uses: docker/login-action@v3

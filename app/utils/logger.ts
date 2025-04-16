@@ -17,19 +17,25 @@ log4js.configure({
       type: 'dateFile',
       alwaysIncludePattern: true,
       maxLogSize: 10485760,
+      pattern: 'yyyy-MM-dd.log',
       filename: path.join(`${LOG_PATH}/normal`, 'normal'), //生成文件名
+      numBackups: 5,
     },
     database: {
       type: 'dateFile',
       alwaysIncludePattern: true,
       maxLogSize: 10485760,
+      pattern: 'yyyy-MM-dd.log',
       filename: path.join(`${LOG_PATH}/databse`, 'database'), //生成文件名
+      numBackups: 5,
     },
     task: {
       type: 'dateFile',
       alwaysIncludePattern: true,
       maxLogSize: 10485760,
+      pattern: 'yyyy-MM-dd.log',
       filename: path.join(`${LOG_PATH}/task`, 'task'), //生成文件名
+      numBackups: 5,
     },
   },
   categories: {
@@ -47,6 +53,10 @@ log4js.configure({
     },
     taskInfo: {
       appenders: ['task'],
+      level: 'all',
+    },
+    default: {
+      appenders: ['console'],
       level: 'all',
     },
   },
