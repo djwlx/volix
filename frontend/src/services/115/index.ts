@@ -34,5 +34,5 @@ export function get115PicInfo() {
 }
 
 export function set115PicInfo(data: { type: string; paths: string[] }) {
-  return http.post('/115/pic/info', data);
+  return http.put('/115/pic/info', data);
 }
