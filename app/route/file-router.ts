@@ -6,7 +6,5 @@ const router = new Router({
 });
 
 router.post('/upload', fileController.upload).get('/download/:fileId', fileController.download);
-// .post('/pdf-to-img', FileController.pdfToImg)
-// .post('/unlock-pdf', FileController.unlockPdf);
 
 export default router;

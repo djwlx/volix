@@ -7,6 +7,7 @@ import { getRootPath } from '../utils/path';
 import fs from 'fs';
 
 class FileController extends BaseController {
+  // 上传
   upload = this.res(async (ctx) => {
     const file: any = ctx.request.files?.file;
     if (!file) {
@@ -37,6 +38,7 @@ class FileController extends BaseController {
     const result = await fileService.saveFile(fileInfo);
     return result;
   });
+  // 下载
   download = this.res(async (ctx) => {
     const { fileId } = ctx.params;
     const fileInfo = await fileService.getFile(fileId);
