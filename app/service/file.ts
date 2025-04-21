@@ -1,14 +1,40 @@
 import { FileModel } from '../model';
+import { log } from '../utils/logger';
+
+interface FileType {
+  name: string;
+  uuid: string;
+  mime_type: string;
+  size: number;
+  path: string;
+  extension: string;
+  storage?: 'local';
+  status?: 'normal' | 'deleted';
+}
 
 class FileService {
-  static query = (param: any) => {
-    return FileModel.findOne({ where: param });
+  saveFile = async (param: FileType) => {
+    try {
+      const result = await FileModel.create(param);
+      return result.dataValues;
+    } catch (e) {
+      log.error(e);
+    }
   };
 
-  static add = (param: any) => {
-    return FileModel.create(param);
+  getFile = async (uuid: string) => {
+    try {
+      const findOne = await FileModel.findOne({
+        where: {
+          uuid,
+        },
+      });
+      return findOne?.dataValues;
+    } catch (e) {
+      log.error(e);
+    }
   };
 }
 
 const fileService = new FileService();
-export { fileService };
+export { fileService, type FileType };

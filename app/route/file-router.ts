@@ -1,14 +1,12 @@
 import Router from 'koa-router';
-import FileController from '../controller/file';
+import { fileController } from '../controller';
 
 const router = new Router({
   prefix: '/file',
 });
 
-router
-  .post('/upload', FileController.upload)
-  .get('/download/:fileId', FileController.download)
-  .post('/pdf-to-img', FileController.pdfToImg)
-  .post('/unlock-pdf', FileController.unlockPdf);
+router.post('/upload', fileController.upload).get('/download/:fileId', fileController.download);
+// .post('/pdf-to-img', FileController.pdfToImg)
+// .post('/unlock-pdf', FileController.unlockPdf);
 
 export default router;

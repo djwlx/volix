@@ -2,3 +2,6 @@
 export * from './115-controller';
 export * from './base-controller';
 export * from './util-controller';
+export * from './task-controller';
+export * from './file-controller';
+export * from './user-controller';

@@ -1,14 +1,10 @@
 import { userService } from '../service/user';
 import jwt from '../utils/jwt';
 import { resError, resSuccess } from '../utils/response';
+import { BaseController } from './base-controller';
 
-interface UserControllerType {
-  login: MyMiddleware;
-  register: MyMiddleware;
-}
-
-const UserController: UserControllerType = {
-  login: async (ctx, next) => {
+class UserController extends BaseController {
+  login = this.res(async (ctx, next) => {
     const param = ctx.request.body;
     if (!param.username || !param.password) {
       resError(ctx, {
@@ -19,10 +15,7 @@ const UserController: UserControllerType = {
       const findOne: any = await userService.query(param);
       if (findOne) {
         const token = jwt.setToken({ id: findOne.id });
-        resSuccess(ctx, {
-          data: { token },
-          message: '登录成功',
-        });
+        return token;
       } else {
         resError(ctx, {
           code: 400,
@@ -30,9 +23,9 @@ const UserController: UserControllerType = {
         });
       }
     }
-  },
+  });
   // 注册
-  register: async (ctx, next) => {
+  register = this.res(async (ctx, next) => {
     const param = ctx.request.body;
     if (!param.username || !param.password) {
       resError(ctx, {
@@ -48,12 +41,10 @@ const UserController: UserControllerType = {
         });
       } else {
         const registerUser = await userService.add(param);
-        resSuccess(ctx, {
-          message: '注册成功',
-        });
+        return registerUser;
       }
     }
-  },
-};
-
-export default UserController;
+  });
+}
+const userController = new UserController();
+export { userController };

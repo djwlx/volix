@@ -5,9 +5,6 @@ const router = new Router({
   prefix: '/util',
 });
 
-router
-  .get('/test', utilController.test)
-  .get('/task/:id', utilController.getTask)
-  .patch('/task/:id', utilController.setTask);
+router.get('/test', utilController.test);
 
 export default router;
