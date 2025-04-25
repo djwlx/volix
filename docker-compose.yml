@@ -8,6 +8,7 @@ services:
     volumes:
       - ${DATA_PATH}/alist/data:/opt/alist/data
       - ${RESOURCE_PATH}:/myresource
+      - ${BIT_PATH}:/myresource/bit
     restart: unless-stopped
     ports:
       - 5244:5244
@@ -129,6 +130,7 @@ services:
     volumes:
       - ${DATA_PATH}/qbittorrent/appdata:/config
       - ${RESOURCE_PATH}/qbitdownloads:/downloads
+      - ${BIT_PATH}:/downloads/bit
     ports:
       - 41408:41408
       - 41408:41408/udp
