@@ -111,8 +111,7 @@ services:
       - TZ=${TZ}
     volumes:
       - ${DATA_PATH}/qbittorrent/appdata:/config
-      - ${RESOURCE_PATH}/qbitdownloads:/downloads
-      - ${BIT_PATH}:/downloads/bit
+      - ${BIT_PATH}:/downloads
     ports:
       - 41408:41408
       - 41408:41408/udp
