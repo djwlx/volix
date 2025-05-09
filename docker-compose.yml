@@ -110,7 +110,7 @@ services:
       - TORRENTING_PORT=41408
       - TZ=${TZ}
     volumes:
-      - ${DATA_PATH}/qbittorrent/appdata:/config
+      - ${DATA_PATH}/qbittorrent/config:/config
       - ${BIT_PATH}:/downloads
     ports:
       - 41408:41408
