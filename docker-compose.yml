@@ -256,5 +256,16 @@ services:
     restart: unless-stopped
     networks:
       - default
+  # 文件转化
+  vert:
+    container_name: vert
+    image: ghcr.io/vert-sh/vert:latest
+    environment:
+      - TZ=${TZ}
+    ports:
+      - '3001:80'
+    restart: unless-stopped
+    networks:
+      - default
 networks:
   default:
