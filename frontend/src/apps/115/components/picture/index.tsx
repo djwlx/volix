@@ -1,4 +1,4 @@
-import { Button, Card, Descriptions, DescriptionsProps, Space, Spin } from 'antd';
+import { Button, Card, Descriptions, DescriptionsProps, Popover, Space, Spin } from 'antd';
 import StartModal from './StartModal';
 import { useModalHook } from '@/hooks';
 import { useEffect, useState } from 'react';
@@ -47,27 +47,30 @@ function Picture() {
       title="图片信息"
       extra={
         <Space>
-          <Button
-            type="primary"
-            disabled={picInfo?.loading}
-            onClick={() => {
-              setModalData('open', {
-                paths: picInfo?.paths,
-              });
-            }}
-          >
-            开始缓存
-          </Button>
+          {picInfo?.loading ? (
+            <Popover content="正在缓存。。。">
+              <Button type="primary" disabled>
+                开始缓存
+              </Button>
+            </Popover>
+          ) : (
+            <Button
+              type="primary"
+              onClick={() => {
+                setModalData('open', {
+                  paths: picInfo?.paths,
+                });
+              }}
+            >
+              开始缓存
+            </Button>
+          )}
         </Space>
       }
     >
-      {picInfo?.loading ? (
-        <p>正在缓存中...</p>
-      ) : (
-        <Spin spinning={loading}>
-          <Descriptions items={items} />
-        </Spin>
-      )}
+      <Spin spinning={loading}>
+        <Descriptions items={items} />
+      </Spin>
       <StartModal reload={getInfo} {...rest} />
     </Card>
   );
