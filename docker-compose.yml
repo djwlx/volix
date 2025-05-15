@@ -229,7 +229,7 @@ services:
       - default
   # 我的工具
   volix:
-    image: djwl/volix:latest
+    image: ghcr.io/djwlx/volix:latest
     container_name: volix
     restart: unless-stopped
     environment:
