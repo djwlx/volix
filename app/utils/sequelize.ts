@@ -10,7 +10,6 @@ const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: dbPath,
   logging: (sql) => baseLog.info(sql),
-  timezone: '+08:00',
   define: {
     freezeTableName: true,
     createdAt: 'created_at',
