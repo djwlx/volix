@@ -62,6 +62,7 @@ services:
       - ${DATA_PATH}/jellyfin/cache:/cache
       - ${DATA_PATH}/jellyfin/media:/media
       - ${RESOURCE_PATH}:/myresource
+      - ${BIT_PATH}:/bit
     privileged: true
     restart: unless-stopped
     depends_on:
