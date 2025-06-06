@@ -23,7 +23,9 @@ jobs:
       - name: Build Source
         run: |
           npm install -g pnpm@9.0.0
-          rm apps/api/public
+          pnpm install
+          pnpm run build
+          rm -rf apps/api/public
           mv -f apps/web/dist apps/api/public
 
       - name: Commit Public
