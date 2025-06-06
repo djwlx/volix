@@ -5,7 +5,7 @@ WORKDIR /app
 COPY --chown=0:0 . .
 
 # 安装依赖
-RUN npm install -g pnpm@8.15.9 \
+RUN npm install -g pnpm@9.0.0 \
     && pnpm install 
    
 
