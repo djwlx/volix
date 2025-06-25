@@ -28,6 +28,8 @@ curl -u $WEBDAV_USER:$WEBDAV_PASSWORD -T $ZIP_PATH $WEBDAV_URL/$ZIP_NAME
 # 删除备份数据
 rm -rf $ZIP_PATH
 
+echo "备份完成，大小 $(du -h $ZIP_PATH)"
+
 # 恢复容器
 # cd $COMPOSE_PATH & docker compose start
 
