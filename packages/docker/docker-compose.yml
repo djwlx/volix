@@ -26,7 +26,7 @@ services:
     container_name: aria2
     volumes:
       - ${DATA_PATH}/aria2/config:/config
-      - ${RESOURCE_PATH}:/Downloads
+      - ${RESOURCE_PATH}/aria2:/Downloads
     environment:
       - UID=${PUID}
       - GID=${PGID}
