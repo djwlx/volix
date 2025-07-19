@@ -13,8 +13,6 @@ services:
       - ${RESOURCE_PATH}:/myresource
       - ${BIT_PATH}:/bit
     restart: unless-stopped
-    labels:
-      - 'com.centurylinklabs.watchtower.enable=false'
     ports:
       - 5244:5244
     networks:
@@ -119,6 +117,8 @@ services:
       - ${DATA_PATH}/komga/data:/data
       - ${DATA_PATH}/komga/tmp:/tmp
       - ${RESOURCE_PATH}:/myresource
+      - ${BIT_PATH}:/bit
+
     ports:
       - 25600:25600
     user: '${PUID}:${PGID}'
@@ -327,21 +327,21 @@ services:
     networks:
       - default
 
-  # 自动更新镜像
-  watchtower:
-    image: containrrr/watchtower
-    container_name: watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - TZ=${TZ}
-      - HTTP_PROXY=${HTTP_PROXY}
-      - HTTPS_PROXY=${HTTPS_PROXY}
-      - NO_PROXY=${NO_PROXY}
-    command: --cleanup --interval 21600
-    networks:
-      - default
+  # # 自动更新镜像
+  # watchtower:
+  #   image: containrrr/watchtower
+  #   container_name: watchtower
+  #   restart: unless-stopped
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   environment:
+  #     - TZ=${TZ}
+  #     - HTTP_PROXY=${HTTP_PROXY}
+  #     - HTTPS_PROXY=${HTTPS_PROXY}
+  #     - NO_PROXY=${NO_PROXY}
+  #   command: --cleanup --interval 21600
+  #   networks:
+  #     - default
 
 networks:
   default:
