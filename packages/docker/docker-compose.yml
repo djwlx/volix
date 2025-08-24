@@ -1,15 +1,17 @@
 services:
   # 云盘聚合
-  alist:
-    image: 'xhofe/alist:latest'
-    container_name: alist
+  openlist:
+    image: 'openlistteam/openlist:latest'
+    container_name: openlist
     environment:
       - TZ=${TZ}
       - HTTP_PROXY=
       - HTTPS_PROXY=
       - NO_PROXY=
+      - UMASK=022
+    user: '0:0'
     volumes:
-      - ${DATA_PATH}/alist/data:/opt/alist/data
+      - ${DATA_PATH}/openlist/data:/opt/openlist/data
       - ${RESOURCE_PATH}:/myresource
       - ${BIT_PATH}:/bit
     restart: unless-stopped
