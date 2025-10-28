@@ -1,6 +1,6 @@
 import { getRootPath } from './path';
 import fs from 'fs';
-import { initSchedule } from '../schedule';
+// import { initSchedule } from '../schedule';
 import { log } from './logger';
 
 const initApp = async () => {
@@ -29,7 +29,7 @@ const initApp = async () => {
   }
 
   // 启动定时任务
-  initSchedule();
+  // initSchedule();
 };
 
 export default initApp;
