@@ -9,7 +9,7 @@ export function get115QrCodeStatus(params: { uid: string; sign: string; time: nu
 }
 
 export function Login115(data: { uid: string; app: string }) {
-  return http.post('/qrcode/login', data);
+  return http.post('/115/qrcode/login', data);
 }
 
 export function exit115() {
