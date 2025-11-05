@@ -129,26 +129,26 @@ services:
       - default
 
   # bittorent服务器
-  qbittorrent:
-    image: linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    environment:
-      - WEBUI_PORT=6801
-      - TORRENTING_PORT=41408
-      - TZ=${TZ}
-      - HTTP_PROXY=
-      - HTTPS_PROXY=
-      - NO_PROXY=
-    volumes:
-      - ${DATA_PATH}/qbittorrent/config:/config
-      - ${BIT_PATH}:/downloads
-    ports:
-      - 41408:41408
-      - 41408:41408/udp
-      - 6801:6801
-    restart: unless-stopped
-    networks:
-      - default
+  # qbittorrent:
+  #   image: linuxserver/qbittorrent:latest
+  #   container_name: qbittorrent
+  #   environment:
+  #     - WEBUI_PORT=6801
+  #     - TORRENTING_PORT=41408
+  #     - TZ=${TZ}
+  #     - HTTP_PROXY=
+  #     - HTTPS_PROXY=
+  #     - NO_PROXY=
+  #   volumes:
+  #     - ${DATA_PATH}/qbittorrent/config:/config
+  #     - ${BIT_PATH}:/downloads
+  #   ports:
+  #     - 41408:41408
+  #     - 41408:41408/udp
+  #     - 6801:6801
+  #   restart: unless-stopped
+  #   networks:
+  #     - default
 
   # p站
   pixiv:
