@@ -1,0 +1,84 @@
+services:
+  openlist:
+    image: 'openlistteam/openlist:latest'
+    container_name: openlist
+    environment:
+      - TZ=Asia/Shanghai
+      - UMASK=022
+    user: '0:0'
+    volumes:
+      - /volume1/docker/openlist:/opt/openlist/data
+      - /volume1/resource:/volume1/resource
+      - /volume2/qbit:/volume2/qbit
+    restart: always
+    ports:
+      - 5244:5244
+  qbittorrent:
+    image: linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Asia/Shanghai
+      - WEBUI_PORT=8888
+      - TORRENTING_PORT=28888
+    volumes:
+      - /volume1/docker/qbittorrent:/config
+      - /volume2/qbit:/downloads
+    network_mode: host
+    restart: always
+  komga:
+    image: gotson/komga
+    container_name: komga
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - /volume1/docker/komga/config:/config
+      - /volume1/docker/komga/data:/data
+      - /volume1/docker/komga/tmp:/tmp
+      - /volume1/resource:/volume1/resource
+    ports:
+      - 25600:25600
+    user: '0:0'
+    restart: always
+  volix:
+    image: djwl/volix:latest
+    container_name: volix
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - '3000:3000'
+    volumes:
+      - /volume1/docker/volix/database:/app/app/database
+      - /volume1/docker/volix/logs:/app/logs
+      - /volume1/docker/volix/uploads:/app/uploads
+
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    tty: true
+    restart: always
+    devices:
+      - /dev/dri:/dev/dri
+      - /dev/dma_heap:/dev/dma_heap
+      - /dev/mali0:/dev/mali0
+      - /dev/rga:/dev/rga
+      - /dev/mpp_service:/dev/mpp_service
+    security_opt:
+      - systempaths=unconfined
+      - apparmor=unconfined
+    volumes:
+      - /volume1/docker/jellyfin/config:/config
+      - /volume1/docker/jellyfin/cache:/cache
+      - /volume1/docker/jellyfin/plugin:/config/plugins
+      - /volume1/resource:/data
+      - /volume2/qbit:/volume2/qbit
+    network_mode: bridge
+    ports:
+      - '8096:8096' #
+    environment:
+      - TZ=Asia/Shanghai
+      - LIBVA_DRIVER_NAME=rockchip
+      - MPP_SERVICE=1
+      - JELLYFIN_FFMPEG_OPTIONS=-hwaccel vaapi -hwaccel_device /dev/dri/renderD128 -hwaccel_output_format yuv420p
