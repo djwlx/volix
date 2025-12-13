@@ -66,3 +66,23 @@ services:
       - '5140:5140'
     volumes:
       - /volume1/docker/koishi:/koishi
+  aria2:
+    image: 'johngong/aria2:latest'
+    container_name: aria2
+    volumes:
+      - /volume1/docker/aria2/config:/config
+      - /volume1/resource/aria2:/Downloads
+    environment:
+      - UID=0
+      - GID=0
+      - TZ=Asia/Shanghai
+      - ARIA2_RPC_LISTEN_PORT=6800
+      - ARIA2_LISTEN_PORT=6882
+    ports:
+      - 6800:6800
+      - 6880:8080
+      - 6882:6882
+      - 6882:6882/udp
+    networks:
+      - default
+    restart: always
