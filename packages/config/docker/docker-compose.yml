@@ -1,0 +1,349 @@
+services:
+  # 云盘聚合
+  openlist:
+    image: 'openlistteam/openlist:latest'
+    container_name: openlist
+    environment:
+      - TZ=${TZ}
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=
+      - UMASK=022
+    user: '0:0'
+    volumes:
+      - ${DATA_PATH}/openlist/data:/opt/openlist/data
+      - ${RESOURCE_PATH}:/myresource
+      - ${BIT_PATH}:/bit
+    restart: unless-stopped
+    ports:
+      - 5244:5244
+    networks:
+      - default
+
+  # 多线程下载器
+  aria2:
+    image: 'johngong/aria2:latest'
+    container_name: aria2
+    volumes:
+      - ${DATA_PATH}/aria2/config:/config
+      - ${RESOURCE_PATH}:/Downloads
+    environment:
+      - UID=${PUID}
+      - GID=${PGID}
+      - TZ=${TZ}
+      - ARIA2_RPC_LISTEN_PORT=6800
+      - ARIA2_LISTEN_PORT=6882
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=
+    ports:
+      - 6800:6800
+      - 6880:8080
+      - 6882:6882
+      - 6882:6882/udp
+    networks:
+      - default
+    restart: unless-stopped
+
+  # 智能家居
+  homeassistant:
+    image: 'homeassistant/home-assistant:latest'
+    container_name: homeassistant
+    ports:
+      - 8123:8123
+    volumes:
+      - ${DATA_PATH}/homeassistant/config:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
+    privileged: true
+    environment:
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=
+    restart: unless-stopped
+    networks:
+      - default
+
+  # 媒体服务器
+  jellyfin:
+    image: 'jellyfin/jellyfin:latest'
+    container_name: jellyfin
+    environment:
+      - TZ=${TZ}
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=
+    ports:
+      - 8096:8096
+    volumes:
+      - ${DATA_PATH}/jellyfin/config:/config
+      - ${DATA_PATH}/jellyfin/cache:/cache
+      - ${DATA_PATH}/jellyfin/media:/media
+      - ${RESOURCE_PATH}:/myresource
+      - ${BIT_PATH}:/bit
+    privileged: true
+    restart: unless-stopped
+    depends_on:
+      - metatube
+    networks:
+      - default
+
+  # 媒体服务器插件
+  metatube:
+    image: 'ghcr.io/metatube-community/metatube-server:latest'
+    container_name: metatube
+    environment:
+      - TZ=${TZ}
+      - HTTP_PROXY=${HTTP_PROXY}
+      - HTTPS_PROXY=${HTTPS_PROXY}
+      - NO_PROXY=${NO_PROXY}
+    command: -dsn /config/metatube.db
+    restart: unless-stopped
+    volumes:
+      - ${DATA_PATH}/metatube/config:/config
+    networks:
+      - default
+
+  # 漫画服务器
+  komga:
+    image: gotson/komga
+    container_name: komga
+    environment:
+      - JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
+      - TZ=${TZ}
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=
+    volumes:
+      - ${DATA_PATH}/komga/config:/config
+      - ${DATA_PATH}/komga/data:/data
+      - ${DATA_PATH}/komga/tmp:/tmp
+      - ${RESOURCE_PATH}:/myresource
+      - ${BIT_PATH}:/bit
+
+    ports:
+      - 25600:25600
+    user: '${PUID}:${PGID}'
+    restart: unless-stopped
+    networks:
+      - default
+
+  # bittorent服务器
+  # qbittorrent:
+  #   image: linuxserver/qbittorrent:latest
+  #   container_name: qbittorrent
+  #   environment:
+  #     - WEBUI_PORT=6801
+  #     - TORRENTING_PORT=41408
+  #     - TZ=${TZ}
+  #     - HTTP_PROXY=
+  #     - HTTPS_PROXY=
+  #     - NO_PROXY=
+  #   volumes:
+  #     - ${DATA_PATH}/qbittorrent/config:/config
+  #     - ${BIT_PATH}:/downloads
+  #   ports:
+  #     - 41408:41408
+  #     - 41408:41408/udp
+  #     - 6801:6801
+  #   restart: unless-stopped
+  #   networks:
+  #     - default
+
+  # p站
+  pixiv:
+    image: zzcabc/pixivbiu:latest
+    container_name: pixiv
+    user: '${PUID}:${PGID}'
+    environment:
+      - TZ=${TZ}
+      - HTTP_PROXY=${HTTP_PROXY}
+      - HTTPS_PROXY=${HTTPS_PROXY}
+      - NO_PROXY=${NO_PROXY}
+    volumes:
+      - ${DATA_PATH}/pixiv/config.yml:/Pixiv/config.yml
+      - ${DATA_PATH}/pixiv/.token:/Pixiv/usr/.token
+      - ${RESOURCE_PATH}/pixiv:/Pixiv/downloads
+    ports:
+      - 4001:4001
+    restart: unless-stopped
+    networks:
+      - default
+
+  # 音乐标签
+  music-tag:
+    image: xhongc/music_tag_web:latest
+    container_name: music-tag-web
+    environment:
+      - TZ=${TZ}
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=
+    ports:
+      - '8002:8002'
+    volumes:
+      - ${RESOURCE_PATH}/音乐:/app/media:rw
+      - ${DATA_PATH}/music-tag/config:/app/data
+    restart: unless-stopped
+
+  # pdf处理
+  stirling-pdf:
+    image: stirlingtools/stirling-pdf:latest
+    container_name: stirling-pdf
+    ports:
+      - '8003:8080'
+    volumes:
+      - ${DATA_PATH}/StirlingPDF/trainingData:/usr/share/tessdata
+      - ${DATA_PATH}/StirlingPDF/extraConfigs:/configs
+      - ${DATA_PATH}/StirlingPDF/customFiles:/customFiles/
+      - ${DATA_PATH}/StirlingPDF/logs:/logs/
+      - ${DATA_PATH}/StirlingPDF/pipeline:/pipeline/
+    environment:
+      - DOCKER_ENABLE_SECURITY=false
+      - LANGS=zh_CN
+      - JAVA_TOOL_OPTIONS="-XX:UseSVE=0"
+      - TZ=${TZ}
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=
+    restart: unless-stopped
+
+  # 直播录制
+  live-record:
+    image: ihmily/douyin-live-recorder:latest
+    container_name: live-record
+    environment:
+      - TERM=xterm-256color
+      - TZ=${TZ}
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=
+    tty: true
+    stdin_open: true
+    volumes:
+      - ${DATA_PATH}/live-record/config:/app/config
+      - ${DATA_PATH}/live-record/logs:/app/logs
+      - ${DATA_PATH}/live-record/backup_config:/app/backup_config
+      - ${RESOURCE_PATH}/live-record:/app/downloads
+    restart: no
+
+  # 新闻聚合
+  newsnow:
+    image: ghcr.io/ourongxing/newsnow:latest
+    container_name: newsnow
+    restart: unless-stopped
+    ports:
+      - '4444:4444'
+    environment:
+      - G_CLIENT_ID=
+      - G_CLIENT_SECRET=
+      - JWT_SECRET=
+      - INIT_TABLE=true
+      - ENABLE_CACHE=true
+      - TZ=${TZ}
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=
+
+  # 机器人
+  koishi:
+    image: koishijs/koishi:latest
+    container_name: koishi
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - HTTP_PROXY=${HTTP_PROXY}
+      - HTTPS_PROXY=${HTTPS_PROXY}
+      - NO_PROXY=${NO_PROXY}
+    ports:
+      - '5140:5140'
+    volumes:
+      - ${DATA_PATH}/koishi:/koishi
+    networks:
+      - default
+
+  # javApi
+  javapi:
+    image: ovnrain/javbus-api:latest
+    container_name: javapi
+    environment:
+      - TZ=${TZ}
+      - HTTP_PROXY=${HTTP_PROXY}
+      - HTTPS_PROXY=${HTTPS_PROXY}
+      - NO_PROXY=${NO_PROXY}
+    ports:
+      - '8922:3000'
+    restart: unless-stopped
+    networks:
+      - default
+
+  # 我的工具
+  volix:
+    image: ghcr.io/djwlx/volix:latest
+    container_name: volix
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ}
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=
+    ports:
+      - '3000:3000'
+    volumes:
+      - ${DATA_PATH}/volix/database:/app/app/database
+      - ${DATA_PATH}/volix/logs:/app/logs
+      - ${DATA_PATH}/volix/uploads:/app/uploads
+    networks:
+      - default
+
+  # 云盘资源搜索
+  cloudsaver:
+    image: jiangrui1994/cloudsaver:latest
+    container_name: cloud-saver
+    environment:
+      - TZ=${TZ}
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=
+    ports:
+      - '8008:8008'
+    volumes:
+      - ${DATA_PATH}/cloudsaver/data:/app/data
+      - ${DATA_PATH}/cloudsaver/config:/app/config
+    restart: unless-stopped
+    networks:
+      - default
+
+  # 文件转化
+  vert:
+    container_name: vert
+    image: ghcr.io/vert-sh/vert:latest
+    environment:
+      - TZ=${TZ}
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=
+    ports:
+      - '3001:80'
+    restart: unless-stopped
+    networks:
+      - default
+
+  # # 自动更新镜像
+  # watchtower:
+  #   image: containrrr/watchtower
+  #   container_name: watchtower
+  #   restart: unless-stopped
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   environment:
+  #     - TZ=${TZ}
+  #     - HTTP_PROXY=${HTTP_PROXY}
+  #     - HTTPS_PROXY=${HTTPS_PROXY}
+  #     - NO_PROXY=${NO_PROXY}
+  #   command: --cleanup --interval 21600
+  #   networks:
+  #     - default
+
+networks:
+  default:
