@@ -1,7 +1,7 @@
 {
-  "name": "volix",
+  "name": "@volix/api",
   "version": "1.0.0",
-  "description": "volix",
+  "description": "volix api",
   "main": "app/app.ts",
   "type": "commonjs",
   "scripts": {
