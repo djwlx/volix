@@ -2,7 +2,7 @@ import { Button, Card, Descriptions, DescriptionsProps, Popover, Space, Spin } f
 import StartModal from './StartModal';
 import { useModalHook } from '@/hooks';
 import { useEffect, useState } from 'react';
-import { get115PicInfo } from '@/services/115';
+import { clear115Pic, get115PicInfo } from '@/services/115';
 import CidPath from '../cid-path';
 
 function Picture() {
@@ -37,6 +37,10 @@ function Picture() {
       setLoading(false);
     }
   };
+  const onClear = async () => {
+    await clear115Pic();
+    getInfo();
+  };
 
   useEffect(() => {
     getInfo();
@@ -65,6 +69,15 @@ function Picture() {
               开始缓存
             </Button>
           )}
+          <Button
+            type="primary"
+            disabled={!picInfo?.count}
+            onClick={() => {
+              onClear();
+            }}
+          >
+            清除缓存
+          </Button>
         </Space>
       }
     >

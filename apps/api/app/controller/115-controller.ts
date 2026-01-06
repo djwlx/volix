@@ -14,7 +14,7 @@ import { TokenType } from '../drive/115/types';
 class One15Controller extends BaseController {
   // 文件信息存到数据库中
   private saveFile = async (dataList: any[]) => {
-    const list = dataList.map((item) => {
+    const list = dataList.map(item => {
       return {
         name: item.n,
         class: item.class,
@@ -40,7 +40,7 @@ class One15Controller extends BaseController {
         const dataList: any = [];
         const nowResult = await one15Driver.getFileList(i, limit, cid);
         const fileList: any = nowResult.data;
-        fileList.forEach((item) => {
+        fileList.forEach(item => {
           // 图片
           if (item.fid && item.class === 'PIC') {
             resultNum++;
@@ -63,19 +63,21 @@ class One15Controller extends BaseController {
         await getPicFileList(nextCidList[i]);
       }
     };
-
-    for (let i = 0; i < cidList.length; i++) {
-      await getPicFileList(cidList[i]);
-    }
-    const end = Date.now();
-    log.info('缓存图片完成,耗时:', calculateTimeDifference(start, end), '数量:', resultNum);
-    configService.setConfig('is_picture_115_caching', 'false');
-    if (paths) {
-      configService.setConfig('picture_115_cids', paths?.join(','));
+    try {
+      for (let i = 0; i < cidList.length; i++) {
+        await getPicFileList(cidList[i]);
+      }
+      const end = Date.now();
+      log.info('缓存图片完成,耗时:', calculateTimeDifference(start, end), '数量:', resultNum);
+    } finally {
+      configService.setConfig('is_picture_115_caching', 'false');
+      if (paths) {
+        configService.setConfig('picture_115_cids', paths?.join(','));
+      }
     }
   };
   // 随机图片
-  randowPic = this.res(async (ctx) => {
+  randowPic = this.res(async ctx => {
     const ua = ctx.request.headers['user-agent'];
     const { mode } = ctx.query || {};
     const isDirect = mode === 'direct';
@@ -117,7 +119,7 @@ class One15Controller extends BaseController {
     };
   });
   // 设置图片缓存
-  set115PicInfo = this.res(async (ctx) => {
+  set115PicInfo = this.res(async ctx => {
     const { paths, type } = ctx.request.body;
     if (!paths || paths?.length === 0 || !type) {
       resError(ctx, {
@@ -150,7 +152,7 @@ class One15Controller extends BaseController {
     };
   });
   // 获取115登录信息;
-  get115UserInfo = this.res(async (ctx) => {
+  get115UserInfo = this.res(async ctx => {
     const result = await one15Driver.getUserInfo();
     if (result) {
       resSuccess(ctx, {
@@ -206,6 +208,13 @@ class One15Controller extends BaseController {
     const ua = ctx.request.headers['user-agent'];
     const result = await one15Driver.getFile(pc as string, ua as string);
     return result;
+  });
+  // 清除缓存图片
+  clear115Pic = this.res(async (ctx, next) => {
+    await file115Service.clearAll();
+    await configService.setConfig('picture_115_cids', '');
+    await configService.setConfig('is_picture_115_caching', 'false');
+    return 'success';
   });
 }
 

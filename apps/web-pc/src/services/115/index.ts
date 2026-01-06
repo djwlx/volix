@@ -36,3 +36,6 @@ export function get115PicInfo() {
 export function set115PicInfo(data: { type: string; paths: string[] }) {
   return http.put('/115/pic/info', data);
 }
+export function clear115Pic() {
+  return http.delete('/115/pic/info');
+}
