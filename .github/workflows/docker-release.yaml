@@ -26,7 +26,7 @@ jobs:
           pnpm install
           pnpm run build
           rm -rf apps/api/public
-          mv -f apps/web/dist apps/api/public
+          mv -f apps/web-pc/dist apps/api/public
 
       - name: Commit Public
         run: |
