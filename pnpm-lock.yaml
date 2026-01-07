@@ -227,6 +227,8 @@ importers:
 
   packages/platform: {}
 
+  packages/shared: {}
+
   packages/zustore:
     dependencies:
       zustand:
