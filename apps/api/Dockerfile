@@ -5,8 +5,9 @@ WORKDIR /app
 COPY --chown=0:0 . .
 
 # 安装依赖
-RUN npm install -g pnpm@9.0.0 \
-    && pnpm install 
+RUN npm install -g pnpm@10.27.0 \
+    && pnpm config set allow-build-scripts true \
+    && pnpm install
    
 
 # 暴露应用的端口（如 3000）

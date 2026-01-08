@@ -3,4 +3,6 @@ packages:
   - packages/*
 
 onlyBuiltDependencies:
+  - '@swc/core'
   - esbuild
+  - sqlite3

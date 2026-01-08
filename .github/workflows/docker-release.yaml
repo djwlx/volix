@@ -28,6 +28,7 @@ jobs:
       - name: Build Source
         run: |
           npm install -g pnpm@10.27.0
+          pnpm config set allow-build-scripts true
           pnpm install
           pnpm run build
           rm -rf apps/api/public
