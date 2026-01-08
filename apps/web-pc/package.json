@@ -10,11 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@douyinfe/semi-ui": "^2.90.5",
+    "@douyinfe/semi-icons": "^2.90.7",
+    "@douyinfe/semi-ui": "^2.90.7",
     "axios": "^1.6.8",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "react-router": "^7.6.2"
+    "react-router": "^7.6.2",
+    "reset-css": "^5.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
