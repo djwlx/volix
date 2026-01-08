@@ -41,6 +41,9 @@ importers:
       '@koa/cors':
         specifier: ^5.0.0
         version: 5.0.0
+      '@koa/router':
+        specifier: ^15.2.0
+        version: 15.2.0(koa@2.16.3)
       axios:
         specifier: ^1.6.8
         version: 1.13.2
@@ -68,9 +71,6 @@ importers:
       koa-mount:
         specifier: ^4.0.0
         version: 4.2.0
-      koa-router:
-        specifier: ^12.0.0
-        version: 12.0.1
       koa-static:
         specifier: ^5.0.0
         version: 5.0.0
@@ -666,6 +666,12 @@ packages:
   '@koa/cors@5.0.0':
     resolution: {integrity: sha512-x/iUDjcS90W69PryLDIMgFyV21YLTnG9zOpPXS7Bkt2b8AsY3zZsIpOLBkYr9fBcF3HbkKaER5hOBZLfpLgYNw==}
     engines: {node: '>= 14.0.0'}
+
+  '@koa/router@15.2.0':
+    resolution: {integrity: sha512-7YUhq4W83cybfNa4E7JqJpWzoCTSvbnFltkvRaUaUX1ybFzlUoLNY1SqT8XmIAO6nGbFrev+FvJHw4mL+4WhuQ==}
+    engines: {node: '>= 20'}
+    peerDependencies:
+      koa: ^2.0.0 || ^3.0.0
 
   '@mdx-js/mdx@3.1.1':
     resolution: {integrity: sha512-f6ZO2ifpwAQIpzGWaBQT2TXxPv6z3RBzQKpVftEWN78Vl/YweF1uwussDx8ECAXVtr3Rs89fKyG9YlzUs9DyGQ==}
@@ -2330,11 +2336,6 @@ packages:
     resolution: {integrity: sha512-2iHQc7vbA9qLeVq5gKAYh3m5DOMMlMfIKjW/REPAS18Mf63daCJHHVXY9nbu7ivrnYn5PiPC4CE523Tf5qvjeQ==}
     engines: {node: '>= 7.6.0'}
 
-  koa-router@12.0.1:
-    resolution: {integrity: sha512-gaDdj3GtzoLoeosacd50kBBTnnh3B9AYxDThQUo4sfUyXdOhY6ku1qyZKW88tQCRgc3Sw6ChXYXWZwwgjOxE0w==}
-    engines: {node: '>= 12'}
-    deprecated: 'Please use @koa/router instead, starting from v9! '
-
   koa-send@5.0.1:
     resolution: {integrity: sha512-tmcyQ/wXXuxpDxyNXv5yNNkdAMdFRqwtegBXUaowiQzUKqJehttS0x2j0eOZDQAyloAth5w6wwBImnFzkUz3pQ==}
     engines: {node: '>= 8'}
@@ -2541,10 +2542,6 @@ packages:
   meow@12.1.1:
     resolution: {integrity: sha512-BhXM0Au22RwUneMPwSCnyhTOizdWoIEPU9sp0Aqa1PnDMR5Wv2FGXYDjuzJEIX+Eo2Rb8xuYe5jrnm5QowQFkw==}
     engines: {node: '>=16.10'}
-
-  methods@1.1.2:
-    resolution: {integrity: sha512-iclAHeNqNm68zFtnZ0e+1L2yUIdvzNoauKU4WBA3VvH/vPFieF7qfRlwUZU+DA9P9bPXIS90ulxoUoCH23sV2w==}
-    engines: {node: '>= 0.6'}
 
   micromark-core-commonmark@2.0.3:
     resolution: {integrity: sha512-RDBrHEMSxVFLg6xvnXmb1Ayr2WzLAWjeSATAoxwKYJV94TeNavgoIdA0a9ytzDSVzBy2YKFK+emCPOEibLeCrg==}
@@ -2889,6 +2886,9 @@ packages:
 
   path-to-regexp@6.3.0:
     resolution: {integrity: sha512-Yhpw4T9C6hPpgPeA28us07OJeqZ5EzQTkbfwuhsUg0c237RomFoETJgmp2sa3F/41gfLE6G5cqcYwznmeEeOlQ==}
+
+  path-to-regexp@8.3.0:
+    resolution: {integrity: sha512-7jdwVIRtsP8MYpdXSwOS0YdD0Du+qOoF/AEPIt88PcCFrZCzx41oxku1jD88hZBwbNUIEfpqvuhjFaMAqMTWnA==}
 
   pg-connection-string@2.9.1:
     resolution: {integrity: sha512-nkc6NpDcvPVpZXxrreI/FOtX3XemeLl8E0qFr6F2Lrm/I8WOnaWNhIPK2Z7OHpw7gh5XJThi6j6ppgNoaT1w4w==}
@@ -4307,6 +4307,16 @@ snapshots:
   '@koa/cors@5.0.0':
     dependencies:
       vary: 1.1.2
+
+  '@koa/router@15.2.0(koa@2.16.3)':
+    dependencies:
+      debug: 4.4.3
+      http-errors: 2.0.1
+      koa: 2.16.3
+      koa-compose: 4.1.0
+      path-to-regexp: 8.3.0
+    transitivePeerDependencies:
+      - supports-color
 
   '@mdx-js/mdx@3.1.1':
     dependencies:
@@ -6054,16 +6064,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  koa-router@12.0.1:
-    dependencies:
-      debug: 4.4.3
-      http-errors: 2.0.1
-      koa-compose: 4.1.0
-      methods: 1.1.2
-      path-to-regexp: 6.3.0
-    transitivePeerDependencies:
-      - supports-color
-
   koa-send@5.0.1:
     dependencies:
       debug: 4.4.3
@@ -6430,8 +6430,6 @@ snapshots:
   memoize-one@5.2.1: {}
 
   meow@12.1.1: {}
-
-  methods@1.1.2: {}
 
   micromark-core-commonmark@2.0.3:
     dependencies:
@@ -6942,6 +6940,8 @@ snapshots:
   path-key@3.1.1: {}
 
   path-to-regexp@6.3.0: {}
+
+  path-to-regexp@8.3.0: {}
 
   pg-connection-string@2.9.1: {}
 

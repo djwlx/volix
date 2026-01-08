@@ -1,4 +1,4 @@
-import Router from 'koa-router';
+import Router from '@koa/router';
 import { taskController } from '../controller';
 
 const router = new Router({

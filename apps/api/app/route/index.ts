@@ -1,4 +1,4 @@
-import Router from 'koa-router';
+import Router from '@koa/router';
 import routerUser from './user-router';
 import routerUtil from './util-router';
 import routerFile from './file-router';
