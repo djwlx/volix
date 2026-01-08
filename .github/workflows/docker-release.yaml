@@ -20,9 +20,14 @@ jobs:
         with:
           ref: master
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/krypton
+
       - name: Build Source
         run: |
-          npm install -g pnpm@9.0.0
+          npm install -g pnpm@10.27.0
           pnpm install
           pnpm run build
           rm -rf apps/api/public
