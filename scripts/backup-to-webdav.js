@@ -56,7 +56,9 @@ async function main() {
 
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
-  const dateStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const dateStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(
+    now.getMinutes()
+  )}${pad(now.getSeconds())}`;
 
   const zipName = `docker-data-${dateStr}.tar.gz`;
   const fatherPath = path.dirname(DATA_PATH);
@@ -81,7 +83,9 @@ async function main() {
   }
 
   try {
-    const uploadCmd = `curl -sS -u ${escapeShellArg(WEBDAV_USER + ':' + WEBDAV_PASSWORD)} -T ${escapeShellArg(zipPath)} ${escapeShellArg(WEBDAV_URL + '/' + zipName)}`;
+    const uploadCmd = `curl -sS -u ${escapeShellArg(WEBDAV_USER + ':' + WEBDAV_PASSWORD)} -T ${escapeShellArg(
+      zipPath
+    )} ${escapeShellArg(WEBDAV_URL + '/' + zipName)}`;
     execSync(uploadCmd, { stdio: 'inherit' });
     const st = await fsp.stat(zipPath);
     console.log(`\n备份完成 ${humanSize(st.size)}`);
