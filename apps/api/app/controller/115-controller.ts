@@ -10,6 +10,7 @@ import { log } from '../utils/logger';
 import { calculateTimeDifference, waitTime } from '../utils/date';
 import { BaseController } from './base-controller';
 import { TokenType } from '../drive/115/types';
+import { PicInfoParams } from 'types/api/115';
 
 class One15Controller extends BaseController {
   // 文件信息存到数据库中
@@ -120,7 +121,7 @@ class One15Controller extends BaseController {
   });
   // 设置图片缓存
   set115PicInfo = this.res(async ctx => {
-    const { paths, type } = ctx.request.body;
+    const { paths, type } = ctx.request.body as PicInfoParams;
     if (!paths || paths?.length === 0 || !type) {
       resError(ctx, {
         code: 400,
