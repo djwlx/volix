@@ -3,17 +3,16 @@
   "ui": "tui",
   "tasks": {
     "build": {
-      "outputs": ["dist/**"]
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"],
+      "cache": true
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
     },
     "check-types": {
       "dependsOn": ["^check-types"]
-    },
-    "dev": {
-      "persistent": true,
-      "cache": false
-    },
-    "start": {
-      "cache": false
     }
   }
 }

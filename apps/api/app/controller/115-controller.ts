@@ -10,7 +10,7 @@ import { log } from '../utils/logger';
 import { calculateTimeDifference, waitTime } from '../utils/date';
 import { BaseController } from './base-controller';
 import { TokenType } from '../drive/115/types';
-import { PicInfoParams } from 'types/api/115';
+import { PicInfoParams } from '@volix/types';
 
 class One15Controller extends BaseController {
   // 文件信息存到数据库中

@@ -19,3 +19,7 @@ export interface PicInfoParams {
   type: string;
   paths: string[];
 }
+
+export interface test {
+  v: string;
+}

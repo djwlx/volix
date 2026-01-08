@@ -9,11 +9,7 @@
     "skipLibCheck": true,
     "allowJs": true,
     "noImplicitAny": false,
-    "outDir": "dist",
-    "baseUrl": ".",
-    "paths": {
-      "types/*": ["../../packages/shared/src/types/*"]
-    }
+    "outDir": "dist"
   },
   "include": ["app/**/*", "config/*"],
   "exclude": ["node_modules"]

@@ -10,7 +10,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "types/*": ["../../packages/shared/src/types/*"]
+      "@volix/types": ["../../packages/types/src"]
     },
 
     /* Bundler mode */

@@ -14,7 +14,7 @@ router
   .get('/qrcode', one15Controller.get115QrCode)
   .get('/qrcode/status', one15Controller.get115QrCodeStatus)
   .post('/qrcode/login', one15Controller.login115WithApp)
-  .get('/files/:cid?', one15Controller.get115FileList)
+  .get('/files/:cid', one15Controller.get115FileList)
   .get('/file/:pc', one15Controller.get115File)
   .delete('/pic/info', one15Controller.clear115Pic);
 
