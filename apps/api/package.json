@@ -6,9 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon",
-    "start": "tsc && cross-env NODE_ENV=production node dist/app/app.js",
-    "init": "ts-node app/script/sync-database.ts",
-    "build": "tsc"
+    "dev:init": "ts-node -r tsconfig-paths/register ./scripts/sync-database.ts",
+    "build": "tsc && tsc-alias && copyfiles -u 0 public/**/* dist/"
   },
   "keywords": [
     "koa",
@@ -55,9 +54,12 @@
     "@types/qrcode": "^1.5.5",
     "@types/uuid": "^9.0.8",
     "@volix/types": "workspace:*",
+    "copyfiles": "^2.4.1",
     "cross-env": "^7.0.3",
     "nodemon": "^2.0.20",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "5.8.2"
   }
 }

@@ -9,8 +9,13 @@
     "skipLibCheck": true,
     "allowJs": true,
     "noImplicitAny": false,
-    "outDir": "dist"
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@volix/types": ["../../pacakges/types/src/index.ts"]
+    }
   },
-  "include": ["app/**/*", "config/*"],
+  "include": ["app.ts", "src/**/*", "public/*", "scripts/**/*"],
   "exclude": ["node_modules"]
 }

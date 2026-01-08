@@ -24,7 +24,7 @@ const staticMiddleware = (): MyMiddleware => {
 
     if (method === 'GET' && !url.startsWith('/api')) {
       let staticWare: Middleware<{}, DefaultContext, any> | undefined;
-      Object.keys(staticMap).forEach((urlItem) => {
+      Object.keys(staticMap).forEach(urlItem => {
         if (url.startsWith(urlItem)) {
           staticWare = staticMap[urlItem];
         }

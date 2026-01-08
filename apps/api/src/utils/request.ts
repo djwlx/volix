@@ -4,7 +4,7 @@ export function getCookieValue(cookie: string, name: string) {
   return (
     cookie
       .split('; ')
-      .find((row) => row.startsWith(name + '='))
+      .find(row => row.startsWith(name + '='))
       ?.split('=')[1] || null
   );
 }

@@ -34,7 +34,7 @@ export const calculateTimeDifference = (start: number, end: number) => {
   return parts.join(' ');
 };
 export const waitTime = (time: number) => {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     setTimeout(() => {
       resolve('');
     }, time);

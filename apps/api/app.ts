@@ -1,14 +1,14 @@
 import Koa from 'koa';
-import router from './route';
+import router from './src/route';
 import cors from '@koa/cors';
 import { koaBody } from 'koa-body';
-import logMark from './middleware/log';
-import authenticate from './middleware/authenticate';
-import config from '../config';
-import getGlobalInfo from './middleware/global-info';
-import staticMiddleware from './middleware/static';
-import initApp from './utils/dependencies';
-import { log } from './utils/logger';
+import logMark from './src/middleware/log';
+import authenticate from './src/middleware/authenticate';
+import config from './config';
+import getGlobalInfo from './src/middleware/global-info';
+import staticMiddleware from './src/middleware/static';
+import initApp from './src/utils/dependencies';
+import { log } from './src/utils/logger';
 
 async function startApp() {
   // 启动前操作

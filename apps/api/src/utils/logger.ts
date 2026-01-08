@@ -6,7 +6,7 @@ const { NODE_ENV } = process.env;
 const isProd = NODE_ENV === 'production';
 
 const rootPath = getRootPath();
-const LOG_PATH = path.resolve(rootPath, 'logs');
+const LOG_PATH = path.resolve(rootPath, 'data/logs');
 
 log4js.configure({
   appenders: {

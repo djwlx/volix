@@ -9,11 +9,11 @@ const initApp = async () => {
   // // 生成必要的文件夹
   const pathList = [
     {
-      filePath: `${rootPath}/logs`,
+      filePath: `${rootPath}/data/logs`,
       type: 'dir',
     },
     {
-      filePath: `${rootPath}/uploads`,
+      filePath: `${rootPath}/data/uploads`,
       type: 'dir',
     },
   ];

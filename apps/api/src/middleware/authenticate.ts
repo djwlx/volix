@@ -9,7 +9,7 @@ interface AuthenticateParam {
 }
 
 const testArray = (array: string[], key: string) => {
-  return array.some((item) => {
+  return array.some(item => {
     const regexpTemp = pathToRegexp(item);
 
     return regexpTemp.test(key);
