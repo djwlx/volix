@@ -15,9 +15,11 @@ declare global {
 
   type KeyObject<T> = Record<T, MyMiddleware>;
 
-  declare namespace NodeJS {
+  namespace NodeJS {
     interface ProcessEnv {
       NODE_ENV: 'development' | 'production';
     }
   }
 }
+
+export {};

@@ -1,11 +1,13 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
+    "moduleResolution": "node",
     "declaration": true,
-    "declarationMap": true
+    "emitDeclarationOnly": false,
+    "resolveJsonModule": true,
+    "allowJs": false,
+    "isolatedModules": true
   },
-  "include": ["src/**/*"], // 编译的源码范围
-  "exclude": ["node_modules", "dist"] // 排除目录
+  "include": ["src/**/*"], // 只编译src下的所有TS文件，子包标准配置
+  "exclude": ["node_modules", "dist"] // 排除无需编译的目录
 }

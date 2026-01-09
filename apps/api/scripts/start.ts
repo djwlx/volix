@@ -1,5 +1,5 @@
-import { ConfigModel, File115Model, FileModel, UserModel, TaskModel } from '@/model';
-import { log } from '@/utils/logger';
+import { ConfigModel, File115Model, FileModel, UserModel, TaskModel } from '../src/model';
+import { log } from '../src/utils/logger';
 
 // 数据库模型同步
 async function syncModels() {

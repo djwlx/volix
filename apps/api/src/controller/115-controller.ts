@@ -41,7 +41,7 @@ class One15Controller extends BaseController {
         const dataList: any = [];
         const nowResult = await one15Driver.getFileList(i, limit, cid);
         const fileList: any = nowResult.data;
-        fileList.forEach(item => {
+        fileList.forEach((item: any) => {
           // 图片
           if (item.fid && item.class === 'PIC') {
             resultNum++;

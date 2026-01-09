@@ -1,21 +1,11 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ESNext",
     "module": "CommonJS",
     "moduleResolution": "node",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "allowJs": true,
-    "noImplicitAny": false,
     "outDir": "dist",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"],
-      "@volix/types": ["../../pacakges/types/src/index.ts"]
-    }
+    "noEmit": false,
+    "noImplicitAny": false
   },
-  "include": ["app.ts", "src/**/*", "public/*", "scripts/**/*"],
-  "exclude": ["node_modules"]
+  "include": ["app.ts", "src/**/*", "scripts/**/*"]
 }

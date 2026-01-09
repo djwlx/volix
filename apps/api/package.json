@@ -6,8 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon",
-    "dev:init": "ts-node -r tsconfig-paths/register ./scripts/sync-database.ts",
-    "build": "tsc && tsc-alias && copyfiles -u 0 public/**/* dist/"
+    "build": "tsc",
+    "start": "node ./scripts/start.js && node app.js"
   },
   "keywords": [
     "koa",
