@@ -174,13 +174,36 @@ function cleanupApiPackageJson() {
   console.log('✓ package.json 复制并清理完成');
 }
 
+function copyApiDistToRoot() {
+  const apiDistPath = path.resolve(__dirname, '..', 'apps/api/dist');
+  const rootDistPath = path.resolve(__dirname, '..', 'dist');
+
+  if (!fs.existsSync(apiDistPath)) {
+    console.warn('⚠ apps/api/dist 不存在，跳过复制到根目录');
+    return;
+  }
+
+  console.log('> 复制 apps/api/dist 到 根目录 dist...');
+
+  // 清空根目录 dist
+  if (fs.existsSync(rootDistPath)) {
+    fs.rmSync(rootDistPath, { recursive: true, force: true });
+  }
+
+  // 递归复制
+  copyDir(apiDistPath, rootDistPath);
+
+  console.log('✓ 复制到根目录 dist 完成');
+}
+
 function buildApp() {
-  // run('npm install -g pnpm@10.27.0');
-  // run('pnpm install');
-  // run('pnpm run build');
+  run('npm install -g pnpm@10.27.0');
+  run('pnpm install');
+  run('pnpm run build');
   copyFrontToEnd();
   copyWorkspaceDependencies();
   cleanupApiPackageJson();
+  copyApiDistToRoot();
 }
 
 buildApp();
