@@ -27,12 +27,7 @@ jobs:
 
       - name: Build Source
         run: |
-          npm install -g pnpm@10.27.0
-          pnpm config set allow-build-scripts true
-          pnpm install
-          pnpm run build
-          rm -rf apps/api/public
-          mv -f apps/web-pc/dist apps/api/public
+          node scripts/build-app.js
 
       - name: Commit Changes
         env:
@@ -81,7 +76,7 @@ jobs:
       - name: Build and Push
         uses: docker/build-push-action@v6
         with:
-          context: ./apps/api
+          context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
@@ -89,3 +84,15 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/volix:${{ github.ref_name }}
             ghcr.io/${{ github.repository_owner }}/volix:latest
             ghcr.io/${{ github.repository_owner }}/volix:${{ github.ref_name }}
+
+      - name: Compress dist folder
+        run: |
+          cd dist
+          zip -r ../app.zip .
+          cd ..
+
+      - name: Upload Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app.zip
+          prerelease: false
