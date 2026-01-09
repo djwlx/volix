@@ -169,6 +169,11 @@ function cleanupApiPackageJson() {
     });
   }
 
+  // 保留 start 脚本（如果存在）
+  if (pkg.scripts && pkg.scripts.start) {
+    cleanedPkg.scripts = { start: pkg.scripts.start };
+  }
+
   // 写入到 dist 目录
   fs.writeFileSync(apiDistPkgPath, JSON.stringify(cleanedPkg, null, 2) + '\n');
   console.log('✓ package.json 复制并清理完成');
@@ -196,7 +201,46 @@ function copyApiDistToRoot() {
   console.log('✓ 复制到根目录 dist 完成');
 }
 
+function removeAllDist() {
+  const root = path.resolve(__dirname, '..');
+  console.log('> 清理所有 dist 目录以防缓存...');
+
+  // 根目录 dist
+  const rootDist = path.join(root, 'dist');
+  if (fs.existsSync(rootDist)) {
+    fs.rmSync(rootDist, { recursive: true, force: true });
+    console.log(`  删除 ${rootDist}`);
+  }
+
+  // apps/*/dist
+  const appsDir = path.join(root, 'apps');
+  if (fs.existsSync(appsDir)) {
+    fs.readdirSync(appsDir).forEach(name => {
+      const d = path.join(appsDir, name, 'dist');
+      if (fs.existsSync(d)) {
+        fs.rmSync(d, { recursive: true, force: true });
+        console.log(`  删除 ${d}`);
+      }
+    });
+  }
+
+  // packages/*/dist
+  const packagesDir = path.join(root, 'packages');
+  if (fs.existsSync(packagesDir)) {
+    fs.readdirSync(packagesDir).forEach(name => {
+      const d = path.join(packagesDir, name, 'dist');
+      if (fs.existsSync(d)) {
+        fs.rmSync(d, { recursive: true, force: true });
+        console.log(`  删除 ${d}`);
+      }
+    });
+  }
+
+  console.log('✓ 所有 dist 已清理');
+}
+
 function buildApp() {
+  removeAllDist();
   run('npm install -g pnpm@10.27.0');
   run('pnpm install');
   run('pnpm run build');
