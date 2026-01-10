@@ -8,9 +8,8 @@ export function UserInfo() {
   const [userInfo, setUserInfo] = useState<Account115UserInfo>();
 
   const loadUserInfo = async () => {
-    const data = await get115UserInfo();
-    console.log('115 user info:', data);
-    setUserInfo(data.data);
+    const res = await get115UserInfo();
+    setUserInfo(res.data);
   };
 
   useEffect(() => {
