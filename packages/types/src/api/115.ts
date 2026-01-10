@@ -20,6 +20,17 @@ export interface FileListParams {
   cid?: string;
 }
 
+export interface FileListDataItem {
+  n: string;
+  pc: string;
+  cid: string;
+  fid?: string;
+}
+export interface FileListData {
+  data: FileListDataItem[];
+  count: number;
+}
+
 export interface PicInfoParams {
   type: string;
   paths: string[];

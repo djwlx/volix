@@ -1,11 +1,11 @@
 import { http } from '@/utils';
 import type {
   Account115UserInfo,
+  FileListData,
   FileListParams,
   PicInfoParams,
   QrCodeStatusParams,
   QrLoginParams,
-  ResponseData,
 } from '@volix/types';
 
 export function get115QrCode() {
@@ -31,7 +31,7 @@ export function get115UserInfo() {
 export function get115FileList(params?: FileListParams) {
   const { cid, ...rest } = params || {};
   const path = cid ? `/${cid}` : '';
-  return http.get(`/115/files${path}`, { params: rest });
+  return http.get<FileListData>(`/115/files${path}`, { params: rest });
 }
 export function get115FileInfo(pc: string) {
   const path = pc ? `/${pc}` : '';

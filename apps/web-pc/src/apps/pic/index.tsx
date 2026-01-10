@@ -11,10 +11,7 @@ function PicApp() {
         </Space>
       </center>
 
-      <Image
-        width={'100%'}
-        src="https://lf3-static.bytednsdoc.com/obj/eden-cn/ptlz_zlp/ljhwZthlaukjlkulzlp/root-web-sites/abstract.jpg"
-      />
+      <Image width={'100%'} src="/api/115/pic?mode=direct" />
     </div>
   );
 }
