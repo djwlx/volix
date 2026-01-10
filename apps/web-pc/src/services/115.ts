@@ -5,6 +5,7 @@ import type {
   PicInfoParams,
   QrCodeStatusParams,
   QrLoginParams,
+  ResponseData,
 } from '@volix/types';
 
 export function get115QrCode() {
