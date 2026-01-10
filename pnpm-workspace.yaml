@@ -3,6 +3,7 @@ packages:
   - packages/*
 
 onlyBuiltDependencies:
+  - '@parcel/watcher'
   - '@swc/core'
   - esbuild
   - sqlite3

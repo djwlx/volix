@@ -1,31 +1,20 @@
-import { Nav, Card, Avatar } from '@douyinfe/semi-ui';
-import { IconSemiLogo } from '@douyinfe/semi-icons';
+import { Nav } from '@douyinfe/semi-ui';
+import { AppCard } from './components';
+import { IconAvatar, IconImage, IconList } from '@douyinfe/semi-icons-lab';
 
-const { Meta } = Card;
 function HomeApp() {
   return (
     <div style={{ width: '100%' }}>
       <Nav
         header={{
-          logo: <IconSemiLogo style={{ height: '36px', fontSize: 36 }} />,
+          logo: <IconList style={{ height: '36px', fontSize: 36 }} />,
           text: '我的应用',
         }}
         mode={'horizontal'}
       />
-
-      <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-        <Card style={{ width: 220 }} shadows="hover">
-          <Meta
-            title="我的115"
-            avatar={
-              <Avatar
-                alt="Card meta img"
-                size="default"
-                src="https://lf3-static.bytednsdoc.com/obj/eden-cn/ptlz_zlp/ljhwZthlaukjlkulzlp/card-meta-avatar-docs-demo.jpg"
-              />
-            }
-          />
-        </Card>
+      <div style={{ padding: 16, display: 'flex', gap: 8 }}>
+        <AppCard title="我的115" icon={<IconAvatar size="extra-large" />} link="/115" />
+        <AppCard title="随机图片" icon={<IconImage size="extra-large" />} link="/pic" />
       </div>
     </div>
   );
