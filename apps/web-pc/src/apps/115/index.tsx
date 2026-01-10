@@ -1,19 +1,26 @@
-import { useEffect, useState } from 'react';
 import { UserInfo } from './user-info';
 import { PicSetting } from './pic-setting';
-import { Space } from '@douyinfe/semi-ui';
+import { Space, Skeleton } from '@douyinfe/semi-ui';
 import { FileTree } from './file-tree';
+import { useUserInfo } from './hooks/useUserInfo';
 
 function My115App() {
-  const [hasLogin, setHasLogin] = useState(true);
+  const { data, loading } = useUserInfo();
 
-  useEffect(() => {}, []);
-
+  if (loading) {
+    return (
+      <div style={{ padding: 16 }}>
+        <Skeleton active>
+          <Skeleton.Paragraph rows={6} />
+        </Skeleton>
+      </div>
+    );
+  }
   return (
     <div style={{ padding: 16 }}>
-      {hasLogin ? (
+      {data ? (
         <Space spacing="medium" vertical style={{ width: '100%' }}>
-          <UserInfo />
+          <UserInfo info={data} />
           <PicSetting />
           <FileTree />
         </Space>

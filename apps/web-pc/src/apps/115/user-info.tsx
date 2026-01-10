@@ -1,27 +1,17 @@
-import { get115UserInfo } from '@/services/115';
 import { IconExit } from '@douyinfe/semi-icons';
 import { Card, Avatar, Space, Button } from '@douyinfe/semi-ui';
 import type { Account115UserInfo } from '@volix/types';
-import { useEffect, useState } from 'react';
 
-export function UserInfo() {
-  const [userInfo, setUserInfo] = useState<Account115UserInfo>();
-
-  const loadUserInfo = async () => {
-    const res = await get115UserInfo();
-    setUserInfo(res.data);
-  };
-
-  useEffect(() => {
-    loadUserInfo();
-  }, []);
-
+interface UserInfoProps {
+  info?: Account115UserInfo;
+}
+export function UserInfo({ info }: UserInfoProps) {
   return (
     <Card style={{ width: '100%' }} shadows="hover">
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <Space>
-          <Avatar alt="Card meta img" size="default" src={userInfo?.face} />
-          <span style={{ fontWeight: '500' }}>{userInfo?.user_name}</span>
+          <Avatar alt="Card meta img" size="default" src={info?.face} />
+          <span style={{ fontWeight: '500' }}>{info?.user_name}</span>
         </Space>
         <Button icon={<IconExit />} style={{ color: 'red' }} aria-label="退出" />
       </div>
