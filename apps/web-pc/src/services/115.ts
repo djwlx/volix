@@ -30,7 +30,7 @@ export function get115UserInfo() {
 
 export function get115FileList(params?: FileListParams) {
   const { cid, ...rest } = params || {};
-  const path = cid ? `/${cid}` : '';
+  const path = cid ? `/${cid}` : '/0';
   return http.get<FileListData>(`/115/files${path}`, { params: rest });
 }
 export function get115FileInfo(pc: string) {

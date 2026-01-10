@@ -1,5 +1,5 @@
 import { Card, Tree, Typography } from '@douyinfe/semi-ui';
-import { useFileList, type FileItem } from './hooks/useFileList';
+import { useFileList, type FileItem, type UndoneMapItem } from './hooks/useFileList';
 import { useEffect, useState } from 'react';
 import type { TreeNodeData } from '@douyinfe/semi-ui/lib/es/tree';
 import { IconMore } from '@douyinfe/semi-icons';
@@ -7,16 +7,17 @@ const { Paragraph } = Typography;
 
 export function FileTree() {
   const [fileTree, setFileTree] = useState<TreeNodeData[]>([]);
-  const { getListInfo } = useFileList();
+  const { fileTree: treeData, loadMore, unDoneMap } = useFileList();
 
-  const formatTreeData = (data: FileItem[]): TreeNodeData[] => {
+  const formatTreeData = (data: FileItem[], unComplete: Record<string, UndoneMapItem>, dir: string): TreeNodeData[] => {
     const treeData = data.map(item => {
       const isDir = !item.fid;
-
       const fileItem: TreeNodeData = {
+        ...item,
         label: (
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            {item.name}
+            <span> {item.name}</span>
+            {isDir && <span>{item.children?.length}</span>}
             {isDir && <Paragraph copyable>{item.dir}</Paragraph>}
           </div>
         ),
@@ -24,55 +25,38 @@ export function FileTree() {
         key: item.id,
         isLeaf: !isDir,
         dir: item.dir,
+        children: item.children ? formatTreeData(item.children, unComplete, item.dir) : undefined,
       };
       return fileItem;
     });
-    treeData.push({
-      label: <div style={{ fontStyle: 'italic' }}>加载更多</div>,
-      key: `${treeData[treeData.length - 1].key}-load_more`,
-      isLeaf: true,
-      value: `${treeData[treeData.length - 1].key}-load_more`,
-      icon: <IconMore />,
-    });
+
+    if (dir in unComplete) {
+      const useId = `${dir}-load-more`;
+      treeData.push({
+        label: <div onClick={() => loadMore(dir)}>加载更多</div>,
+        icon: <IconMore />,
+        value: useId,
+        key: useId,
+        isLeaf: true,
+      });
+    }
 
     return treeData;
   };
 
-  const updateTreeData = (list: TreeNodeData[], key: string, children: TreeNodeData[]): TreeNodeData[] => {
-    return list.map(node => {
-      if (node.key === key) {
-        return { ...node, children };
-      }
-      if (node.children) {
-        return { ...node, children: updateTreeData(node.children, key, children) };
-      }
-      return node;
-    });
-  };
-
   const loadData = async (node?: TreeNodeData): Promise<void> => {
-    const { key, dir, children } = node || {};
+    const { dir } = node || {};
     return new Promise(resolve => {
-      if (children) {
-        resolve();
-        return;
-      }
-      getListInfo(dir).then(res => {
-        setFileTree(prevTree => {
-          const newChildren = formatTreeData(res);
-          const newTree = updateTreeData(prevTree, key as string, newChildren);
-          return newTree;
-        });
+      loadMore(dir).then(() => {
         resolve();
       });
     });
   };
 
   useEffect(() => {
-    getListInfo().then(res => {
-      setFileTree(formatTreeData(res));
-    });
-  }, []);
+    const data = formatTreeData(treeData, unDoneMap, '0');
+    setFileTree(data);
+  }, [treeData, unDoneMap]);
 
   return (
     <Card style={{ width: '100%' }} shadows="hover">
