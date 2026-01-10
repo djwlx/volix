@@ -6,8 +6,8 @@ function PicApp() {
     <div>
       <center>
         <Space style={{ margin: '10px 0' }}>
-          <Button icon={<IconArrowRight style={{ color: '#E91E63' }} />} aria-label="下一张" />
-          <Button icon={<IconLikeHeart style={{ color: '#E91E63' }} />} aria-label="喜欢" />
+          <Button icon={<IconArrowRight />} aria-label="下一张" />
+          <Button icon={<IconLikeHeart style={{ color: 'red' }} />} aria-label="喜欢" />
         </Space>
       </center>
 

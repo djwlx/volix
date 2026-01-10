@@ -13,7 +13,7 @@ export function UserInfo() {
           />
           <span style={{ fontWeight: '500' }}>低级亡灵</span>
         </Space>
-        <Button icon={<IconExit />} style={{ color: '#E91E63' }} aria-label="退出" />
+        <Button icon={<IconExit />} style={{ color: 'red' }} aria-label="退出" />
       </div>
     </Card>
   );
