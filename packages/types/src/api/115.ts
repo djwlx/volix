@@ -4,6 +4,11 @@ export interface QrCodeStatusParams {
   time: number;
 }
 
+export interface Account115UserInfo {
+  user_name: string;
+  face: string;
+}
+
 export interface QrLoginParams {
   uid: string;
   app: string;

@@ -1,5 +1,11 @@
 import { http } from '@/utils';
-import type { FileListParams, PicInfoParams, QrCodeStatusParams, QrLoginParams } from '@volix/types';
+import type {
+  Account115UserInfo,
+  FileListParams,
+  PicInfoParams,
+  QrCodeStatusParams,
+  QrLoginParams,
+} from '@volix/types';
 
 export function get115QrCode() {
   return http.get('/115/qrcode');
@@ -18,7 +24,7 @@ export function exit115() {
 }
 
 export function get115UserInfo() {
-  return http.get('/115/user');
+  return http.get<Account115UserInfo>('/115/user');
 }
 
 export function get115FileList(params?: FileListParams) {
