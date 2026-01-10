@@ -1,5 +1,5 @@
 import { get115FileList } from '@/services/115';
-import type { FileListDataItem } from '@volix/types';
+import type { FileListData, FileListDataItem } from '@volix/types';
 import { useEffect, useState } from 'react';
 
 export interface FileItem {
@@ -19,59 +19,68 @@ export interface UndoneMapItem {
 export function useFileList(dir?: string) {
   const [fileTree, setFileTree] = useState<FileItem[]>([]);
   const [unDoneMap, setUndoneMap] = useState<Record<string, UndoneMapItem>>({});
+  const [rootPath, setRootPath] = useState<FileListData['path']>([]);
+  const [loading, setLoading] = useState(false);
 
   const getListInfo = async (dir: string, offset?: number, pageSize?: number) => {
-    const res = await get115FileList({ cid: dir, offset, pageSize });
+    try {
+      setLoading(true);
+      const res = await get115FileList({ cid: dir, offset, pageSize });
 
-    const count = res.data.count;
+      const count = res.data.count;
 
-    const list = res.data.data?.map(item => {
-      const file: FileItem = {
-        name: item.n,
-        id: item.pc,
-        dir: item.cid,
-        fid: item.fid,
-      };
-      return file;
-    });
+      const path = res.data.path;
 
-    const len = list.length;
+      const list = res.data.data?.map(item => {
+        const file: FileItem = {
+          name: item.n,
+          id: item.pc,
+          dir: item.cid,
+          fid: item.fid,
+        };
+        return file;
+      });
 
-    if (dir in unDoneMap) {
-      const total = count;
-      const now = unDoneMap[dir].now + len;
-      if (now < total) {
-        setUndoneMap(pre => {
-          return {
-            ...pre,
-            [dir]: {
-              now,
-              total: count,
-            },
-          };
-        });
+      const len = list.length;
+
+      if (dir in unDoneMap) {
+        const total = count;
+        const now = unDoneMap[dir].now + len;
+        if (now < total) {
+          setUndoneMap(pre => {
+            return {
+              ...pre,
+              [dir]: {
+                now,
+                total: count,
+              },
+            };
+          });
+        } else {
+          setUndoneMap(pre => {
+            const temp = { ...pre };
+            delete temp[dir];
+            return temp;
+          });
+        }
       } else {
-        setUndoneMap(pre => {
-          const temp = { ...pre };
-          delete temp[dir];
-          return temp;
-        });
+        if (list.length < count) {
+          setUndoneMap(pre => {
+            return {
+              ...pre,
+              [dir]: {
+                now: len,
+                total: count,
+              },
+            };
+          });
+        }
       }
-    } else {
-      if (list.length < count) {
-        setUndoneMap(pre => {
-          return {
-            ...pre,
-            [dir]: {
-              now: len,
-              total: count,
-            },
-          };
-        });
-      }
-    }
 
-    return { list, count };
+      return { list, count, path };
+    } finally {
+      setLoading(false);
+    }
   };
 
   const findNode = (list: FileItem[], dir: string): FileItem | undefined => {
@@ -102,6 +111,7 @@ export function useFileList(dir?: string) {
   const loadRoot = async (dir?: string) => {
     const res = await getListInfo(dir ?? '0');
     setFileTree(res.list);
+    setRootPath(res.path);
   };
 
   const loadMore = async (dir?: string) => {
@@ -123,5 +133,7 @@ export function useFileList(dir?: string) {
     unDoneMap,
     loadMore,
     getListInfo,
+    rootPath,
+    loading,
   };
 }

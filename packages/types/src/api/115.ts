@@ -29,6 +29,7 @@ export interface FileListDataItem {
 export interface FileListData {
   data: FileListDataItem[];
   count: number;
+  path: { name: string }[];
 }
 
 export interface PicInfoParams {
