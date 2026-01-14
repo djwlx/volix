@@ -1,0 +1,88 @@
+services:
+  openlist:
+    image: 'openlistteam/openlist:latest'
+    container_name: openlist
+    environment:
+      - TZ=Asia/Shanghai
+      - UMASK=022
+    user: '0:0'
+    volumes:
+      - /volume1/docker/openlist:/opt/openlist/data
+      - /volume1/resource:/volume1/resource
+      - /volume2/qbit:/volume2/qbit
+    restart: always
+    ports:
+      - 5244:5244
+  qbittorrent:
+    image: linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      - PUID=0
+      - PGID=0
+      - TZ=Asia/Shanghai
+      - WEBUI_PORT=8888
+      - TORRENTING_PORT=28888
+    ports:
+      - 28888:28888
+      - 28888:28888/udp
+      - 8888:8888
+    volumes:
+      - /volume1/docker/qbittorrent:/config
+      - /volume2/qbit:/downloads
+    restart: always
+  komga:
+    image: gotson/komga
+    container_name: komga
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - /volume1/docker/komga/config:/config
+      - /volume1/docker/komga/data:/data
+      - /volume1/docker/komga/tmp:/tmp
+      - /volume1/resource:/volume1/resource
+    ports:
+      - 25600:25600
+    user: '0:0'
+    restart: always
+  volix:
+    image: djwl/volix:latest
+    container_name: volix
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - '3000:3000'
+    volumes:
+      - /volume1/docker/volix/database:/app/app/database
+      - /volume1/docker/volix/logs:/app/logs
+      - /volume1/docker/volix/uploads:/app/uploads
+  koishi:
+    image: koishijs/koishi:latest
+    container_name: koishi
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - '5140:5140'
+    volumes:
+      - /volume1/docker/koishi:/koishi
+  aria2:
+    image: 'johngong/aria2:latest'
+    container_name: aria2
+    volumes:
+      - /volume1/docker/aria2/config:/config
+      - /volume1/resource/aria2:/Downloads
+    environment:
+      - UID=0
+      - GID=0
+      - TZ=Asia/Shanghai
+      - ARIA2_RPC_LISTEN_PORT=6800
+      - ARIA2_LISTEN_PORT=6882
+    ports:
+      - 6800:6800
+      - 6880:8080
+      - 6882:6882
+      - 6882:6882/udp
+    networks:
+      - default
+    restart: always

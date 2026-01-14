@@ -1,0 +1,62 @@
+{
+  "name": "@volix/api",
+  "version": "0.0.1",
+  "description": "volix api",
+  "main": "app/app.ts",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development nodemon",
+    "build": "tsc",
+    "start": "cross-env NODE_ENV=production node ./scripts/start.js && node app.js"
+  },
+  "keywords": [
+    "koa",
+    "sequelize",
+    "log4js",
+    "jsonwebtoken"
+  ],
+  "author": "djwl",
+  "license": "ISC",
+  "dependencies": {
+    "@koa/cors": "^5.0.0",
+    "@koa/router": "^15.2.0",
+    "axios": "^1.6.8",
+    "big-integer": "^1.6.52",
+    "ejs": "^3.1.10",
+    "es-toolkit": "^1.32.0",
+    "form-data": "^4.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "koa": "^2.14.1",
+    "koa-body": "^6.0.1",
+    "koa-mount": "^4.0.0",
+    "koa-static": "^5.0.0",
+    "log4js": "^6.7.1",
+    "mime-types": "^2.1.35",
+    "node-schedule": "^2.1.1",
+    "path-to-regexp": "^6.2.1",
+    "qrcode": "^1.5.3",
+    "sequelize": "^6.29.0",
+    "spark-md5": "^3.0.2",
+    "sqlite3": "^5.1.4",
+    "uuid": "^9.0.1",
+    "cross-env": "^7.0.3",
+    "@volix/utils": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/ejs": "^3.1.5",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/koa": "^2.15.0",
+    "@types/koa-mount": "^4.0.5",
+    "@types/koa-router": "^7.4.8",
+    "@types/koa-static": "^4.0.4",
+    "@types/koa__cors": "^5.0.0",
+    "@types/mime-types": "^2.1.4",
+    "@types/node": "^22.10.8",
+    "@types/node-schedule": "^2.1.7",
+    "@types/qrcode": "^1.5.5",
+    "@types/uuid": "^9.0.8",
+    "@volix/types": "workspace:*",
+    "nodemon": "^2.0.20",
+    "ts-node": "^10.9.2"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "declaration": true,
+    "emitDeclarationOnly": false,
+    "resolveJsonModule": true,
+    "allowJs": false,
+    "isolatedModules": true
+  },
+  "include": ["src/**/*"], // 只编译src下的所有TS文件，子包标准配置
+  "exclude": ["node_modules", "dist"] // 排除无需编译的目录
+}

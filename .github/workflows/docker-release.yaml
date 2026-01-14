@@ -1,0 +1,98 @@
+# 利用GitHub Action自动构建多框架的docker镜像
+name: Build Docker Image
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+  pull_request:
+    tags:
+      - 'v*'
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/krypton
+
+      - name: Build Source
+        run: |
+          node scripts/build-app.js
+
+      - name: Commit Changes
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          VERSION=${TAG#v}
+          echo "Setting package versions to $VERSION"
+          node scripts/update_versions.js "$VERSION"
+          git add .
+          if ! git diff --cached --quiet; then
+            git commit -m "feat: update assets" -n
+            git push
+          else
+            echo "No changes to commit."
+          fi
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker Hub Description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ secrets.DOCKERHUB_USERNAME }}/volix
+          short-description: Volix is a All in One
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/volix:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/volix:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/volix:latest
+            ghcr.io/${{ github.repository_owner }}/volix:${{ github.ref_name }}
+
+      - name: Compress dist folder
+        run: |
+          cd dist
+          zip -r ../app.zip .
+          cd ..
+
+      - name: Upload Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app.zip
+          prerelease: false

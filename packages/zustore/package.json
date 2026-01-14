@@ -1,0 +1,9 @@
+{
+  "name": "@volix/zustore",
+  "version": "0.0.1",
+  "scripts": {},
+  "license": "ISC",
+  "dependencies": {
+    "zustand": "^5.0.9"
+  }
+}
