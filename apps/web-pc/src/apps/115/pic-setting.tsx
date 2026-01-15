@@ -4,6 +4,7 @@ import { FilePath } from './components';
 import { useEffect, useMemo, useState } from 'react';
 import type { Data } from '@douyinfe/semi-ui/lib/es/descriptions';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
+import { get115PicInfo } from '@/services/115';
 
 export function PicSetting() {
   const [count, setCount] = useState(0);
@@ -11,7 +12,16 @@ export function PicSetting() {
   const [paths, setPaths] = useState(['/asdf/vdfsdf/sdfsdfs', '/dsdfs/dsfssf/sdfsdf/sdfs']);
   const [form, setForm] = useState<FormApi>();
 
-  useEffect(() => {}, []);
+  const fetch = async () => {
+    const result = await get115PicInfo();
+    if (result) {
+      console.log(result);
+    }
+  };
+
+  useEffect(() => {
+    fetch();
+  }, []);
 
   const onSubmit = () => {
     console.log(form?.getValues(), 'values');
