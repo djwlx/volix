@@ -6,7 +6,7 @@ WORKDIR /app
 COPY dist/ .
 
 # 安装生产依赖
-RUN npm install --production --no-audit --no-fund
+RUN npm install -g pnpm && pnpm install 
 
 # 声明可挂载的数据卷
 VOLUME ["/app/data"]
