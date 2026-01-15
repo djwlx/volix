@@ -3,6 +3,7 @@ import type {
   Account115UserInfo,
   FileListData,
   FileListParams,
+  PicInfo115,
   PicInfoParams,
   QrCodeResponse,
   QrCodeStatus,
@@ -40,7 +41,7 @@ export function get115FileInfo(pc: string) {
   return http.get(`/115/file${path}`);
 }
 export function get115PicInfo() {
-  return http.get('/115/pic/info');
+  return http.get<PicInfo115>('/115/pic/info');
 }
 
 export function set115PicInfo(data: PicInfoParams) {

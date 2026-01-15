@@ -71,11 +71,10 @@ class One15Controller extends BaseController {
       }
       const end = Date.now();
       log.info('缓存图片完成,耗时:', calculateTimeDifference(start, end), '数量:', resultNum);
+    } catch (e) {
+      configService.clearConfig(AppConfigEnum.is_115_picture_caching);
     } finally {
-      configService.setConfig(AppConfigEnum.is_115_picture_caching, 'false');
-      if (paths) {
-        configService.setConfig(AppConfigEnum.picture_115_cids, paths?.join(','));
-      }
+      configService.clearConfig(AppConfigEnum.is_115_picture_caching);
     }
   };
   // 随机图片
@@ -125,8 +124,8 @@ class One15Controller extends BaseController {
   });
   // 设置图片缓存
   set115PicInfo = this.res(async ctx => {
-    const { paths, type } = ctx.request.body as PicInfoParams;
-    if (!paths || paths?.length === 0 || !type) {
+    const { paths } = ctx.request.body as PicInfoParams;
+    if (!paths || paths?.length === 0) {
       resError(ctx, {
         code: 400,
         message: '参数错误',
@@ -143,16 +142,21 @@ class One15Controller extends BaseController {
       return;
     }
 
-    if (type === 'delete') {
-      await file115Service.clearAll();
-    }
-
     configService.setConfig(AppConfigEnum.is_115_picture_caching, 'true');
     // 开始缓存
     this.initRandomPic(paths);
 
+    let resultPath: string[] = [];
+
+    if (paths) {
+      const configs = await configService.getConfig(AppConfigEnum.is_115_picture_caching);
+      const before = configs?.picture_115_cids?.split(',') ?? [];
+      resultPath = before.concat(paths);
+      configService.setConfig(AppConfigEnum.picture_115_cids, before.concat(paths)?.join(','));
+    }
+
     return {
-      paths,
+      paths: resultPath,
       loading: true,
     };
   });

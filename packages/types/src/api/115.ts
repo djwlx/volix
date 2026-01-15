@@ -33,7 +33,6 @@ export interface FileListData {
 }
 
 export interface PicInfoParams {
-  type: string;
   paths: string[];
 }
 
@@ -55,4 +54,10 @@ export interface QrCodeStatus {
   msg: string;
   status: number;
   version: string;
+}
+
+export interface PicInfo115 {
+  loading: boolean;
+  paths: string[];
+  count: number;
 }

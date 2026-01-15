@@ -12,5 +12,5 @@ export function FilePath(props: FilePathProps) {
     return dir;
   }
 
-  return <Breadcrumb routes={rootPath} />;
+  return <Breadcrumb maxItemCount={10} routes={rootPath} />;
 }
