@@ -37,7 +37,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           VERSION=${TAG#v}
           echo "Setting package versions to $VERSION"
-          node scripts/update_versions.js "$VERSION"
+          node scripts/update-versions.js "$VERSION"
           git add .
           if ! git diff --cached --quiet; then
             git commit -m "feat: update version" -n
