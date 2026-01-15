@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development nodemon",
     "build": "tsc",
-    "start": "cross-env NODE_ENV=production node ./scripts/start.js && node app.js"
+    "start": "cross-env NODE_ENV=production node ./scripts/start.js & cross-env NODE_ENV=production node app.js"
   },
   "keywords": [
     "koa",
