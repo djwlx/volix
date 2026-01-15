@@ -6,7 +6,7 @@ WORKDIR /app
 COPY dist/ .
 
 # 安装生产依赖
-RUN npm install -g pnpm@8.15.0 && pnpm install 
+RUN npm install -g pnpm@8.15.9 && pnpm install 
 
 # 声明可挂载的数据卷
 VOLUME ["/app/data"]
