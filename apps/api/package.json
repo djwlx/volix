@@ -1,6 +1,6 @@
 {
   "name": "@volix/api",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "volix api",
   "main": "app/app.ts",
   "type": "commonjs",
