@@ -276,7 +276,7 @@ function removeAllDist() {
 
 function buildApp() {
   removeAllDist();
-  run('npm install -g pnpm@10.27.0');
+  run('npm install -g pnpm@8.15.0');
   run('pnpm config set allow-build-scripts true');
   run('pnpm install');
   run('pnpm run release');

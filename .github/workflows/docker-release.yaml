@@ -23,7 +23,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: lts/krypton
+          node-version: lts/iron
 
       - name: Build Source
         run: |
