@@ -6,11 +6,12 @@ import { useUserInfo } from './hooks/useUserInfo';
 import { Login } from './login';
 
 function My115App() {
-  const { data, loading } = useUserInfo();
+  // const { data, loading } = useUserInfo();
 
   return (
     <div style={{ padding: 16 }}>
-      <Skeleton placeholder={<Skeleton.Paragraph rows={6} />} loading={loading}>
+      <PicSetting />
+      {/* <Skeleton placeholder={<Skeleton.Paragraph rows={6} />} loading={loading}>
         {data ? (
           <Space spacing="medium" vertical style={{ width: '100%' }}>
             <UserInfo info={data} />
@@ -20,7 +21,7 @@ function My115App() {
         ) : (
           <Login />
         )}
-      </Skeleton>
+      </Skeleton> */}
     </div>
   );
 }
