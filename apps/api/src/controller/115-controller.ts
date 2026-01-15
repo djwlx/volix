@@ -11,6 +11,7 @@ import { calculateTimeDifference, waitTime } from '../utils/date';
 import { BaseController } from './base-controller';
 import { TokenType } from '../drive/115/types';
 import { PicInfoParams } from '@volix/types';
+import { AppConfigEnum } from '../model';
 
 class One15Controller extends BaseController {
   // 文件信息存到数据库中
@@ -71,9 +72,9 @@ class One15Controller extends BaseController {
       const end = Date.now();
       log.info('缓存图片完成,耗时:', calculateTimeDifference(start, end), '数量:', resultNum);
     } finally {
-      configService.setConfig('is_picture_115_caching', 'false');
+      configService.setConfig(AppConfigEnum.is_115_picture_caching, 'false');
       if (paths) {
-        configService.setConfig('picture_115_cids', paths?.join(','));
+        configService.setConfig(AppConfigEnum.picture_115_cids, paths?.join(','));
       }
     }
   };
@@ -112,11 +113,14 @@ class One15Controller extends BaseController {
   // 获取缓存的图片信息
   get115PicInfo = this.res(async () => {
     const count = await file115Service.getFileLen();
-    const picConfig = await configService.getConfig(['is_picture_115_caching', 'picture_115_cids']);
+    const picConfig = await configService.getConfig([
+      AppConfigEnum.is_115_picture_caching,
+      AppConfigEnum.picture_115_cids,
+    ]);
     return {
       count,
       paths: picConfig?.picture_115_cids?.split(',') || [],
-      loading: Boolean(picConfig?.is_picture_115_caching === 'true'),
+      loading: Boolean(picConfig?.is_115_picture_caching === 'true'),
     };
   });
   // 设置图片缓存
@@ -129,9 +133,9 @@ class One15Controller extends BaseController {
       });
       return;
     }
-    const picConfig = await configService.getConfig(['is_picture_115_caching']);
+    const picConfig = await configService.getConfig(AppConfigEnum.is_115_picture_caching);
 
-    if (picConfig?.is_picture_115_caching === 'true') {
+    if (picConfig?.is_115_picture_caching === 'true') {
       resError(ctx, {
         code: 400,
         message: '正在缓存中，请稍后再试',
@@ -143,7 +147,7 @@ class One15Controller extends BaseController {
       await file115Service.clearAll();
     }
 
-    configService.setConfig('is_picture_115_caching', 'true');
+    configService.setConfig(AppConfigEnum.is_115_picture_caching, 'true');
     // 开始缓存
     this.initRandomPic(paths);
 
@@ -213,8 +217,7 @@ class One15Controller extends BaseController {
   // 清除缓存图片
   clear115Pic = this.res(async (ctx, next) => {
     await file115Service.clearAll();
-    await configService.setConfig('picture_115_cids', '');
-    await configService.setConfig('is_picture_115_caching', 'false');
+    await configService.clearConfig([AppConfigEnum.is_115_picture_caching, AppConfigEnum.picture_115_cids]);
     return 'success';
   });
 }

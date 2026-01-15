@@ -1,9 +1,10 @@
 import request from '../../utils/request';
 import QRCode from 'qrcode';
 import FormData from 'form-data';
-import { configService } from '../../service/config';
+import { configService } from '../../service/config-service';
 import { secret } from './secret';
 import { TokenType } from './types';
+import { AppConfigEnum } from '../../model';
 
 type AppType = 'web' | 'android' | 'ios' | 'tv';
 
@@ -32,7 +33,7 @@ class Driver115 {
 
   private async init() {
     // 数据库读取用户的登录信息
-    const configs = await configService.getConfig('cookie_115');
+    const configs = await configService.getConfig(AppConfigEnum.cookie_115);
     if (configs) {
       this.cookie = configs.cookie_115;
     }
@@ -107,7 +108,7 @@ class Driver115 {
       .map(([key, value]) => `${key}=${value}`)
       .join(';');
     this.cookie = cookieString;
-    await configService.setConfig('cookie_115', cookieString);
+    await configService.setConfig(AppConfigEnum.cookie_115, cookieString);
     return result.data;
   }
 
@@ -157,7 +158,7 @@ class Driver115 {
 
   async exit() {
     this.cookie = undefined;
-    await configService.clearConfig('cookie_115');
+    await configService.clearConfig(AppConfigEnum.cookie_115);
   }
 }
 

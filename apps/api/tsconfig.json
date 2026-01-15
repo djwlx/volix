@@ -12,5 +12,5 @@
     "noEmit": false,
     "noImplicitAny": false
   },
-  "include": ["app.ts", "src/**/*", "scripts/**/*"]
+  "include": ["app.ts", "src/**/*", "scripts/*", "config/*"]
 }
