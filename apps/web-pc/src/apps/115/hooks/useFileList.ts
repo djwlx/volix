@@ -21,6 +21,7 @@ export function useFileList(dir?: string) {
   const [unDoneMap, setUndoneMap] = useState<Record<string, UndoneMapItem>>({});
   const [rootPath, setRootPath] = useState<FileListData['path']>([]);
   const [loading, setLoading] = useState(false);
+  const [moreLoading, setMoreLoading] = useState(false);
 
   const getListInfo = async (dir: string = '0', offset?: number, pageSize?: number) => {
     try {
@@ -110,8 +111,10 @@ export function useFileList(dir?: string) {
     }
     const before = find?.children || [];
     const offset = before.length;
+    setMoreLoading(true);
     const res = await getListInfo(dir, offset);
     const newTree = setNode(fileTree, dir, before.concat(res.list));
+    setMoreLoading(false);
     setFileTree(newTree);
   };
 
@@ -126,5 +129,6 @@ export function useFileList(dir?: string) {
     getListInfo,
     rootPath,
     loading,
+    moreLoading,
   };
 }

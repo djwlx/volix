@@ -7,7 +7,9 @@ const { Paragraph } = Typography;
 
 export function FileTree() {
   const [fileTree, setFileTree] = useState<TreeNodeData[]>([]);
-  const { fileTree: treeData, loadMore, unDoneMap } = useFileList();
+  const { fileTree: treeData, loadMore, moreLoading, unDoneMap } = useFileList();
+  const [activeDir, setActiveDir] = useState('');
+  const [loadingMoreDir, setLoadingMoreDir] = useState('');
 
   const formatTreeData = (data: FileItem[], unComplete: Record<string, UndoneMapItem>, dir: string): TreeNodeData[] => {
     const treeData = data.map(item => {
@@ -15,10 +17,16 @@ export function FileTree() {
       const fileItem: TreeNodeData = {
         ...item,
         label: (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div
+            onClick={() => {
+              if (isDir) {
+                setActiveDir(activeDir === item.dir ? '' : item.dir);
+              }
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: 16 }}
+          >
             <span> {item.name}</span>
-            {isDir && <span>{item.children?.length}</span>}
-            {isDir && <Paragraph copyable>{item.dir}</Paragraph>}
+            {isDir && activeDir === item.dir && <Paragraph copyable={{ content: item.dir }}></Paragraph>}
           </div>
         ),
         value: item.id,
@@ -33,7 +41,19 @@ export function FileTree() {
     if (dir in unComplete) {
       const useId = `${dir}-load-more`;
       treeData.push({
-        label: <div onClick={() => loadMore(dir)}>加载更多</div>,
+        label:
+          loadingMoreDir === dir ? (
+            <div>加载中</div>
+          ) : (
+            <div
+              onClick={() => {
+                setLoadingMoreDir(dir);
+                loadMore(dir);
+              }}
+            >
+              加载更多
+            </div>
+          ),
         icon: <IconMore />,
         value: useId,
         key: useId,
@@ -56,7 +76,13 @@ export function FileTree() {
   useEffect(() => {
     const data = formatTreeData(treeData, unDoneMap, '0');
     setFileTree(data);
-  }, [treeData, unDoneMap]);
+  }, [treeData, unDoneMap, activeDir, loadingMoreDir]);
+
+  useEffect(() => {
+    if (!moreLoading) {
+      setLoadingMoreDir('');
+    }
+  }, [moreLoading]);
 
   return (
     <Card style={{ width: '100%' }} shadows="hover">
