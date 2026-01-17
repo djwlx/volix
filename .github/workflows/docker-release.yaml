@@ -25,11 +25,7 @@ jobs:
         with:
           node-version: lts/iron
 
-      - name: Build Source
-        run: |
-          node scripts/build-app.js
-
-      - name: Commit Changes
+      - name: Update version
         env:
           TAG: ${{ github.ref_name }}
         run: |
@@ -45,6 +41,10 @@ jobs:
           else
             echo "No changes to commit."
           fi
+
+      - name: Build Source
+        run: |
+          node scripts/build-app.js
 
       - name: Login to DockerHub
         uses: docker/login-action@v3
