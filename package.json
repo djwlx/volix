@@ -1,7 +1,7 @@
 {
   "name": "volix",
   "private": true,
-  "version": "0.0.7",
+  "version": "0.0.8",
   "scripts": {
     "build": "node ./scripts/build-app.js",
     "release": "turbo run build",
