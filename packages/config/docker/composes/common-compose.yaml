@@ -53,9 +53,7 @@ services:
     ports:
       - '3000:3000'
     volumes:
-      - /volume1/docker/volix/database:/app/app/database
-      - /volume1/docker/volix/logs:/app/logs
-      - /volume1/docker/volix/uploads:/app/uploads
+      - /volume1/docker/volix:/app/data
   koishi:
     image: koishijs/koishi:latest
     container_name: koishi
