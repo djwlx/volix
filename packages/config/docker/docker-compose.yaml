@@ -1,5 +1,8 @@
 include:
-  - compose/*.yaml
+  - compose/immich-compose.yaml
+  - compose/download-compose.yaml
+  - compose/media-compose.yaml
+  - compose/bot-compose.yaml
 
 networks:
   default:
