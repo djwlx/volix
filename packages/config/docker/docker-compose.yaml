@@ -5,6 +5,5 @@ include:
   - compose/bot-compose.yaml
 
 networks:
-  default:
+  my_network:
     driver: bridge
-    name: default
