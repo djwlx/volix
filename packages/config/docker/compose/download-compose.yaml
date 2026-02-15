@@ -15,7 +15,7 @@ services:
       - 28888:28888/udp
       - 8888:8888
     volumes:
-      - ${DOCKER_DATA}/qbittorrent/config:/config
+      - ${DOCKER_DATA}/qbittorrent:/config
       - ${QBITTORRENT_DATA}:/downloads
     restart: always
 
