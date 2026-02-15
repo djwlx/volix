@@ -10,11 +10,12 @@ services:
     user: '${PUID}:${PGID}'
     volumes:
       - ${DOCKER_DATA}/openlist:/opt/openlist/data
-      - ${RESOURCE_DATA}:/volume1/resource
-      - ${QBITTORRENT_DATA}:/volume2/qbit
+      - ${RESOURCE_DATA}:/resource
+      - ${QBITTORRENT_DATA}:/qbit
     restart: always
     ports:
       - 5244:5244
+
   komga:
     image: gotson/komga
     container_name: komga
@@ -24,11 +25,24 @@ services:
       - ${DOCKER_DATA}/komga/config:/config
       - ${DOCKER_DATA}/komga/data:/data
       - ${DOCKER_DATA}/komga/tmp:/tmp
-      - ${RESOURCE_DATA}:/volume1/resource
-    ports:
-      - 25600:25600
+      - ${RESOURCE_DATA}:/resource
+
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
     user: '${PUID}:${PGID}'
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ${DOCKER_DATA}/jellyfin/config:/config
+      - ${DOCKER_DATA}/jellyfin/cache:/cache
+      - ${DOCKER_DATA}/jellyfin/media:/media
+      - ${RESOURCE_DATA}:/resource
+    ports:
+      - 8096:8096
+      - 7359:7359/udp
     restart: always
+
   volix:
     image: djwl/volix:latest
     container_name: volix
