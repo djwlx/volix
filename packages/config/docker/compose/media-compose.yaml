@@ -19,8 +19,11 @@ services:
   komga:
     image: gotson/komga
     container_name: komga
+    user: '${PUID}:${PGID}'
     environment:
       - TZ=${TZ}
+    ports:
+      - 25600:25600
     volumes:
       - ${DOCKER_DATA}/komga/config:/config
       - ${DOCKER_DATA}/komga/data:/data
