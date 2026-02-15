@@ -1,0 +1,29 @@
+name: bot
+
+services:
+  koishi:
+    container_name: koishi
+    image: koishijs/koishi:latest
+    environment:
+      - TZ=${TZ}
+    ports:
+      - '5140:5140'
+    volumes:
+      - ${DOCKER_DATA}/koishi:/koishi
+    restart: always
+
+  napcat:
+    container_name: napcat
+    image: mlikiowa/napcat-docker:latest
+    environment:
+      - NAPCAT_UID=${PUID}
+      - NAPCAT_GID=${PGID}
+    volumes:
+      - ${DOCKER_DATA}/napcat/qq:/app/.config/QQ
+      - ${DOCKER_DATA}/napcat/config:/app/napcat/config
+      - ${DOCKER_DATA}/napcat/plugins:/app/napcat/plugins
+    ports:
+      - 3002:3000
+      - 3001:3001
+      - 6099:6099
+    restart: always
