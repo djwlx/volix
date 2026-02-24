@@ -50,3 +50,8 @@ export function set115PicInfo(data: PicInfoParams) {
 export function clear115Pic() {
   return http.delete('/115/pic/info');
 }
+
+export function get115Pic(mode: 'json' | 'direct' = 'json') {
+  const url = mode === 'json' ? '/115/pic?mode=json' : '/115/pic?mode=direct';
+  return http.get<{ url: string; fileName: string }>(url, { responseType: mode === 'json' ? 'json' : 'blob' });
+}

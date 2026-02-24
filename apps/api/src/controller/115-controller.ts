@@ -82,6 +82,7 @@ class One15Controller extends BaseController {
     const ua = ctx.request.headers['user-agent'];
     const { mode } = ctx.query || {};
     const isDirect = mode === 'direct';
+    const isJson = mode === 'json';
     const len = await file115Service.getFileLen();
     const index = generateRandomNumber(0, len);
     const fileInfo = await file115Service.getFileByIndex(index);
@@ -101,7 +102,13 @@ class One15Controller extends BaseController {
       ctx.body = result.data;
       return;
     }
-    const setuHtml = `${PATH.root}/app/views/setu.ejs`;
+    if (isJson) {
+      return {
+        url,
+        fileName,
+      };
+    }
+    const setuHtml = `${PATH.root}/src/views/setu.ejs`;
     const html = await ejs.renderFile(setuHtml, {
       url: url,
       fileName,
