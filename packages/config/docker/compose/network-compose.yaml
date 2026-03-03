@@ -6,6 +6,7 @@ services:
     container_name: mihomo
     ports:
       - 7890:7890
+      - 9090:9090
     user: '${PUID}:${PGID}'
     volumes:
       - ${DOCKER_DATA}/mihomo:/root/.config/mihomo
