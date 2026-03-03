@@ -1,0 +1,39 @@
+name: tool
+
+services:
+  openlist:
+    image: 'openlistteam/openlist:latest'
+    container_name: openlist
+    environment:
+      - TZ=${TZ}
+      - UMASK=022
+    user: '${PUID}:${PGID}'
+    volumes:
+      - ${DOCKER_DATA}/openlist:/opt/openlist/data
+      - ${RESOURCE_DATA}:/resource
+      - ${QBITTORRENT_DATA}:/qbit
+    restart: always
+    ports:
+      - 5244:5244
+
+  volix:
+    image: djwl/volix:latest
+    container_name: volix
+    restart: always
+    environment:
+      - TZ=${TZ}
+    ports:
+      - '3000:3000'
+    volumes:
+      - ${DOCKER_DATA}/volix:/app/data
+
+  twikoo:
+    image: imaegoo/twikoo:latest
+    container_name: twikoo
+    restart: always
+    ports:
+      - 8070:8080
+    environment:
+      TWIKOO_THROTTLE: 1000
+    volumes:
+      - ${DOCKER_DATA}/twikoo:/app/data

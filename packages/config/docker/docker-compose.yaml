@@ -1,8 +1,12 @@
+name: my_docker_compose
+
 include:
   - compose/immich-compose.yaml
   - compose/download-compose.yaml
   - compose/media-compose.yaml
   - compose/bot-compose.yaml
+  - compose/network-compose.yaml
+  - compose/tool-compose.yaml
 
 networks:
   my_network:

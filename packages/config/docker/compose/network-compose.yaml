@@ -1,0 +1,25 @@
+name: media
+
+services:
+  mihomo:
+    image: 'metacubex/mihomo:latest'
+    container_name: mihomo
+    ports:
+      - 7890:7890
+    user: '${PUID}:${PGID}'
+    volumes:
+      - ${DOCKER_DATA}/mihomo:/root/.config/mihomo
+    restart: always
+
+  metacubexd:
+    container_name: metacubexd
+    image: ghcr.io/metacubex/metacubexd
+    restart: always
+    ports:
+      - '9097:80'
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}

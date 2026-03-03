@@ -1,21 +1,6 @@
 name: media
 
 services:
-  openlist:
-    image: 'openlistteam/openlist:latest'
-    container_name: openlist
-    environment:
-      - TZ=${TZ}
-      - UMASK=022
-    user: '${PUID}:${PGID}'
-    volumes:
-      - ${DOCKER_DATA}/openlist:/opt/openlist/data
-      - ${RESOURCE_DATA}:/resource
-      - ${QBITTORRENT_DATA}:/qbit
-    restart: always
-    ports:
-      - 5244:5244
-
   komga:
     image: gotson/komga
     container_name: komga
@@ -29,6 +14,7 @@ services:
       - ${DOCKER_DATA}/komga/data:/data
       - ${DOCKER_DATA}/komga/tmp:/tmp
       - ${RESOURCE_DATA}:/resource
+      - ${QBITTORRENT_DATA}:/qbit
 
   jellyfin:
     image: jellyfin/jellyfin
@@ -41,18 +27,8 @@ services:
       - ${DOCKER_DATA}/jellyfin/cache:/cache
       - ${DOCKER_DATA}/jellyfin/media:/media
       - ${RESOURCE_DATA}:/resource
+      - ${QBITTORRENT_DATA}:/qbit
     ports:
       - 8096:8096
       - 7359:7359/udp
     restart: always
-
-  volix:
-    image: djwl/volix:latest
-    container_name: volix
-    restart: always
-    environment:
-      - TZ=${TZ}
-    ports:
-      - '3000:3000'
-    volumes:
-      - ${DOCKER_DATA}/volix:/app/data
