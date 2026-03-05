@@ -1,4 +1,4 @@
-name: my_docker_compose
+name: nas
 
 include:
   - compose/immich-compose.yaml

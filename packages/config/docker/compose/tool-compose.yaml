@@ -27,17 +27,6 @@ services:
     volumes:
       - ${DOCKER_DATA}/volix:/app/data
 
-  twikoo:
-    image: imaegoo/twikoo:latest
-    container_name: twikoo
-    restart: always
-    ports:
-      - 8070:8080
-    environment:
-      TWIKOO_THROTTLE: 1000
-    volumes:
-      - ${DOCKER_DATA}/twikoo:/app/data
-
   metatube:
     image: ghcr.io/metatube-community/metatube-server:latest
     container_name: metatube
