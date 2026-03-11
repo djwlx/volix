@@ -28,6 +28,7 @@ services:
       - 3001:3001
       - 6099:6099
     restart: always
+
   astrbot:
     container_name: astrbot
     image: soulter/astrbot:latest
