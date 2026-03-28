@@ -2,14 +2,14 @@ import { Context } from 'koa';
 interface MyContext extends Context {
   state: {
     userInfo?: {
-      id: string;
+      id: string | number;
     };
   };
 }
 
 // 全局类型
 declare global {
-  type MyMiddleware = (ctx: MyContext, next: (result?: any) => Promise<any>) => Promise<any>;
+  type MyMiddleware = (ctx: MyContext, next: (result?: unknown) => Promise<unknown>) => Promise<unknown>;
 
   type AsyncObject = Record<string, MyMiddleware>;
 

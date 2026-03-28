@@ -3,7 +3,7 @@ import { Context } from 'koa';
 export const resSuccess = (
   ctx: Context,
   params?: {
-    data?: any;
+    data?: unknown;
     code?: number;
     message?: string;
   }
@@ -19,7 +19,7 @@ export const resSuccess = (
 export const resError = (
   ctx: Context,
   params: {
-    data?: any;
+    data?: unknown;
     code: number;
     message: string;
   }

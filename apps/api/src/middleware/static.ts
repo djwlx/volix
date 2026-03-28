@@ -5,7 +5,7 @@ import fs from 'fs';
 import { DefaultContext, Middleware } from 'koa';
 
 // 一些特殊文件的路径，除此之外都走前端
-const staticMap = {
+const staticMap: Record<string, Middleware<{}, DefaultContext, unknown>> = {
   // 静态资源
   '/assets': mount('/assets', staticServe(`${PATH.public}/assets`)),
   '/logo.svg': mount('/', staticServe(PATH.public)),
@@ -22,7 +22,7 @@ const staticMiddleware = (): MyMiddleware => {
     } = ctx?.request;
 
     if (method === 'GET' && !url.startsWith('/api')) {
-      let staticWare: Middleware<{}, DefaultContext, any> | undefined;
+      let staticWare: Middleware<{}, DefaultContext, unknown> | undefined;
       Object.keys(staticMap).forEach(urlItem => {
         if (url.startsWith(urlItem)) {
           staticWare = staticMap[urlItem];

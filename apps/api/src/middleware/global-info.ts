@@ -1,4 +1,4 @@
-import { userService } from '../service/user';
+import { queryUser } from '../modules/user';
 
 // 权限校验中间件，鉴权通过之后，将用户信息保存在state中方便后续操作没有权限返回401
 const getGlobalInfo = (): MyMiddleware => {
@@ -7,8 +7,12 @@ const getGlobalInfo = (): MyMiddleware => {
     if (!userId) {
       return next();
     }
-    const userInfo = await userService.query({ id: userId });
-    ctx.state.userInfo = userInfo as any;
+    const userInfo = await queryUser({ id: userId });
+    if (userInfo) {
+      ctx.state.userInfo = {
+        id: userId,
+      };
+    }
     next();
   };
 };

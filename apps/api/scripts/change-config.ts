@@ -1,9 +1,7 @@
-import { AppConfigEnum } from '../src/model';
-import { configService } from '../src/service';
+import { AppConfigEnum, setConfig } from '../src/modules/config';
 
 function changeConfig(key: AppConfigEnum, value: string) {
-  configService
-    .setConfig(key, value)
+  setConfig(key, value)
     .then(() => {
       console.log(`配置项 ${key} 已更新为 ${value}`);
       process.exit(0);

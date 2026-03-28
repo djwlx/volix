@@ -5,3 +5,5 @@ export interface ResponseData<T = any> {
 }
 
 export * from './115';
+export * from './user';
+export * from './file';
