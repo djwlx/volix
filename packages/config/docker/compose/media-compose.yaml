@@ -9,6 +9,7 @@ services:
       - TZ=${TZ}
     ports:
       - 25600:25600
+    restart: always
     volumes:
       - ${DOCKER_DATA}/komga/config:/config
       - ${DOCKER_DATA}/komga/data:/data
