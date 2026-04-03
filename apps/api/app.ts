@@ -36,6 +36,9 @@ async function startApp() {
 
   app.listen(config.port, () => {
     log.info('应用启动在端口：', config.port);
+    // 建议在 Server 启动后再启动调度，确保 API 已经可以处理请求
+    startAnimeSyncScheduler();
+    log.info('Anime Sync 调度器已就绪');
   });
 }
 
