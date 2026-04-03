@@ -9,12 +9,14 @@ import staticMiddleware from './src/middleware/static';
 import initApp from './src/utils/dependencies';
 import { log } from './src/utils/logger';
 import { formatTime } from '@volix/utils';
+import { startAnimeSyncScheduler } from './src/modules/anime-sync';
 
 console.log(formatTime());
 
 async function startApp() {
   // 启动前操作
   await initApp();
+  startAnimeSyncScheduler();
 
   const app = new Koa();
   // 跨域

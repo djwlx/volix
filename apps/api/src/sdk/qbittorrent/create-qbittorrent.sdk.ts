@@ -13,6 +13,15 @@ export interface QbittorrentDeleteOptions {
   deleteFiles?: boolean;
 }
 
+export interface QbittorrentAddTorrentParams {
+  urls: string[];
+  category?: string;
+  tags?: string[];
+  paused?: boolean;
+  skipChecking?: boolean;
+  savepath?: string;
+}
+
 export interface QbittorrentTorrentInfo {
   hash: string;
   name: string;
@@ -144,6 +153,50 @@ export function createQbittorrentSdk(options: CreateQbittorrentSdkOptions) {
     return result.data;
   };
 
+  const addTorrents = async (params: QbittorrentAddTorrentParams) => {
+    if (!Array.isArray(params.urls) || params.urls.length === 0) {
+      throw new Error('urls 不能为空');
+    }
+    const urls = params.urls.map(item => item.trim()).filter(Boolean);
+    if (urls.length === 0) {
+      throw new Error('urls 不能为空');
+    }
+    const tags = (params.tags || []).map(item => item.trim()).filter(Boolean);
+
+    await qbitRequest({
+      url: '/api/v2/torrents/add',
+      method: 'POST',
+      data: toFormData({
+        urls: urls.join('\n'),
+        ...(params.category ? { category: params.category } : {}),
+        ...(tags.length > 0 ? { tags: tags.join(',') } : {}),
+        ...(params.paused !== undefined ? { paused: params.paused } : {}),
+        ...(params.skipChecking !== undefined ? { skip_checking: params.skipChecking } : {}),
+        ...(params.savepath ? { savepath: params.savepath } : {}),
+      }),
+    });
+
+    return 'ok' as const;
+  };
+
+  const getTorrentByHash = async (hash: string) => {
+    const targetHash = hash.trim().toLowerCase();
+    if (!targetHash) {
+      throw new Error('hash 不能为空');
+    }
+    const list = await getTorrentList();
+    return list.find(item => item.hash.toLowerCase() === targetHash) || null;
+  };
+
+  const getTorrentsByTag = async (tag: string) => {
+    const targetTag = tag.trim();
+    if (!targetTag) {
+      throw new Error('tag 不能为空');
+    }
+    const list = await getTorrentList();
+    return list.filter(item => (item.tags || '').split(',').map(it => it.trim()).includes(targetTag));
+  };
+
   const pauseTorrents = async (hashes: QbittorrentHashes = 'all') => {
     return torrentAction('stop', { hashes: normalizeHashes(hashes) });
   };
@@ -178,7 +231,10 @@ export function createQbittorrentSdk(options: CreateQbittorrentSdkOptions) {
   return {
     login,
     qbitRequest,
+    addTorrents,
     getTorrentList,
+    getTorrentByHash,
+    getTorrentsByTag,
     pauseTorrents,
     resumeTorrents,
     deleteTorrents,

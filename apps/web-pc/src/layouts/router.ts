@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router';
 import HomeApp from '@/apps/home';
 import My115App from '@/apps/115';
 import PicApp from '@/apps/pic';
+import AnimeSyncApp from '@/apps/anime-sync';
 import AuthApp from '@/apps/auth';
 import SettingApp from '@/apps/setting';
 import SettingInfoApp from '@/apps/setting/pages/info';
@@ -41,6 +42,10 @@ export const router = createBrowserRouter([
       {
         path: 'pic',
         Component: PicApp,
+      },
+      {
+        path: 'anime-sync',
+        Component: AnimeSyncApp,
       },
       {
         path: 'setting',

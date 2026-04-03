@@ -1,0 +1,3226 @@
+From b6b26c4cefce125ab66bd2c7ce684dfab3b4121c Mon Sep 17 00:00:00 2001
+From: DJWL <1602951127@qq.com>
+Date: Fri, 3 Apr 2026 18:38:41 +0800
+Subject: [PATCH] feat: anime
+
+---
+ apps/api/app.ts                               |    2 +
+ .../modules/anime-sync/anime-sync.route.ts    |   39 +
+ .../controller/anime-sync.controller.ts       |  195 +++
+ apps/api/src/modules/anime-sync/index.ts      |    6 +
+ .../anime-sync/model/episode-job.model.ts     |   86 ++
+ .../modules/anime-sync/model/run-log.model.ts |   35 +
+ .../anime-sync/model/subscription.model.ts    |   54 +
+ .../anime-sync/service/anime-sync.service.ts  | 1136 +++++++++++++++++
+ .../modules/anime-sync/service/rss.service.ts |   57 +
+ .../anime-sync/service/scheduler.service.ts   |   54 +
+ .../anime-sync/types/anime-sync.types.ts      |   19 +
+ apps/api/src/modules/index.ts                 |    1 +
+ apps/api/src/routes/index.ts                  |    2 +
+ .../sdk/qbittorrent/create-qbittorrent.sdk.ts |   56 +
+ apps/api/src/utils/dependencies.ts            |   60 +-
+ apps/api/src/utils/timezone.ts                |   24 +
+ apps/web-pc/src/apps/anime-sync/index.tsx     |  520 ++++++++
+ apps/web-pc/src/apps/home/index.tsx           |    5 +-
+ .../src/apps/setting/pages/role/constants.ts  |    1 +
+ apps/web-pc/src/layouts/router.ts             |    5 +
+ apps/web-pc/src/services/anime-sync.ts        |   55 +
+ docs/anime-sync-design.md                     |  432 +++++++
+ packages/types/src/api/anime-sync.ts          |   75 ++
+ packages/types/src/api/index.ts               |    1 +
+ packages/types/src/api/user.ts                |    1 +
+ 25 files changed, 2919 insertions(+), 2 deletions(-)
+ create mode 100644 apps/api/src/modules/anime-sync/anime-sync.route.ts
+ create mode 100644 apps/api/src/modules/anime-sync/controller/anime-sync.controller.ts
+ create mode 100644 apps/api/src/modules/anime-sync/index.ts
+ create mode 100644 apps/api/src/modules/anime-sync/model/episode-job.model.ts
+ create mode 100644 apps/api/src/modules/anime-sync/model/run-log.model.ts
+ create mode 100644 apps/api/src/modules/anime-sync/model/subscription.model.ts
+ create mode 100644 apps/api/src/modules/anime-sync/service/anime-sync.service.ts
+ create mode 100644 apps/api/src/modules/anime-sync/service/rss.service.ts
+ create mode 100644 apps/api/src/modules/anime-sync/service/scheduler.service.ts
+ create mode 100644 apps/api/src/modules/anime-sync/types/anime-sync.types.ts
+ create mode 100644 apps/api/src/utils/timezone.ts
+ create mode 100644 apps/web-pc/src/apps/anime-sync/index.tsx
+ create mode 100644 apps/web-pc/src/services/anime-sync.ts
+ create mode 100644 docs/anime-sync-design.md
+ create mode 100644 packages/types/src/api/anime-sync.ts
+
+diff --git a/apps/api/app.ts b/apps/api/app.ts
+index 0f07b50..69ed5b3 100644
+--- a/apps/api/app.ts
++++ b/apps/api/app.ts
+@@ -9,12 +9,14 @@ import staticMiddleware from './src/middleware/static';
+ import initApp from './src/utils/dependencies';
+ import { log } from './src/utils/logger';
+ import { formatTime } from '@volix/utils';
++import { startAnimeSyncScheduler } from './src/modules/anime-sync';
+ 
+ console.log(formatTime());
+ 
+ async function startApp() {
+   // 启动前操作
+   await initApp();
++  startAnimeSyncScheduler();
+ 
+   const app = new Koa();
+   // 跨域
+diff --git a/apps/api/src/modules/anime-sync/anime-sync.route.ts b/apps/api/src/modules/anime-sync/anime-sync.route.ts
+new file mode 100644
+index 0000000..d69e9c9
+--- /dev/null
++++ b/apps/api/src/modules/anime-sync/anime-sync.route.ts
+@@ -0,0 +1,39 @@
++import Router from '@koa/router';
++import authenticate from '../../middleware/authenticate';
++import { http } from '../shared/http-handler';
++import {
++  createAnimeSyncSubscriptionController,
++  deleteAnimeSyncSubscriptionController,
++  getAnimeSyncJobController,
++  getAnimeSyncJobsController,
++  getAnimeSyncOverviewController,
++  getAnimeSyncSubscriptionsController,
++  retryAnimeSyncJobController,
++  runAnimeSyncController,
++  runAnimeSyncSubscriptionController,
++  skipAnimeSyncJobController,
++  toggleAnimeSyncSubscriptionController,
++  updateAnimeSyncSubscriptionController,
++} from './index';
++
++const router = new Router({
++  prefix: '/anime-sync',
++});
++
++router.use(authenticate());
++
++router
++  .get('/overview', http(getAnimeSyncOverviewController))
++  .get('/subscriptions', http(getAnimeSyncSubscriptionsController))
++  .post('/subscriptions', http(createAnimeSyncSubscriptionController))
++  .put('/subscriptions/:id', http(updateAnimeSyncSubscriptionController))
++  .delete('/subscriptions/:id', http(deleteAnimeSyncSubscriptionController))
++  .post('/subscriptions/:id/toggle', http(toggleAnimeSyncSubscriptionController))
++  .post('/run', http(runAnimeSyncController))
++  .post('/subscriptions/:id/run', http(runAnimeSyncSubscriptionController))
++  .get('/jobs', http(getAnimeSyncJobsController))
++  .get('/jobs/:id', http(getAnimeSyncJobController))
++  .post('/jobs/:id/retry', http(retryAnimeSyncJobController))
++  .post('/jobs/:id/skip', http(skipAnimeSyncJobController));
++
++export default router;
+diff --git a/apps/api/src/modules/anime-sync/controller/anime-sync.controller.ts b/apps/api/src/modules/anime-sync/controller/anime-sync.controller.ts
+new file mode 100644
+index 0000000..19b709f
+--- /dev/null
++++ b/apps/api/src/modules/anime-sync/controller/anime-sync.controller.ts
+@@ -0,0 +1,195 @@
++import { UserRole } from '@volix/types';
++import type { CreateAnimeSyncSubscriptionPayload, UpdateAnimeSyncSubscriptionPayload } from '@volix/types';
++import { badRequest, unauthorized } from '../../shared/http-handler';
++import {
++  createAnimeSyncSubscription,
++  deleteAnimeSyncSubscription,
++  getAnimeSyncJob,
++  getAnimeSyncOverview,
++  getAnimeSyncSubscription,
++  listAnimeSyncJobs,
++  listAnimeSyncSubscriptions,
++  retryAnimeSyncJob,
++  runAnimeSyncDiscover,
++  runAnimeSyncPipeline,
++  skipAnimeSyncJob,
++  toggleAnimeSyncSubscription,
++  updateAnimeSyncSubscription,
++} from '../service/anime-sync.service';
++
++const ensureAdmin = (ctx: Parameters<MyMiddleware>[0]) => {
++  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
++    unauthorized('仅管理员可操作');
++  }
++};
++
++const parseId = (raw: string, fieldName: string) => {
++  const id = Number(raw);
++  if (!Number.isInteger(id) || id <= 0) {
++    badRequest(`${fieldName} 参数错误`);
++  }
++  return id;
++};
++
++const validateCreatePayload = (payload: CreateAnimeSyncSubscriptionPayload) => {
++  if (!payload || typeof payload !== 'object') {
++    badRequest('参数错误');
++  }
++  if (!payload.name?.trim()) {
++    badRequest('订阅名称不能为空');
++  }
++  if (!payload.rssUrl?.trim()) {
++    badRequest('RSS 地址不能为空');
++  }
++  if (!/^https?:\/\//.test(payload.rssUrl.trim())) {
++    badRequest('RSS 地址必须是 http/https');
++  }
++  if (!payload.targetOpenlistPath?.trim()) {
++    badRequest('目标目录不能为空');
++  }
++  if (payload.pollIntervalSec !== undefined) {
++    const value = Number(payload.pollIntervalSec);
++    if (!Number.isInteger(value) || value < 30) {
++      badRequest('轮询间隔不能小于 30 秒');
++    }
++  }
++};
++
++const validateUpdatePayload = (payload: UpdateAnimeSyncSubscriptionPayload) => {
++  if (!payload || typeof payload !== 'object') {
++    badRequest('参数错误');
++  }
++  if (payload.name !== undefined && !payload.name.trim()) {
++    badRequest('订阅名称不能为空');
++  }
++  if (payload.rssUrl !== undefined) {
++    const rssUrl = payload.rssUrl.trim();
++    if (!rssUrl) {
++      badRequest('RSS 地址不能为空');
++    }
++    if (!/^https?:\/\//.test(rssUrl)) {
++      badRequest('RSS 地址必须是 http/https');
++    }
++  }
++  if (payload.targetOpenlistPath !== undefined && !payload.targetOpenlistPath.trim()) {
++    badRequest('目标目录不能为空');
++  }
++  if (payload.pollIntervalSec !== undefined) {
++    const value = Number(payload.pollIntervalSec);
++    if (!Number.isInteger(value) || value < 30) {
++      badRequest('轮询间隔不能小于 30 秒');
++    }
++  }
++};
++
++export const getAnimeSyncOverviewController: MyMiddleware = async () => {
++  return getAnimeSyncOverview();
++};
++
++export const getAnimeSyncSubscriptionsController: MyMiddleware = async () => {
++  return listAnimeSyncSubscriptions();
++};
++
++export const createAnimeSyncSubscriptionController: MyMiddleware = async ctx => {
++  ensureAdmin(ctx);
++  const payload = (ctx.request.body || {}) as CreateAnimeSyncSubscriptionPayload;
++  validateCreatePayload(payload);
++  return createAnimeSyncSubscription(payload);
++};
++
++export const updateAnimeSyncSubscriptionController: MyMiddleware = async ctx => {
++  ensureAdmin(ctx);
++  const id = parseId(ctx.params.id, 'id');
++  const payload = (ctx.request.body || {}) as UpdateAnimeSyncSubscriptionPayload;
++  validateUpdatePayload(payload);
++  const result = await updateAnimeSyncSubscription(id, payload);
++  if (!result) {
++    badRequest('订阅不存在');
++  }
++  return result;
++};
++
++export const deleteAnimeSyncSubscriptionController: MyMiddleware = async ctx => {
++  ensureAdmin(ctx);
++  const id = parseId(ctx.params.id, 'id');
++  const result = await deleteAnimeSyncSubscription(id);
++  if (!result) {
++    badRequest('订阅不存在');
++  }
++  return {
++    success: true,
++  };
++};
++
++export const toggleAnimeSyncSubscriptionController: MyMiddleware = async ctx => {
++  ensureAdmin(ctx);
++  const id = parseId(ctx.params.id, 'id');
++  const result = await toggleAnimeSyncSubscription(id);
++  if (!result) {
++    badRequest('订阅不存在');
++  }
++  return result;
++};
++
++export const runAnimeSyncController: MyMiddleware = async ctx => {
++  ensureAdmin(ctx);
++  const discover = await runAnimeSyncDiscover();
++  const pipeline = await runAnimeSyncPipeline();
++  return {
++    ...discover,
++    ...pipeline,
++  };
++};
++
++export const runAnimeSyncSubscriptionController: MyMiddleware = async ctx => {
++  ensureAdmin(ctx);
++  const id = parseId(ctx.params.id, 'id');
++  const subscription = await getAnimeSyncSubscription(id);
++  if (!subscription) {
++    badRequest('订阅不存在');
++  }
++  const discover = await runAnimeSyncDiscover(id);
++  const pipeline = await runAnimeSyncPipeline();
++  return {
++    ...discover,
++    ...pipeline,
++  };
++};
++
++export const getAnimeSyncJobsController: MyMiddleware = async ctx => {
++  const subscriptionIdRaw = ctx.request.query.subscriptionId as string | undefined;
++  if (!subscriptionIdRaw) {
++    return listAnimeSyncJobs();
++  }
++  const subscriptionId = parseId(subscriptionIdRaw, 'subscriptionId');
++  return listAnimeSyncJobs(subscriptionId);
++};
++
++export const getAnimeSyncJobController: MyMiddleware = async ctx => {
++  const id = parseId(ctx.params.id, 'id');
++  const result = await getAnimeSyncJob(id);
++  if (!result) {
++    badRequest('任务不存在');
++  }
++  return result;
++};
++
++export const retryAnimeSyncJobController: MyMiddleware = async ctx => {
++  ensureAdmin(ctx);
++  const id = parseId(ctx.params.id, 'id');
++  const result = await retryAnimeSyncJob(id);
++  if (!result) {
++    badRequest('任务不存在');
++  }
++  return result;
++};
++
++export const skipAnimeSyncJobController: MyMiddleware = async ctx => {
++  ensureAdmin(ctx);
++  const id = parseId(ctx.params.id, 'id');
++  const result = await skipAnimeSyncJob(id);
++  if (!result) {
++    badRequest('任务不存在');
++  }
++  return result;
++};
+diff --git a/apps/api/src/modules/anime-sync/index.ts b/apps/api/src/modules/anime-sync/index.ts
+new file mode 100644
+index 0000000..6fefcfe
+--- /dev/null
++++ b/apps/api/src/modules/anime-sync/index.ts
+@@ -0,0 +1,6 @@
++export * from './model/subscription.model';
++export * from './model/episode-job.model';
++export * from './model/run-log.model';
++export * from './service/anime-sync.service';
++export * from './service/scheduler.service';
++export * from './controller/anime-sync.controller';
+diff --git a/apps/api/src/modules/anime-sync/model/episode-job.model.ts b/apps/api/src/modules/anime-sync/model/episode-job.model.ts
+new file mode 100644
+index 0000000..fddbf47
+--- /dev/null
++++ b/apps/api/src/modules/anime-sync/model/episode-job.model.ts
+@@ -0,0 +1,86 @@
++import sequelize from '../../../utils/sequelize';
++import { DataTypes, Model } from 'sequelize';
++import { AnimeSyncJobStatus } from '@volix/types';
++
++export type AnimeSyncEpisodeJobModelType = Model<{
++  id?: number;
++  subscription_id: number;
++  episode_key: string;
++  title: string;
++  magnet: string;
++  torrent_url?: string;
++  qbit_hash?: string;
++  status: AnimeSyncJobStatus;
++  retry_count: number;
++  last_error?: string;
++  meta_json?: string;
++  discovered_at?: Date;
++  completed_at?: Date;
++}>;
++
++export const AnimeSyncEpisodeJobModel = sequelize.define<AnimeSyncEpisodeJobModelType>(
++  'app_anime_episode_job',
++  {
++    subscription_id: {
++      type: DataTypes.INTEGER,
++      allowNull: false,
++    },
++    episode_key: {
++      type: DataTypes.STRING,
++      allowNull: false,
++    },
++    title: {
++      type: DataTypes.STRING,
++      allowNull: false,
++    },
++    magnet: {
++      type: DataTypes.TEXT,
++      allowNull: false,
++    },
++    torrent_url: {
++      type: DataTypes.TEXT,
++      allowNull: true,
++    },
++    qbit_hash: {
++      type: DataTypes.STRING,
++      allowNull: true,
++    },
++    status: {
++      type: DataTypes.STRING,
++      allowNull: false,
++      defaultValue: AnimeSyncJobStatus.DISCOVERED,
++    },
++    retry_count: {
++      type: DataTypes.INTEGER,
++      allowNull: false,
++      defaultValue: 0,
++    },
++    last_error: {
++      type: DataTypes.TEXT,
++      allowNull: true,
++    },
++    meta_json: {
++      type: DataTypes.TEXT,
++      allowNull: true,
++    },
++    discovered_at: {
++      type: DataTypes.DATE,
++      allowNull: true,
++    },
++    completed_at: {
++      type: DataTypes.DATE,
++      allowNull: true,
++    },
++  },
++  {
++    indexes: [
++      {
++        unique: true,
++        fields: ['subscription_id', 'episode_key'],
++      },
++      {
++        fields: ['status'],
++      },
++    ],
++  }
++);
+diff --git a/apps/api/src/modules/anime-sync/model/run-log.model.ts b/apps/api/src/modules/anime-sync/model/run-log.model.ts
+new file mode 100644
+index 0000000..347cbbf
+--- /dev/null
++++ b/apps/api/src/modules/anime-sync/model/run-log.model.ts
+@@ -0,0 +1,35 @@
++import sequelize from '../../../utils/sequelize';
++import { DataTypes, Model } from 'sequelize';
++
++export type AnimeSyncRunLogModelType = Model<{
++  id?: number;
++  job_id: number;
++  step: string;
++  level: 'info' | 'warn' | 'error';
++  message: string;
++  detail_json?: string;
++}>;
++
++export const AnimeSyncRunLogModel = sequelize.define<AnimeSyncRunLogModelType>('app_anime_run_log', {
++  job_id: {
++    type: DataTypes.INTEGER,
++    allowNull: false,
++  },
++  step: {
++    type: DataTypes.STRING,
++    allowNull: false,
++  },
++  level: {
++    type: DataTypes.STRING,
++    allowNull: false,
++    defaultValue: 'info',
++  },
++  message: {
++    type: DataTypes.TEXT,
++    allowNull: false,
++  },
++  detail_json: {
++    type: DataTypes.TEXT,
++    allowNull: true,
++  },
++});
+diff --git a/apps/api/src/modules/anime-sync/model/subscription.model.ts b/apps/api/src/modules/anime-sync/model/subscription.model.ts
+new file mode 100644
+index 0000000..125ab04
+--- /dev/null
++++ b/apps/api/src/modules/anime-sync/model/subscription.model.ts
+@@ -0,0 +1,54 @@
++import sequelize from '../../../utils/sequelize';
++import { DataTypes, Model } from 'sequelize';
++
++export type AnimeSyncSubscriptionModelType = Model<{
++  id?: number;
++  name: string;
++  rss_url: string;
++  target_openlist_path: string;
++  qbit_category?: string;
++  poll_interval_sec: number;
++  enabled: boolean;
++  last_polled_at?: Date;
++  last_success_at?: Date;
++}>;
++
++export const AnimeSyncSubscriptionModel = sequelize.define<AnimeSyncSubscriptionModelType>(
++  'app_anime_subscription',
++  {
++    name: {
++      type: DataTypes.STRING,
++      allowNull: false,
++    },
++    rss_url: {
++      type: DataTypes.STRING,
++      allowNull: false,
++    },
++    target_openlist_path: {
++      type: DataTypes.STRING,
++      allowNull: false,
++    },
++    qbit_category: {
++      type: DataTypes.STRING,
++      allowNull: true,
++    },
++    poll_interval_sec: {
++      type: DataTypes.INTEGER,
++      allowNull: false,
++      defaultValue: 300,
++    },
++    enabled: {
++      type: DataTypes.BOOLEAN,
++      allowNull: false,
++      defaultValue: true,
++    },
++    last_polled_at: {
++      type: DataTypes.DATE,
++      allowNull: true,
++    },
++    last_success_at: {
++      type: DataTypes.DATE,
++      allowNull: true,
++    },
++  }
++);
+diff --git a/apps/api/src/modules/anime-sync/service/anime-sync.service.ts b/apps/api/src/modules/anime-sync/service/anime-sync.service.ts
+new file mode 100644
+index 0000000..d124230
+--- /dev/null
++++ b/apps/api/src/modules/anime-sync/service/anime-sync.service.ts
+@@ -0,0 +1,1136 @@
++import path from 'node:path';
++import { Op } from 'sequelize';
++import { AnimeSyncJobStatus } from '@volix/types';
++import type {
++  AnimeSyncRunResult,
++  CreateAnimeSyncSubscriptionPayload,
++  ServiceAccountConfigItem,
++  UpdateAnimeSyncSubscriptionPayload,
++} from '@volix/types';
++import { AppConfigEnum, getConfig } from '../../config';
++import { createOpenlistSdk, createQbittorrentSdk, type OpenlistFsObject, type OpenlistSdk, type QbittorrentSdk, type QbittorrentTorrentInfo } from '../../../sdk';
++import { toBeijingISOString } from '../../../utils/timezone';
++import { AnimeSyncEpisodeJobModel, type AnimeSyncEpisodeJobModelType } from '../model/episode-job.model';
++import { AnimeSyncRunLogModel } from '../model/run-log.model';
++import { AnimeSyncSubscriptionModel, type AnimeSyncSubscriptionModelType } from '../model/subscription.model';
++import { buildEpisodeKey, extractMagnetFromRssItem, fetchAnimeRssItems } from './rss.service';
++
++const PROCESSING_LIMIT = 20;
++const processingJobIds = new Set<number>();
++
++interface AnimeSyncJobMeta {
++  qbitTag?: string;
++  sourceDir?: string;
++  sourceName?: string;
++  sourcePath?: string;
++}
++
++interface AnimeSyncClients {
++  qbit: QbittorrentSdk;
++  openlist: OpenlistSdk;
++}
++
++interface OpenlistCopySource {
++  sourceDir: string;
++  sourceName: string;
++  sourcePath: string;
++  sourceFileSize?: number;
++}
++
++const VIDEO_EXTENSIONS = new Set(['.mkv', '.mp4', '.avi', '.mov', '.wmv', '.flv', '.ts', '.m2ts']);
++const COMPLETED_QBIT_STATES = new Set(['uploading', 'stalledup', 'pausedup', 'queuedup', 'forcedup', 'checkingup']);
++const DOWNLOADING_QBIT_STATES = new Set([
++  'downloading',
++  'stalleddl',
++  'forceddl',
++  'queueddl',
++  'checkingdl',
++  'metadl',
++  'pauseddl',
++  'moving',
++  'allocating',
++]);
++const PIPELINE_ACTIVE_STATUSES: AnimeSyncJobStatus[] = [
++  AnimeSyncJobStatus.DISCOVERED,
++  AnimeSyncJobStatus.QUEUED,
++  AnimeSyncJobStatus.DOWNLOADING,
++  AnimeSyncJobStatus.DOWNLOADED,
++  AnimeSyncJobStatus.DEDUP_DONE,
++  AnimeSyncJobStatus.COPIED,
++];
++
++const toSubscriptionResponse = (item: AnimeSyncSubscriptionModelType['dataValues']) => {
++  const timestamps = item as AnimeSyncSubscriptionModelType['dataValues'] & {
++    createdAt?: Date;
++    updatedAt?: Date;
++  };
++
++  return {
++    id: item.id as number,
++    name: item.name,
++    rssUrl: item.rss_url,
++    targetOpenlistPath: item.target_openlist_path,
++    qbitCategory: item.qbit_category,
++    pollIntervalSec: item.poll_interval_sec,
++    enabled: Boolean(item.enabled),
++    lastPolledAt: toBeijingISOString(item.last_polled_at),
++    lastSuccessAt: toBeijingISOString(item.last_success_at),
++    createdAt: toBeijingISOString(timestamps.createdAt),
++    updatedAt: toBeijingISOString(timestamps.updatedAt),
++  };
++};
++
++const toJobResponse = (item: AnimeSyncEpisodeJobModelType['dataValues']) => {
++  const timestamps = item as AnimeSyncEpisodeJobModelType['dataValues'] & {
++    createdAt?: Date;
++    updatedAt?: Date;
++  };
++
++  return {
++    id: item.id as number,
++    subscriptionId: item.subscription_id,
++    episodeKey: item.episode_key,
++    title: item.title,
++    magnet: item.magnet,
++    torrentUrl: item.torrent_url,
++    qbitHash: item.qbit_hash,
++    status: item.status,
++    retryCount: item.retry_count,
++    lastError: item.last_error,
++    discoveredAt: toBeijingISOString(item.discovered_at),
++    completedAt: toBeijingISOString(item.completed_at),
++    createdAt: toBeijingISOString(timestamps.createdAt),
++    updatedAt: toBeijingISOString(timestamps.updatedAt),
++  };
++};
++
++const parseServiceAccountConfig = (raw?: string): ServiceAccountConfigItem | null => {
++  if (!raw) {
++    return null;
++  }
++  try {
++    const data = JSON.parse(raw) as Partial<ServiceAccountConfigItem>;
++    const baseUrl = data.baseUrl?.trim();
++    const username = data.username?.trim();
++    const password = data.password?.trim();
++    if (!baseUrl || !username || !password) {
++      return null;
++    }
++    return {
++      baseUrl,
++      username,
++      password,
++    };
++  } catch {
++    return null;
++  }
++};
++
++const normalizeOpenlistPath = (rawPath: string) => {
++  const value = rawPath.trim();
++  if (!value) {
++    return '/';
++  }
++  const withLeadingSlash = value.startsWith('/') ? value : `/${value}`;
++  const normalized = withLeadingSlash.replace(/\/+/g, '/');
++  if (normalized === '/') {
++    return '/';
++  }
++  return normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
++};
++
++const joinOpenlistPath = (...parts: string[]) => {
++  const joined = parts
++    .map(item => item.trim())
++    .filter(Boolean)
++    .join('/');
++  return normalizeOpenlistPath(joined);
++};
++
++const splitOpenlistPath = (targetPath: string) => {
++  const normalized = normalizeOpenlistPath(targetPath);
++  if (normalized === '/') {
++    return {
++      dir: '/',
++      name: '',
++    };
++  }
++  return {
++    dir: normalizeOpenlistPath(path.posix.dirname(normalized)),
++    name: path.posix.basename(normalized),
++  };
++};
++
++const isVideoFile = (name: string) => {
++  const ext = path.posix.extname(name).toLowerCase();
++  return VIDEO_EXTENSIONS.has(ext);
++};
++
++const containsChineseSubtitleHint = (name: string) => /(简中|中字|中文字幕|CHS|GB|简体)/i.test(name);
++
++const parseResolutionScore = (name: string) => {
++  if (/2160|4k/i.test(name)) {
++    return 2160;
++  }
++  if (/1080/i.test(name)) {
++    return 1080;
++  }
++  if (/720/i.test(name)) {
++    return 720;
++  }
++  if (/480/i.test(name)) {
++    return 480;
++  }
++  return 0;
++};
++
++const parseEpisodeNumber = (name: string) => {
++  const patterns = [
++    /(?:第\s*([0-9]{1,3})\s*[话集])/i,
++    /(?:EP?|E)\s*([0-9]{1,3})/i,
++    /\[\s*([0-9]{1,3})(?:v[0-9]+)?\s*\]/i,
++  ];
++  for (const pattern of patterns) {
++    const match = name.match(pattern);
++    if (match?.[1]) {
++      return Number(match[1]);
++    }
++  }
++  return null;
++};
++
++const pickBestFile = (items: OpenlistFsObject[]) => {
++  const sorted = [...items].sort((a, b) => {
++    const chineseDiff = Number(containsChineseSubtitleHint(b.name)) - Number(containsChineseSubtitleHint(a.name));
++    if (chineseDiff !== 0) {
++      return chineseDiff;
++    }
++    const resolutionDiff = parseResolutionScore(b.name) - parseResolutionScore(a.name);
++    if (resolutionDiff !== 0) {
++      return resolutionDiff;
++    }
++    const sizeDiff = (b.size || 0) - (a.size || 0);
++    if (sizeDiff !== 0) {
++      return sizeDiff;
++    }
++    const modifiedA = new Date(a.modified || '').getTime() || 0;
++    const modifiedB = new Date(b.modified || '').getTime() || 0;
++    return modifiedB - modifiedA;
++  });
++  return sorted[0];
++};
++
++const parseMeta = (raw?: string | null): AnimeSyncJobMeta => {
++  if (!raw) {
++    return {};
++  }
++  try {
++    return JSON.parse(raw) as AnimeSyncJobMeta;
++  } catch {
++    return {};
++  }
++};
++
++const ensureOpenlistDirectory = async (openlist: OpenlistSdk, targetPath: string) => {
++  const normalized = normalizeOpenlistPath(targetPath);
++  if (normalized === '/') {
++    return;
++  }
++
++  const segments = normalized.split('/').filter(Boolean);
++  let current = '';
++  for (const segment of segments) {
++    current = `/${[current.replace(/^\//, ''), segment].filter(Boolean).join('/')}`.replace(/\/+/g, '/');
++    try {
++      await openlist.mkdir({
++        path: current,
++      });
++    } catch (error) {
++      const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
++      if (!message.includes('exist')) {
++        throw error;
++      }
++    }
++  }
++};
++
++const fetchTargetFiles = async (openlist: OpenlistSdk, targetPath: string) => {
++  await ensureOpenlistDirectory(openlist, targetPath);
++  const list = await openlist.listFs({
++    path: targetPath,
++    perPage: 0,
++  });
++  return (list.content || []).filter(item => !item.is_dir && isVideoFile(item.name));
++};
++
++const dedupeTargetByEpisode = async (openlist: OpenlistSdk, targetPath: string, referenceName: string) => {
++  const files = await fetchTargetFiles(openlist, targetPath);
++  if (files.length <= 1) {
++    return { removed: 0, kept: files[0]?.name };
++  }
++
++  const episodeNumber = parseEpisodeNumber(referenceName);
++  const candidates = episodeNumber
++    ? files.filter(item => parseEpisodeNumber(item.name) === episodeNumber)
++    : files.filter(item => item.name.includes(referenceName) || referenceName.includes(item.name));
++
++  if (candidates.length <= 1) {
++    return { removed: 0, kept: candidates[0]?.name };
++  }
++
++  const keep = pickBestFile(candidates);
++  if (!keep) {
++    return { removed: 0 };
++  }
++
++  const removeNames = candidates.map(item => item.name).filter(name => name !== keep.name);
++  if (removeNames.length > 0) {
++    await openlist.remove({
++      dir: normalizeOpenlistPath(targetPath),
++      names: removeNames,
++    });
++  }
++
++  return {
++    removed: removeNames.length,
++    kept: keep.name,
++  };
++};
++
++const getTorrentStatus = (torrent: QbittorrentTorrentInfo) => {
++  const state = (torrent.state || '').toLowerCase();
++  if (torrent.progress >= 1 || torrent.completion_on > 0 || COMPLETED_QBIT_STATES.has(state)) {
++    return 'completed' as const;
++  }
++  if (DOWNLOADING_QBIT_STATES.has(state)) {
++    return 'downloading' as const;
++  }
++  return 'queued' as const;
++};
++
++const parseBtihFromMagnet = (magnet?: string) => {
++  if (!magnet) {
++    return '';
++  }
++  const match = magnet.match(/btih:([a-zA-Z0-9]+)/i);
++  if (!match?.[1]) {
++    return '';
++  }
++  const value = match[1].trim();
++  return /^[a-fA-F0-9]{40}$/.test(value) ? value.toLowerCase() : '';
++};
++
++const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
++
++const buildJobTag = (jobId: number) => `volix-job-${jobId}`;
++
++const writeRunLog = async (params: {
++  jobId: number;
++  step: string;
++  level: 'info' | 'warn' | 'error';
++  message: string;
++  detail?: unknown;
++}) => {
++  await AnimeSyncRunLogModel.create({
++    job_id: params.jobId,
++    step: params.step,
++    level: params.level,
++    message: params.message,
++    detail_json: params.detail ? JSON.stringify(params.detail) : undefined,
++  });
++};
++
++const updateJobMeta = async (job: AnimeSyncEpisodeJobModelType, patch: Partial<AnimeSyncJobMeta>) => {
++  const currentMeta = parseMeta(job.dataValues.meta_json);
++  const nextMeta = {
++    ...currentMeta,
++    ...patch,
++  };
++  await job.update({
++    meta_json: JSON.stringify(nextMeta),
++  });
++  return nextMeta;
++};
++
++const assertClientsReady = async (): Promise<AnimeSyncClients> => {
++  const configData = await getConfig([AppConfigEnum.account_qbittorrent, AppConfigEnum.account_openlist]);
++  const qbitConfig = parseServiceAccountConfig(configData?.[AppConfigEnum.account_qbittorrent]);
++  const openlistConfig = parseServiceAccountConfig(configData?.[AppConfigEnum.account_openlist]);
++
++  if (!qbitConfig) {
++    throw new Error('请先在系统配置中填写 qBittorrent 账号');
++  }
++  if (!openlistConfig) {
++    throw new Error('请先在系统配置中填写 OpenList 账号');
++  }
++
++  const qbit = createQbittorrentSdk({
++    apiHost: qbitConfig.baseUrl,
++    username: qbitConfig.username,
++    password: qbitConfig.password,
++  });
++
++  const openlist = createOpenlistSdk({
++    apiHost: openlistConfig.baseUrl,
++  });
++
++  await qbit.login();
++  await openlist.login({
++    username: openlistConfig.username,
++    password: openlistConfig.password,
++  });
++
++  return {
++    qbit,
++    openlist,
++  };
++};
++
++const locateSourceFromTorrent = async (params: {
++  openlist: OpenlistSdk;
++  torrent: QbittorrentTorrentInfo;
++  fallbackTitle: string;
++}): Promise<OpenlistCopySource> => {
++  const { openlist, torrent, fallbackTitle } = params;
++  const saveDir = normalizeOpenlistPath(torrent.save_path || '/');
++  const directPath = joinOpenlistPath(saveDir, torrent.name || fallbackTitle);
++
++  try {
++    const direct = await openlist.getFs({
++      path: directPath,
++    });
++    if (!direct.is_dir) {
++      const split = splitOpenlistPath(directPath);
++      return {
++        sourceDir: split.dir,
++        sourceName: split.name,
++        sourcePath: directPath,
++        sourceFileSize: direct.size,
++      };
++    }
++
++    const list = await openlist.listFs({
++      path: directPath,
++      perPage: 0,
++    });
++    const videos = (list.content || []).filter(item => !item.is_dir && isVideoFile(item.name));
++    const best = pickBestFile(videos);
++    if (best) {
++      const sourcePath = joinOpenlistPath(directPath, best.name);
++      return {
++        sourceDir: directPath,
++        sourceName: best.name,
++        sourcePath,
++        sourceFileSize: best.size,
++      };
++    }
++  } catch {
++    // ignore and fallback to save_path scan
++  }
++
++  const rootList = await openlist.listFs({
++    path: saveDir,
++    perPage: 0,
++  });
++  const candidates = (rootList.content || []).filter(item => {
++    if (item.is_dir) {
++      return item.name === torrent.name;
++    }
++    return isVideoFile(item.name) && (item.name.includes(torrent.name) || item.name.includes(fallbackTitle));
++  });
++
++  const bestCandidate = pickBestFile(candidates);
++  if (!bestCandidate) {
++    throw new Error(`未找到可复制的源文件：${saveDir}/${torrent.name}`);
++  }
++
++  if (bestCandidate.is_dir) {
++    const subPath = joinOpenlistPath(saveDir, bestCandidate.name);
++    const subList = await openlist.listFs({
++      path: subPath,
++      perPage: 0,
++    });
++    const videos = (subList.content || []).filter(item => !item.is_dir && isVideoFile(item.name));
++    const best = pickBestFile(videos);
++    if (!best) {
++      throw new Error(`目录 ${subPath} 下没有可识别视频文件`);
++    }
++    return {
++      sourceDir: subPath,
++      sourceName: best.name,
++      sourcePath: joinOpenlistPath(subPath, best.name),
++      sourceFileSize: best.size,
++    };
++  }
++
++  return {
++    sourceDir: saveDir,
++    sourceName: bestCandidate.name,
++    sourcePath: joinOpenlistPath(saveDir, bestCandidate.name),
++    sourceFileSize: bestCandidate.size,
++  };
++};
++
++const ensureJobFailed = async (job: AnimeSyncEpisodeJobModelType, error: unknown, step: string) => {
++  const message = error instanceof Error ? error.message : String(error);
++  await job.update({
++    status: AnimeSyncJobStatus.FAILED,
++    last_error: message,
++    retry_count: (job.dataValues.retry_count || 0) + 1,
++  });
++  await writeRunLog({
++    jobId: job.dataValues.id as number,
++    step,
++    level: 'error',
++    message: '任务执行失败',
++    detail: {
++      status: job.dataValues.status,
++      error: message,
++    },
++  });
++};
++
++const ensureTorrentForJob = async (params: {
++  job: AnimeSyncEpisodeJobModelType;
++  subscription: AnimeSyncSubscriptionModelType['dataValues'];
++  clients: AnimeSyncClients;
++}) => {
++  const { job, subscription, clients } = params;
++  const jobId = job.dataValues.id as number;
++  const meta = parseMeta(job.dataValues.meta_json);
++  const qbitTag = meta.qbitTag || buildJobTag(jobId);
++  const btihHash = parseBtihFromMagnet(job.dataValues.magnet);
++
++  let hash = (job.dataValues.qbit_hash || btihHash || '').toLowerCase();
++  if (hash) {
++    const exists = await clients.qbit.getTorrentByHash(hash);
++    if (exists) {
++      return {
++        torrent: exists,
++        qbitHash: hash,
++        meta: await updateJobMeta(job, { qbitTag }),
++      };
++    }
++  }
++
++  const tagged = await clients.qbit.getTorrentsByTag(qbitTag);
++  if (tagged.length > 0) {
++    const torrent = tagged.sort((a, b) => b.added_on - a.added_on)[0];
++    hash = torrent.hash.toLowerCase();
++    await job.update({ qbit_hash: hash });
++    return {
++      torrent,
++      qbitHash: hash,
++      meta: await updateJobMeta(job, { qbitTag }),
++    };
++  }
++
++  const url = job.dataValues.magnet || job.dataValues.torrent_url;
++  if (!url) {
++    throw new Error('任务缺少 magnet/torrent 链接');
++  }
++
++  await clients.qbit.addTorrents({
++    urls: [url],
++    category: subscription.qbit_category || undefined,
++    tags: [qbitTag],
++  });
++
++  await sleep(1200);
++  const created = await clients.qbit.getTorrentsByTag(qbitTag);
++  if (created.length === 0) {
++    throw new Error('入种后未找到 qBittorrent 任务，请检查 qB 接口权限');
++  }
++  const torrent = created.sort((a, b) => b.added_on - a.added_on)[0];
++  hash = torrent.hash.toLowerCase();
++
++  await job.update({
++    qbit_hash: hash,
++    status: AnimeSyncJobStatus.QUEUED,
++    last_error: undefined,
++  });
++  await writeRunLog({
++    jobId,
++    step: 'queue',
++    level: 'info',
++    message: '任务已加入 qBittorrent',
++    detail: {
++      hash,
++      tag: qbitTag,
++      state: torrent.state,
++    },
++  });
++
++  return {
++    torrent,
++    qbitHash: hash,
++    meta: await updateJobMeta(job, { qbitTag }),
++  };
++};
++
++const stepQueueOrDownload = async (params: {
++  job: AnimeSyncEpisodeJobModelType;
++  subscription: AnimeSyncSubscriptionModelType['dataValues'];
++  clients: AnimeSyncClients;
++}) => {
++  const { job, subscription, clients } = params;
++  const ensured = await ensureTorrentForJob({ job, subscription, clients });
++  const torrentStatus = getTorrentStatus(ensured.torrent);
++
++  if (torrentStatus === 'completed') {
++    await job.update({
++      status: AnimeSyncJobStatus.DOWNLOADED,
++      last_error: undefined,
++    });
++    await writeRunLog({
++      jobId: job.dataValues.id as number,
++      step: 'download',
++      level: 'info',
++      message: '下载完成，准备执行去重',
++      detail: {
++        hash: ensured.qbitHash,
++        state: ensured.torrent.state,
++      },
++    });
++    return;
++  }
++
++  const nextStatus = torrentStatus === 'downloading' ? AnimeSyncJobStatus.DOWNLOADING : AnimeSyncJobStatus.QUEUED;
++  await job.update({
++    status: nextStatus,
++    last_error: undefined,
++  });
++};
++
++const stepDedupeBeforeCopy = async (params: {
++  job: AnimeSyncEpisodeJobModelType;
++  subscription: AnimeSyncSubscriptionModelType['dataValues'];
++  clients: AnimeSyncClients;
++}) => {
++  const { job, subscription, clients } = params;
++  const hash = job.dataValues.qbit_hash;
++  if (!hash) {
++    throw new Error('缺少 qBittorrent hash，无法定位源文件');
++  }
++
++  const torrent = await clients.qbit.getTorrentByHash(hash);
++  if (!torrent) {
++    throw new Error('qBittorrent 中找不到任务，可能已被手动删除');
++  }
++
++  const source = await locateSourceFromTorrent({
++    openlist: clients.openlist,
++    torrent,
++    fallbackTitle: job.dataValues.title,
++  });
++
++  await updateJobMeta(job, {
++    sourceDir: source.sourceDir,
++    sourceName: source.sourceName,
++    sourcePath: source.sourcePath,
++  });
++
++  const dedupeResult = await dedupeTargetByEpisode(clients.openlist, subscription.target_openlist_path, source.sourceName);
++  await job.update({
++    status: AnimeSyncJobStatus.DEDUP_DONE,
++    last_error: undefined,
++  });
++  await writeRunLog({
++    jobId: job.dataValues.id as number,
++    step: 'dedupe',
++    level: 'info',
++    message: '目标目录去重完成',
++    detail: {
++      targetPath: subscription.target_openlist_path,
++      removed: dedupeResult.removed,
++      kept: dedupeResult.kept,
++      sourceName: source.sourceName,
++    },
++  });
++};
++
++const stepCopy = async (params: {
++  job: AnimeSyncEpisodeJobModelType;
++  subscription: AnimeSyncSubscriptionModelType['dataValues'];
++  clients: AnimeSyncClients;
++}) => {
++  const { job, subscription, clients } = params;
++  const meta = parseMeta(job.dataValues.meta_json);
++  if (!meta.sourceDir || !meta.sourceName) {
++    throw new Error('缺少源文件信息，请先完成下载和去重步骤');
++  }
++
++  const targetPath = normalizeOpenlistPath(subscription.target_openlist_path);
++  await ensureOpenlistDirectory(clients.openlist, targetPath);
++
++  const targetList = await clients.openlist.listFs({
++    path: targetPath,
++    perPage: 0,
++  });
++  const existing = (targetList.content || []).find(item => !item.is_dir && item.name === meta.sourceName);
++  if (!existing) {
++    await clients.openlist.copy({
++      srcDir: normalizeOpenlistPath(meta.sourceDir),
++      dstDir: targetPath,
++      names: [meta.sourceName],
++    });
++  }
++
++  await job.update({
++    status: AnimeSyncJobStatus.COPIED,
++    last_error: undefined,
++  });
++
++  await writeRunLog({
++    jobId: job.dataValues.id as number,
++    step: 'copy',
++    level: 'info',
++    message: existing ? '目标目录已存在同名文件，跳过复制' : '文件复制完成',
++    detail: {
++      sourceDir: meta.sourceDir,
++      sourceName: meta.sourceName,
++      targetPath,
++    },
++  });
++};
++
++const stepCleanup = async (params: {
++  job: AnimeSyncEpisodeJobModelType;
++  subscription: AnimeSyncSubscriptionModelType['dataValues'];
++  clients: AnimeSyncClients;
++}) => {
++  const { job, subscription, clients } = params;
++  const meta = parseMeta(job.dataValues.meta_json);
++
++  if (meta.sourceName) {
++    await dedupeTargetByEpisode(clients.openlist, subscription.target_openlist_path, meta.sourceName);
++  }
++
++  const hash = job.dataValues.qbit_hash;
++  if (hash) {
++    await clients.qbit.deleteTorrents(hash, {
++      deleteFiles: true,
++    });
++  } else if (meta.qbitTag) {
++    const torrents = await clients.qbit.getTorrentsByTag(meta.qbitTag);
++    if (torrents.length > 0) {
++      await clients.qbit.deleteTorrents(
++        torrents.map(item => item.hash),
++        {
++          deleteFiles: true,
++        }
++      );
++    }
++  }
++
++  await job.update({
++    status: AnimeSyncJobStatus.CLEANED,
++    last_error: undefined,
++    completed_at: new Date(),
++  });
++
++  await writeRunLog({
++    jobId: job.dataValues.id as number,
++    step: 'cleanup',
++    level: 'info',
++    message: '任务已完成并清理 qBittorrent 残留',
++    detail: {
++      qbitHash: hash,
++      targetPath: subscription.target_openlist_path,
++    },
++  });
++};
++
++const processSingleJob = async (params: {
++  job: AnimeSyncEpisodeJobModelType;
++  subscription: AnimeSyncSubscriptionModelType['dataValues'];
++  clients: AnimeSyncClients;
++}) => {
++  const { job, subscription, clients } = params;
++  const status = job.dataValues.status;
++
++  if (status === AnimeSyncJobStatus.DISCOVERED) {
++    await stepQueueOrDownload({ job, subscription, clients });
++    return;
++  }
++  if (status === AnimeSyncJobStatus.QUEUED || status === AnimeSyncJobStatus.DOWNLOADING) {
++    await stepQueueOrDownload({ job, subscription, clients });
++    return;
++  }
++  if (status === AnimeSyncJobStatus.DOWNLOADED) {
++    await stepDedupeBeforeCopy({ job, subscription, clients });
++    return;
++  }
++  if (status === AnimeSyncJobStatus.DEDUP_DONE) {
++    await stepCopy({ job, subscription, clients });
++    return;
++  }
++  if (status === AnimeSyncJobStatus.COPIED) {
++    await stepCleanup({ job, subscription, clients });
++  }
++};
++
++export const listAnimeSyncSubscriptions = async () => {
++  const list = await AnimeSyncSubscriptionModel.findAll({ order: [['id', 'ASC']] });
++  return list.map(item => toSubscriptionResponse(item.dataValues));
++};
++
++export const getAnimeSyncSubscription = async (id: number) => {
++  const item = await AnimeSyncSubscriptionModel.findOne({ where: { id } });
++  return item ? toSubscriptionResponse(item.dataValues) : null;
++};
++
++export const createAnimeSyncSubscription = async (payload: CreateAnimeSyncSubscriptionPayload) => {
++  const created = await AnimeSyncSubscriptionModel.create({
++    name: payload.name.trim(),
++    rss_url: payload.rssUrl.trim(),
++    target_openlist_path: normalizeOpenlistPath(payload.targetOpenlistPath),
++    qbit_category: payload.qbitCategory?.trim(),
++    poll_interval_sec: payload.pollIntervalSec || 300,
++    enabled: payload.enabled !== false,
++  });
++
++  return toSubscriptionResponse(created.dataValues);
++};
++
++export const updateAnimeSyncSubscription = async (id: number, payload: UpdateAnimeSyncSubscriptionPayload) => {
++  const target = await AnimeSyncSubscriptionModel.findOne({ where: { id } });
++  if (!target) {
++    return null;
++  }
++
++  await target.update({
++    ...(payload.name !== undefined ? { name: payload.name.trim() } : {}),
++    ...(payload.rssUrl !== undefined ? { rss_url: payload.rssUrl.trim() } : {}),
++    ...(payload.targetOpenlistPath !== undefined
++      ? { target_openlist_path: normalizeOpenlistPath(payload.targetOpenlistPath) }
++      : {}),
++    ...(payload.qbitCategory !== undefined ? { qbit_category: payload.qbitCategory.trim() } : {}),
++    ...(payload.pollIntervalSec !== undefined ? { poll_interval_sec: payload.pollIntervalSec } : {}),
++    ...(payload.enabled !== undefined ? { enabled: payload.enabled } : {}),
++  });
++
++  return toSubscriptionResponse(target.dataValues);
++};
++
++export const deleteAnimeSyncSubscription = async (id: number) => {
++  await AnimeSyncEpisodeJobModel.destroy({ where: { subscription_id: id } });
++  return AnimeSyncSubscriptionModel.destroy({ where: { id } });
++};
++
++export const toggleAnimeSyncSubscription = async (id: number) => {
++  const target = await AnimeSyncSubscriptionModel.findOne({ where: { id } });
++  if (!target) {
++    return null;
++  }
++  await target.update({
++    enabled: !Boolean(target.dataValues.enabled),
++  });
++  return toSubscriptionResponse(target.dataValues);
++};
++
++export const listAnimeSyncJobs = async (subscriptionId?: number) => {
++  const where = subscriptionId ? { subscription_id: subscriptionId } : undefined;
++  const list = await AnimeSyncEpisodeJobModel.findAll({
++    where,
++    order: [['id', 'DESC']],
++    limit: 200,
++  });
++  return list.map(item => toJobResponse(item.dataValues));
++};
++
++export const getAnimeSyncJob = async (id: number) => {
++  const item = await AnimeSyncEpisodeJobModel.findOne({ where: { id } });
++  return item ? toJobResponse(item.dataValues) : null;
++};
++
++export const retryAnimeSyncJob = async (id: number) => {
++  const job = await AnimeSyncEpisodeJobModel.findOne({ where: { id } });
++  if (!job) {
++    return null;
++  }
++  await job.update({
++    status: AnimeSyncJobStatus.DISCOVERED,
++    retry_count: (job.dataValues.retry_count || 0) + 1,
++    last_error: undefined,
++  });
++  await writeRunLog({
++    jobId: id,
++    step: 'manual',
++    level: 'info',
++    message: '管理员手动重试任务',
++  });
++  return toJobResponse(job.dataValues);
++};
++
++export const skipAnimeSyncJob = async (id: number) => {
++  const job = await AnimeSyncEpisodeJobModel.findOne({ where: { id } });
++  if (!job) {
++    return null;
++  }
++  await job.update({
++    status: AnimeSyncJobStatus.SKIPPED,
++    completed_at: new Date(),
++  });
++  await writeRunLog({
++    jobId: id,
++    step: 'manual',
++    level: 'warn',
++    message: '管理员手动跳过任务',
++  });
++  return toJobResponse(job.dataValues);
++};
++
++const discoverFromSubscription = async (subscription: AnimeSyncSubscriptionModelType['dataValues']) => {
++  const rssItems = await fetchAnimeRssItems(subscription.rss_url);
++  let discoveredCount = 0;
++
++  for (const item of rssItems) {
++    const magnet = extractMagnetFromRssItem(item);
++    if (!magnet) {
++      continue;
++    }
++
++    const episodeKey = buildEpisodeKey(item, magnet);
++    const exists = await AnimeSyncEpisodeJobModel.findOne({
++      where: {
++        subscription_id: subscription.id as number,
++        episode_key: episodeKey,
++      },
++    });
++    if (exists) {
++      continue;
++    }
++
++    const created = await AnimeSyncEpisodeJobModel.create({
++      subscription_id: subscription.id as number,
++      episode_key: episodeKey,
++      title: item.title,
++      magnet,
++      torrent_url: item.link,
++      status: AnimeSyncJobStatus.DISCOVERED,
++      retry_count: 0,
++      discovered_at: new Date(),
++      meta_json: JSON.stringify({
++        pubDate: item.pubDate,
++        guid: item.guid,
++        link: item.link,
++      }),
++    });
++
++    await writeRunLog({
++      jobId: created.dataValues.id as number,
++      step: 'discover',
++      level: 'info',
++      message: '发现新剧集任务',
++      detail: { title: item.title, episodeKey },
++    });
++
++    discoveredCount += 1;
++  }
++
++  await AnimeSyncSubscriptionModel.update(
++    {
++      last_polled_at: new Date(),
++      ...(discoveredCount > 0 ? { last_success_at: new Date() } : {}),
++    },
++    {
++      where: {
++        id: subscription.id,
++      },
++    }
++  );
++
++  return discoveredCount;
++};
++
++export const runAnimeSyncDiscover = async (subscriptionId?: number): Promise<AnimeSyncRunResult> => {
++  const where = {
++    enabled: true,
++    ...(subscriptionId ? { id: subscriptionId } : {}),
++  };
++  const subscriptions = await AnimeSyncSubscriptionModel.findAll({
++    where,
++    order: [['id', 'ASC']],
++  });
++
++  let discoveredJobCount = 0;
++
++  for (const item of subscriptions) {
++    try {
++      const count = await discoverFromSubscription(item.dataValues);
++      discoveredJobCount += count;
++    } catch (error) {
++      await AnimeSyncSubscriptionModel.update(
++        {
++          last_polled_at: new Date(),
++        },
++        {
++          where: {
++            id: item.dataValues.id,
++          },
++        }
++      );
++
++      const failedJobs = await AnimeSyncEpisodeJobModel.findAll({
++        where: {
++          subscription_id: item.dataValues.id as number,
++          status: {
++            [Op.in]: [AnimeSyncJobStatus.DISCOVERED, AnimeSyncJobStatus.FAILED],
++          },
++        },
++        order: [['id', 'DESC']],
++        limit: 1,
++      });
++
++      if (failedJobs[0]) {
++        await ensureJobFailed(failedJobs[0], error, 'discover');
++      }
++    }
++  }
++
++  return {
++    scannedSubscriptionCount: subscriptions.length,
++    discoveredJobCount,
++  };
++};
++
++export const runAnimeSyncPipeline = async (limit = PROCESSING_LIMIT) => {
++  const jobs = await AnimeSyncEpisodeJobModel.findAll({
++    where: {
++      status: {
++        [Op.in]: PIPELINE_ACTIVE_STATUSES,
++      },
++    },
++    order: [['id', 'ASC']],
++    limit,
++  });
++
++  if (jobs.length === 0) {
++    return {
++      processedJobCount: 0,
++      failedJobCount: 0,
++      completedJobCount: 0,
++    };
++  }
++
++  const subscriptionIds = Array.from(new Set(jobs.map(item => item.dataValues.subscription_id)));
++  const subscriptions = await AnimeSyncSubscriptionModel.findAll({
++    where: {
++      id: {
++        [Op.in]: subscriptionIds,
++      },
++    },
++  });
++  const subscriptionMap = new Map<number, AnimeSyncSubscriptionModelType['dataValues']>(
++    subscriptions.map(item => [item.dataValues.id as number, item.dataValues])
++  );
++
++  let processedJobCount = 0;
++  let failedJobCount = 0;
++  let completedJobCount = 0;
++
++  let clients: AnimeSyncClients | null = null;
++  for (const job of jobs) {
++    const jobId = job.dataValues.id as number;
++    if (processingJobIds.has(jobId)) {
++      continue;
++    }
++    const subscription = subscriptionMap.get(job.dataValues.subscription_id);
++    if (!subscription || !subscription.enabled) {
++      continue;
++    }
++
++    processingJobIds.add(jobId);
++    try {
++      if (!clients) {
++        clients = await assertClientsReady();
++      }
++      const beforeStatus = job.dataValues.status;
++      await processSingleJob({
++        job,
++        subscription,
++        clients,
++      });
++      processedJobCount += 1;
++
++      const latest = await AnimeSyncEpisodeJobModel.findOne({ where: { id: jobId } });
++      if (latest?.dataValues.status === AnimeSyncJobStatus.CLEANED && beforeStatus !== AnimeSyncJobStatus.CLEANED) {
++        completedJobCount += 1;
++      }
++    } catch (error) {
++      failedJobCount += 1;
++      await ensureJobFailed(job, error, 'pipeline');
++    } finally {
++      processingJobIds.delete(jobId);
++    }
++  }
++
++  return {
++    processedJobCount,
++    failedJobCount,
++    completedJobCount,
++  };
++};
++
++export const getAnimeSyncOverview = async () => {
++  const [subscriptionCount, enabledSubscriptionCount, discoveredJobCount, failedJobCount] = await Promise.all([
++    AnimeSyncSubscriptionModel.count(),
++    AnimeSyncSubscriptionModel.count({ where: { enabled: true } }),
++    AnimeSyncEpisodeJobModel.count({
++      where: {
++        status: {
++          [Op.in]: [
++            AnimeSyncJobStatus.DISCOVERED,
++            AnimeSyncJobStatus.QUEUED,
++            AnimeSyncJobStatus.DOWNLOADING,
++            AnimeSyncJobStatus.DOWNLOADED,
++            AnimeSyncJobStatus.DEDUP_DONE,
++            AnimeSyncJobStatus.COPIED,
++          ],
++        },
++      },
++    }),
++    AnimeSyncEpisodeJobModel.count({ where: { status: AnimeSyncJobStatus.FAILED } }),
++  ]);
++
++  return {
++    subscriptionCount,
++    enabledSubscriptionCount,
++    discoveredJobCount,
++    failedJobCount,
++  };
++};
++
++export const runDueAnimeSyncSubscriptions = async () => {
++  const now = Date.now();
++  const subscriptions = await AnimeSyncSubscriptionModel.findAll({
++    where: { enabled: true },
++    order: [['id', 'ASC']],
++  });
++
++  let discoveredJobCount = 0;
++  let scannedSubscriptionCount = 0;
++
++  for (const item of subscriptions) {
++    const data = item.dataValues;
++    const last = data.last_polled_at ? new Date(data.last_polled_at).getTime() : 0;
++    const intervalMs = Math.max(30, data.poll_interval_sec || 300) * 1000;
++    if (now - last < intervalMs) {
++      continue;
++    }
++
++    scannedSubscriptionCount += 1;
++    const result = await runAnimeSyncDiscover(data.id as number);
++    discoveredJobCount += result.discoveredJobCount;
++  }
++
++  const pipeline = await runAnimeSyncPipeline();
++  return {
++    scannedSubscriptionCount,
++    discoveredJobCount,
++    processedJobCount: pipeline.processedJobCount,
++    failedJobCount: pipeline.failedJobCount,
++    completedJobCount: pipeline.completedJobCount,
++  };
++};
+diff --git a/apps/api/src/modules/anime-sync/service/rss.service.ts b/apps/api/src/modules/anime-sync/service/rss.service.ts
+new file mode 100644
+index 0000000..944416e
+--- /dev/null
++++ b/apps/api/src/modules/anime-sync/service/rss.service.ts
+@@ -0,0 +1,57 @@
++import request from '../../../utils/request';
++import type { AnimeRssItem } from '../types/anime-sync.types';
++
++const decodeXml = (text: string) => {
++  return text
++    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
++    .replace(/&amp;/g, '&')
++    .replace(/&lt;/g, '<')
++    .replace(/&gt;/g, '>')
++    .replace(/&quot;/g, '"')
++    .replace(/&#39;/g, "'")
++    .trim();
++};
++
++const pickTag = (source: string, tag: string) => {
++  const match = source.match(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'i'));
++  return match?.[1] ? decodeXml(match[1]) : '';
++};
++
++const parseRssXml = (xml: string): AnimeRssItem[] => {
++  const itemMatches = xml.match(/<item>([\s\S]*?)<\/item>/gi) || [];
++  return itemMatches
++    .map(itemXml => {
++      const title = pickTag(itemXml, 'title');
++      const link = pickTag(itemXml, 'link');
++      const guid = pickTag(itemXml, 'guid');
++      const pubDate = pickTag(itemXml, 'pubDate');
++      if (!title) {
++        return null;
++      }
++      return { title, link, guid, pubDate };
++    })
++    .filter(Boolean) as AnimeRssItem[];
++};
++
++export const fetchAnimeRssItems = async (rssUrl: string) => {
++  const result = await request.get<string>(rssUrl, {
++    responseType: 'text',
++    timeout: 20000,
++  });
++  const xml = typeof result.data === 'string' ? result.data : String(result.data || '');
++  return parseRssXml(xml);
++};
++
++export const extractMagnetFromRssItem = (item: AnimeRssItem) => {
++  const candidates = [item.link, item.guid].filter(Boolean) as string[];
++  return candidates.find(link => link.startsWith('magnet:?xt=urn:btih:')) || '';
++};
++
++export const buildEpisodeKey = (item: AnimeRssItem, magnet: string) => {
++  const btih = magnet.match(/btih:([a-zA-Z0-9]+)/i)?.[1]?.toLowerCase();
++  if (btih) {
++    return `btih:${btih}`;
++  }
++  const base = item.guid || item.link || item.title;
++  return base.trim().toLowerCase();
++};
+diff --git a/apps/api/src/modules/anime-sync/service/scheduler.service.ts b/apps/api/src/modules/anime-sync/service/scheduler.service.ts
+new file mode 100644
+index 0000000..a6818f0
+--- /dev/null
++++ b/apps/api/src/modules/anime-sync/service/scheduler.service.ts
+@@ -0,0 +1,54 @@
++import { log } from '../../../utils/logger';
++import { runDueAnimeSyncSubscriptions } from './anime-sync.service';
++
++let animeSyncTimer: NodeJS.Timeout | null = null;
++let running = false;
++
++export const startAnimeSyncScheduler = () => {
++  if (animeSyncTimer) {
++    return;
++  }
++
++  const tick = async () => {
++    if (running) {
++      return;
++    }
++    running = true;
++    try {
++      const result = await runDueAnimeSyncSubscriptions();
++      if (
++        result.scannedSubscriptionCount > 0 ||
++        result.discoveredJobCount > 0 ||
++        (result.processedJobCount || 0) > 0 ||
++        (result.failedJobCount || 0) > 0 ||
++        (result.completedJobCount || 0) > 0
++      ) {
++        log.info(
++          `[anime-sync] 轮询完成 scanned=${result.scannedSubscriptionCount} discovered=${result.discoveredJobCount} processed=${result.processedJobCount || 0} failed=${result.failedJobCount || 0} completed=${result.completedJobCount || 0}`
++        );
++      }
++    } catch (error) {
++      log.error('[anime-sync] 定时轮询失败', error);
++    } finally {
++      running = false;
++    }
++  };
++
++  // 启动后先跑一次，再每分钟跑一次。
++  void tick();
++  animeSyncTimer = setInterval(() => {
++    void tick();
++  }, 60 * 1000);
++
++  log.info('[anime-sync] 调度器已启动（每 60 秒轮询）');
++};
++
++export const stopAnimeSyncScheduler = () => {
++  if (!animeSyncTimer) {
++    return;
++  }
++  clearInterval(animeSyncTimer);
++  animeSyncTimer = null;
++  running = false;
++  log.info('[anime-sync] 调度器已停止');
++};
+diff --git a/apps/api/src/modules/anime-sync/types/anime-sync.types.ts b/apps/api/src/modules/anime-sync/types/anime-sync.types.ts
+new file mode 100644
+index 0000000..e71140e
+--- /dev/null
++++ b/apps/api/src/modules/anime-sync/types/anime-sync.types.ts
+@@ -0,0 +1,19 @@
++import type { AnimeSyncJobStatus } from '@volix/types';
++
++export interface AnimeRssItem {
++  title: string;
++  link?: string;
++  guid?: string;
++  pubDate?: string;
++}
++
++export interface AnimeSyncDiscoveredJob {
++  subscriptionId: number;
++  episodeKey: string;
++  title: string;
++  magnet: string;
++  torrentUrl?: string;
++  status: AnimeSyncJobStatus;
++  discoveredAt: Date;
++  metaJson?: string;
++}
+diff --git a/apps/api/src/modules/index.ts b/apps/api/src/modules/index.ts
+index 8995b66..5ba6b7b 100644
+--- a/apps/api/src/modules/index.ts
++++ b/apps/api/src/modules/index.ts
+@@ -3,3 +3,4 @@ export * from './user';
+ export * from './file';
+ export * from './task';
+ export * from './util';
++export * from './anime-sync';
+diff --git a/apps/api/src/routes/index.ts b/apps/api/src/routes/index.ts
+index e1b2612..9a3fd73 100644
+--- a/apps/api/src/routes/index.ts
++++ b/apps/api/src/routes/index.ts
+@@ -4,6 +4,7 @@ import routerUtil from '../modules/util/util.route';
+ import routerFile from '../modules/file/file.route';
+ import cloud115Router from '../modules/115/115.route';
+ import routerTask from '../modules/task/task.route';
++import routerAnimeSync from '../modules/anime-sync/anime-sync.route';
+ 
+ const router = new Router({
+   prefix: '/api',
+@@ -14,5 +15,6 @@ router.use(routerUtil.routes());
+ router.use(routerFile.routes());
+ router.use(routerTask.routes());
+ router.use(routerUser.routes());
++router.use(routerAnimeSync.routes());
+ 
+ export default router;
+diff --git a/apps/api/src/sdk/qbittorrent/create-qbittorrent.sdk.ts b/apps/api/src/sdk/qbittorrent/create-qbittorrent.sdk.ts
+index 766d3d2..2d4bfdb 100644
+--- a/apps/api/src/sdk/qbittorrent/create-qbittorrent.sdk.ts
++++ b/apps/api/src/sdk/qbittorrent/create-qbittorrent.sdk.ts
+@@ -13,6 +13,15 @@ export interface QbittorrentDeleteOptions {
+   deleteFiles?: boolean;
+ }
+ 
++export interface QbittorrentAddTorrentParams {
++  urls: string[];
++  category?: string;
++  tags?: string[];
++  paused?: boolean;
++  skipChecking?: boolean;
++  savepath?: string;
++}
++
+ export interface QbittorrentTorrentInfo {
+   hash: string;
+   name: string;
+@@ -144,6 +153,50 @@ export function createQbittorrentSdk(options: CreateQbittorrentSdkOptions) {
+     return result.data;
+   };
+ 
++  const addTorrents = async (params: QbittorrentAddTorrentParams) => {
++    if (!Array.isArray(params.urls) || params.urls.length === 0) {
++      throw new Error('urls 不能为空');
++    }
++    const urls = params.urls.map(item => item.trim()).filter(Boolean);
++    if (urls.length === 0) {
++      throw new Error('urls 不能为空');
++    }
++    const tags = (params.tags || []).map(item => item.trim()).filter(Boolean);
++
++    await qbitRequest({
++      url: '/api/v2/torrents/add',
++      method: 'POST',
++      data: toFormData({
++        urls: urls.join('\n'),
++        ...(params.category ? { category: params.category } : {}),
++        ...(tags.length > 0 ? { tags: tags.join(',') } : {}),
++        ...(params.paused !== undefined ? { paused: params.paused } : {}),
++        ...(params.skipChecking !== undefined ? { skip_checking: params.skipChecking } : {}),
++        ...(params.savepath ? { savepath: params.savepath } : {}),
++      }),
++    });
++
++    return 'ok' as const;
++  };
++
++  const getTorrentByHash = async (hash: string) => {
++    const targetHash = hash.trim().toLowerCase();
++    if (!targetHash) {
++      throw new Error('hash 不能为空');
++    }
++    const list = await getTorrentList();
++    return list.find(item => item.hash.toLowerCase() === targetHash) || null;
++  };
++
++  const getTorrentsByTag = async (tag: string) => {
++    const targetTag = tag.trim();
++    if (!targetTag) {
++      throw new Error('tag 不能为空');
++    }
++    const list = await getTorrentList();
++    return list.filter(item => (item.tags || '').split(',').map(it => it.trim()).includes(targetTag));
++  };
++
+   const pauseTorrents = async (hashes: QbittorrentHashes = 'all') => {
+     return torrentAction('stop', { hashes: normalizeHashes(hashes) });
+   };
+@@ -178,7 +231,10 @@ export function createQbittorrentSdk(options: CreateQbittorrentSdkOptions) {
+   return {
+     login,
+     qbitRequest,
++    addTorrents,
+     getTorrentList,
++    getTorrentByHash,
++    getTorrentsByTag,
+     pauseTorrents,
+     resumeTorrents,
+     deleteTorrents,
+diff --git a/apps/api/src/utils/dependencies.ts b/apps/api/src/utils/dependencies.ts
+index 8824e57..b418355 100644
+--- a/apps/api/src/utils/dependencies.ts
++++ b/apps/api/src/utils/dependencies.ts
+@@ -8,6 +8,7 @@ import { File115Model } from '../modules/115';
+ import { FileModel } from '../modules/file';
+ import { RoleModel, UserModel } from '../modules/user';
+ import { TaskModel } from '../modules/task';
++import { AnimeSyncEpisodeJobModel, AnimeSyncRunLogModel, AnimeSyncSubscriptionModel } from '../modules/anime-sync';
+ 
+ const DEFAULT_USER_FEATURES: AppFeature[] = [AppFeature.RANDOM_PIC];
+ 
+@@ -22,7 +23,17 @@ const syncModels = async () => {
+     alter: process.env.DB_SYNC_ALTER ? process.env.DB_SYNC_ALTER === 'true' : process.env.NODE_ENV !== 'production',
+     force: forceSync,
+   };
+-  const models = [ConfigModel, UserModel, RoleModel, File115Model, FileModel, TaskModel];
++  const models = [
++    ConfigModel,
++    UserModel,
++    RoleModel,
++    File115Model,
++    FileModel,
++    TaskModel,
++    AnimeSyncSubscriptionModel,
++    AnimeSyncEpisodeJobModel,
++    AnimeSyncRunLogModel,
++  ];
+   try {
+     for (const model of models) {
+       await model.sync(syncOptions);
+@@ -93,6 +104,52 @@ const ensureRoleTableAndSeed = async () => {
+   }
+ };
+ 
++const normalizeSqliteTimestampsToBeijing = async () => {
++  const queryInterface = sequelize.getQueryInterface();
++
++  try {
++    const tables = await queryInterface.showAllTables();
++    const queryGenerator = (queryInterface as unknown as {
++      queryGenerator: { quoteTable: (value: string) => string; quoteIdentifier: (value: string) => string };
++    }).queryGenerator;
++    const tableNames = tables
++      .map(item => {
++        if (typeof item === 'string') {
++          return item;
++        }
++        return (item as { tableName?: string; name?: string }).tableName || (item as { name?: string }).name || '';
++      })
++      .filter(Boolean)
++      .filter(name => name !== 'sqlite_sequence');
++
++    let updatedCount = 0;
++
++    for (const tableName of tableNames) {
++      const quotedTable = queryGenerator.quoteTable(tableName);
++      const columns = await queryInterface.describeTable(tableName);
++      const timestampColumns = Object.keys(columns).filter(columnName => columnName.endsWith('_at'));
++      for (const columnName of timestampColumns) {
++        const quotedColumn = queryGenerator.quoteIdentifier(columnName);
++        const [, result] = await sequelize.query(
++          `
++          UPDATE ${quotedTable}
++          SET ${quotedColumn} = strftime('%Y-%m-%d %H:%M:%f', ${quotedColumn}, '+8 hours') || ' +08:00'
++          WHERE ${quotedColumn} LIKE '% +00:00'
++          `
++        );
++        const changes = typeof result === 'object' && result && 'changes' in result ? Number((result as { changes?: number }).changes) : 0;
++        updatedCount += Number.isFinite(changes) ? changes : 0;
++      }
++    }
++
++    if (updatedCount > 0) {
++      log.info(`数据库时区统一完成：共转换 ${updatedCount} 条 UTC 时间为北京时间`);
++    }
++  } catch (error) {
++    log.warn('数据库时区统一跳过:', error);
++  }
++};
++
+ const initApp = async () => {
+   // // 生成必要的文件夹
+   const pathList = [
+@@ -118,6 +175,7 @@ const initApp = async () => {
+ 
+   await syncModels();
+   await ensureRoleTableAndSeed();
++  await normalizeSqliteTimestampsToBeijing();
+ };
+ 
+ export default initApp;
+diff --git a/apps/api/src/utils/timezone.ts b/apps/api/src/utils/timezone.ts
+new file mode 100644
+index 0000000..a08971d
+--- /dev/null
++++ b/apps/api/src/utils/timezone.ts
+@@ -0,0 +1,24 @@
++const pad = (value: number, size = 2) => String(value).padStart(size, '0');
++
++// 统一输出北京时间（UTC+8）字符串，格式：2026-04-03T18:30:12+08:00
++export const toBeijingISOString = (input?: Date | string | number | null) => {
++  if (!input) {
++    return undefined;
++  }
++  const date = input instanceof Date ? input : new Date(input);
++  if (Number.isNaN(date.getTime())) {
++    return undefined;
++  }
++
++  const beijingTimestamp = date.getTime() + 8 * 60 * 60 * 1000;
++  const beijingDate = new Date(beijingTimestamp);
++
++  const year = beijingDate.getUTCFullYear();
++  const month = pad(beijingDate.getUTCMonth() + 1);
++  const day = pad(beijingDate.getUTCDate());
++  const hours = pad(beijingDate.getUTCHours());
++  const minutes = pad(beijingDate.getUTCMinutes());
++  const seconds = pad(beijingDate.getUTCSeconds());
++
++  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+08:00`;
++};
+diff --git a/apps/web-pc/src/apps/anime-sync/index.tsx b/apps/web-pc/src/apps/anime-sync/index.tsx
+new file mode 100644
+index 0000000..722f337
+--- /dev/null
++++ b/apps/web-pc/src/apps/anime-sync/index.tsx
+@@ -0,0 +1,520 @@
++import { useCallback, useEffect, useMemo, useState } from 'react';
++import { Button, Card, Empty, Modal, Nav, Popconfirm, Select, Space, TabPane, Table, Tabs, Tag, Toast, Typography } from '@douyinfe/semi-ui';
++import { IconHome, IconRefresh, IconVideo } from '@douyinfe/semi-icons';
++import { useNavigate } from 'react-router';
++import { AppForm, Loading } from '@/components';
++import {
++  createAnimeSyncSubscription,
++  deleteAnimeSyncSubscription,
++  getAnimeSyncJobs,
++  getAnimeSyncOverview,
++  getAnimeSyncSubscriptions,
++  retryAnimeSyncJob,
++  runAnimeSync,
++  runAnimeSyncBySubscription,
++  skipAnimeSyncJob,
++  toggleAnimeSyncSubscription,
++  updateAnimeSyncSubscription,
++} from '@/services/anime-sync';
++import { getCurrentUser } from '@/services/user';
++import { clearAuthToken, getHttpErrorMessage, isAuthError } from '@/utils';
++import { AppFeature, AnimeSyncJobStatus, UserRole } from '@volix/types';
++import type {
++  AnimeSyncEpisodeJob,
++  AnimeSyncOverview,
++  AnimeSyncSubscription,
++  CreateAnimeSyncSubscriptionPayload,
++  UserInfoResponse,
++} from '@volix/types';
++import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
++
++interface SubscriptionFormValues extends CreateAnimeSyncSubscriptionPayload {
++  pollIntervalSec: number;
++}
++
++const defaultOverview: AnimeSyncOverview = {
++  subscriptionCount: 0,
++  enabledSubscriptionCount: 0,
++  discoveredJobCount: 0,
++  failedJobCount: 0,
++};
++
++const defaultFormValues: SubscriptionFormValues = {
++  name: '',
++  rssUrl: '',
++  targetOpenlistPath: '',
++  qbitCategory: '',
++  pollIntervalSec: 300,
++  enabled: true,
++};
++
++const jobStatusColorMap: Record<AnimeSyncJobStatus, 'blue' | 'red' | 'green' | 'grey'> = {
++  [AnimeSyncJobStatus.DISCOVERED]: 'blue',
++  [AnimeSyncJobStatus.QUEUED]: 'blue',
++  [AnimeSyncJobStatus.DOWNLOADING]: 'blue',
++  [AnimeSyncJobStatus.DOWNLOADED]: 'green',
++  [AnimeSyncJobStatus.DEDUP_DONE]: 'green',
++  [AnimeSyncJobStatus.COPIED]: 'green',
++  [AnimeSyncJobStatus.CLEANED]: 'green',
++  [AnimeSyncJobStatus.FAILED]: 'red',
++  [AnimeSyncJobStatus.SKIPPED]: 'grey',
++};
++
++const jobStatusLabelMap: Record<AnimeSyncJobStatus, string> = {
++  [AnimeSyncJobStatus.DISCOVERED]: '待处理',
++  [AnimeSyncJobStatus.QUEUED]: '已入队',
++  [AnimeSyncJobStatus.DOWNLOADING]: '下载中',
++  [AnimeSyncJobStatus.DOWNLOADED]: '已下载',
++  [AnimeSyncJobStatus.DEDUP_DONE]: '已去重',
++  [AnimeSyncJobStatus.COPIED]: '已复制',
++  [AnimeSyncJobStatus.CLEANED]: '已清理',
++  [AnimeSyncJobStatus.FAILED]: '失败',
++  [AnimeSyncJobStatus.SKIPPED]: '已跳过',
++};
++
++function AnimeSyncApp() {
++  const navigate = useNavigate();
++  const [user, setUser] = useState<UserInfoResponse>();
++  const [loading, setLoading] = useState(true);
++  const [runningAll, setRunningAll] = useState(false);
++  const [saving, setSaving] = useState(false);
++  const [subscriptions, setSubscriptions] = useState<AnimeSyncSubscription[]>([]);
++  const [jobs, setJobs] = useState<AnimeSyncEpisodeJob[]>([]);
++  const [overview, setOverview] = useState<AnimeSyncOverview>(defaultOverview);
++  const [subscriptionFilter, setSubscriptionFilter] = useState<number>();
++  const [modalVisible, setModalVisible] = useState(false);
++  const [editingSubscription, setEditingSubscription] = useState<AnimeSyncSubscription | null>(null);
++  const [formApi, setFormApi] = useState<FormApi<Record<string, unknown>>>();
++
++  const isAdmin = user?.role === UserRole.ADMIN;
++  const canAccess = Boolean(user?.featurePermissions?.includes(AppFeature.ANIME_SYNC) || isAdmin);
++
++  const onLogout = useCallback(() => {
++    clearAuthToken();
++    navigate('/auth', { replace: true });
++  }, [navigate]);
++
++  const loadOverview = useCallback(async () => {
++    const res = await getAnimeSyncOverview();
++    setOverview(res.data);
++  }, []);
++
++  const loadSubscriptions = useCallback(async () => {
++    const res = await getAnimeSyncSubscriptions();
++    setSubscriptions(res.data);
++  }, []);
++
++  const loadJobs = useCallback(
++    async (subscriptionId?: number) => {
++      const res = await getAnimeSyncJobs(subscriptionId);
++      setJobs(res.data);
++    },
++    []
++  );
++
++  const loadAllData = useCallback(
++    async (subscriptionId?: number) => {
++      await Promise.all([loadOverview(), loadSubscriptions(), loadJobs(subscriptionId)]);
++    },
++    [loadJobs, loadOverview, loadSubscriptions]
++  );
++
++  useEffect(() => {
++    setLoading(true);
++    getCurrentUser()
++      .then(res => {
++        setUser(res.data);
++        return loadAllData();
++      })
++      .catch(error => {
++        if (isAuthError(error)) {
++          onLogout();
++          return;
++        }
++        Toast.error(getHttpErrorMessage(error, '加载番剧同步信息失败'));
++      })
++      .finally(() => {
++        setLoading(false);
++      });
++  }, [loadAllData, onLogout]);
++
++  const subscriptionOptions = useMemo(
++    () =>
++      subscriptions.map(item => ({
++        label: item.name,
++        value: item.id,
++      })),
++    [subscriptions]
++  );
++
++  const openAddModal = () => {
++    setEditingSubscription(null);
++    setModalVisible(true);
++  };
++
++  const openEditModal = (item: AnimeSyncSubscription) => {
++    setEditingSubscription(item);
++    setModalVisible(true);
++  };
++
++  const closeModal = () => {
++    setModalVisible(false);
++    setEditingSubscription(null);
++  };
++
++  const handleSave = async (values: unknown) => {
++    const payload = values as SubscriptionFormValues;
++    try {
++      setSaving(true);
++      if (editingSubscription) {
++        await updateAnimeSyncSubscription(editingSubscription.id, payload);
++        Toast.success('订阅已更新');
++      } else {
++        await createAnimeSyncSubscription(payload);
++        Toast.success('订阅已创建');
++      }
++      closeModal();
++      await loadAllData(subscriptionFilter);
++    } catch (error) {
++      Toast.error(getHttpErrorMessage(error, editingSubscription ? '更新失败' : '创建失败'));
++    } finally {
++      setSaving(false);
++    }
++  };
++
++  const handleRunAll = async () => {
++    try {
++      setRunningAll(true);
++      const res = await runAnimeSync();
++      Toast.success(`轮询完成：扫描 ${res.data.scannedSubscriptionCount} 个订阅，发现 ${res.data.discoveredJobCount} 条任务`);
++      await loadAllData(subscriptionFilter);
++    } catch (error) {
++      Toast.error(getHttpErrorMessage(error, '手动轮询失败'));
++    } finally {
++      setRunningAll(false);
++    }
++  };
++
++  const handleRunSubscription = async (id: number) => {
++    try {
++      const res = await runAnimeSyncBySubscription(id);
++      Toast.success(`执行完成：发现 ${res.data.discoveredJobCount} 条任务`);
++      await loadAllData(subscriptionFilter);
++    } catch (error) {
++      Toast.error(getHttpErrorMessage(error, '执行失败'));
++    }
++  };
++
++  const handleToggleSubscription = async (id: number) => {
++    try {
++      await toggleAnimeSyncSubscription(id);
++      Toast.success('订阅状态已更新');
++      await loadAllData(subscriptionFilter);
++    } catch (error) {
++      Toast.error(getHttpErrorMessage(error, '切换失败'));
++    }
++  };
++
++  const handleDeleteSubscription = async (id: number) => {
++    try {
++      await deleteAnimeSyncSubscription(id);
++      Toast.success('订阅已删除');
++      if (subscriptionFilter === id) {
++        setSubscriptionFilter(undefined);
++      }
++      await loadAllData(subscriptionFilter === id ? undefined : subscriptionFilter);
++    } catch (error) {
++      Toast.error(getHttpErrorMessage(error, '删除失败'));
++    }
++  };
++
++  const handleRetryJob = async (id: number) => {
++    try {
++      await retryAnimeSyncJob(id);
++      Toast.success('任务已重试');
++      await loadAllData(subscriptionFilter);
++    } catch (error) {
++      Toast.error(getHttpErrorMessage(error, '重试失败'));
++    }
++  };
++
++  const handleSkipJob = async (id: number) => {
++    try {
++      await skipAnimeSyncJob(id);
++      Toast.success('任务已跳过');
++      await loadAllData(subscriptionFilter);
++    } catch (error) {
++      Toast.error(getHttpErrorMessage(error, '跳过失败'));
++    }
++  };
++
++  if (loading) {
++    return <Loading type="page" text="正在加载番剧同步..." />;
++  }
++
++  if (!canAccess) {
++    return (
++      <div style={{ padding: 24 }}>
++        <Empty
++          title="当前角色未开通番剧同步功能"
++          description="请联系管理员在角色管理里开启 animeSync 功能权限。"
++          imageStyle={{ height: 120 }}
++        >
++          <Button icon={<IconHome />} onClick={() => navigate('/')}>
++            返回首页
++          </Button>
++        </Empty>
++      </div>
++    );
++  }
++
++  return (
++    <div style={{ width: '100%' }}>
++      <Nav
++        mode="horizontal"
++        header={{
++          logo: (
++            <div
++              onClick={() => navigate('/')}
++              style={{
++                width: 36,
++                height: 36,
++                borderRadius: 10,
++                background: 'linear-gradient(135deg, #F97316 0%, #EF4444 100%)',
++                display: 'flex',
++                alignItems: 'center',
++                justifyContent: 'center',
++                cursor: 'pointer',
++              }}
++            >
++              <IconVideo style={{ fontSize: 20, color: '#fff' }} />
++            </div>
++          ),
++          text: '番剧同步',
++        }}
++      />
++
++      <div style={{ padding: 16 }}>
++        <Space style={{ width: '100%' }} wrap>
++          <Card style={{ width: 240 }} title="订阅总数">
++            <Typography.Title heading={3}>{overview.subscriptionCount}</Typography.Title>
++          </Card>
++          <Card style={{ width: 240 }} title="启用订阅">
++            <Typography.Title heading={3}>{overview.enabledSubscriptionCount}</Typography.Title>
++          </Card>
++          <Card style={{ width: 240 }} title="待处理任务">
++            <Typography.Title heading={3}>{overview.discoveredJobCount}</Typography.Title>
++          </Card>
++          <Card style={{ width: 240 }} title="失败任务">
++            <Typography.Title heading={3}>{overview.failedJobCount}</Typography.Title>
++          </Card>
++        </Space>
++
++        <div style={{ marginTop: 16 }}>
++          <Tabs type="line">
++            <TabPane tab="订阅配置" itemKey="subscriptions">
++              <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 12 }} wrap>
++                <Space>
++                  <Button icon={<IconRefresh />} onClick={() => loadAllData(subscriptionFilter)}>
++                    刷新
++                  </Button>
++                  {isAdmin ? (
++                    <Button theme="solid" type="primary" loading={runningAll} onClick={handleRunAll}>
++                      立即轮询全部
++                    </Button>
++                  ) : null}
++                </Space>
++                {isAdmin ? (
++                  <Button theme="solid" type="tertiary" onClick={openAddModal}>
++                    新建订阅
++                  </Button>
++                ) : null}
++              </Space>
++              <Table
++                rowKey="id"
++                pagination={{ pageSize: 10 }}
++                dataSource={subscriptions}
++                columns={[
++                  { title: '名称', dataIndex: 'name' },
++                  {
++                    title: 'RSS',
++                    dataIndex: 'rssUrl',
++                    render: value => (
++                      <Typography.Text ellipsis style={{ maxWidth: 320 }}>
++                        {String(value || '-')}
++                      </Typography.Text>
++                    ),
++                  },
++                  {
++                    title: '目标目录',
++                    dataIndex: 'targetOpenlistPath',
++                    render: value => (
++                      <Typography.Text ellipsis style={{ maxWidth: 220 }}>
++                        {String(value || '-')}
++                      </Typography.Text>
++                    ),
++                  },
++                  { title: '轮询间隔(s)', dataIndex: 'pollIntervalSec', width: 120 },
++                  {
++                    title: '状态',
++                    dataIndex: 'enabled',
++                    width: 100,
++                    render: value => <Tag color={value ? 'green' : 'grey'}>{value ? '启用' : '停用'}</Tag>,
++                  },
++                  {
++                    title: '操作',
++                    width: 320,
++                    render: (_, record) => {
++                      const item = record as AnimeSyncSubscription;
++                      if (!isAdmin) {
++                        return '-';
++                      }
++                      return (
++                        <Space>
++                          <Button size="small" onClick={() => handleRunSubscription(item.id)}>
++                            执行
++                          </Button>
++                          <Button size="small" onClick={() => openEditModal(item)}>
++                            编辑
++                          </Button>
++                          <Button size="small" type={item.enabled ? 'warning' : 'primary'} onClick={() => handleToggleSubscription(item.id)}>
++                            {item.enabled ? '停用' : '启用'}
++                          </Button>
++                          <Popconfirm title="确认删除该订阅吗？" onConfirm={() => handleDeleteSubscription(item.id)}>
++                            <Button size="small" type="danger">
++                              删除
++                            </Button>
++                          </Popconfirm>
++                        </Space>
++                      );
++                    },
++                  },
++                ]}
++              />
++            </TabPane>
++            <TabPane tab="任务状态" itemKey="jobs">
++              <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 12 }} wrap>
++                <Select
++                  placeholder="全部订阅"
++                  value={subscriptionFilter}
++                  onChange={value => {
++                    const nextValue = Number(value) || undefined;
++                    setSubscriptionFilter(nextValue);
++                    void loadJobs(nextValue);
++                  }}
++                  optionList={[{ label: '全部订阅', value: 0 }, ...subscriptionOptions]}
++                  style={{ width: 280 }}
++                />
++                <Button icon={<IconRefresh />} onClick={() => loadAllData(subscriptionFilter)}>
++                  刷新
++                </Button>
++              </Space>
++              <Table
++                rowKey="id"
++                pagination={{ pageSize: 10 }}
++                dataSource={jobs}
++                columns={[
++                  { title: 'ID', dataIndex: 'id', width: 80 },
++                  {
++                    title: '标题',
++                    dataIndex: 'title',
++                    render: value => (
++                      <Typography.Text ellipsis style={{ maxWidth: 360 }}>
++                        {String(value || '-')}
++                      </Typography.Text>
++                    ),
++                  },
++                  {
++                    title: '状态',
++                    dataIndex: 'status',
++                    width: 120,
++                    render: value => (
++                      <Tag color={jobStatusColorMap[value as AnimeSyncJobStatus] || 'grey'}>
++                        {jobStatusLabelMap[value as AnimeSyncJobStatus] || String(value || '-')}
++                      </Tag>
++                    ),
++                  },
++                  { title: '重试次数', dataIndex: 'retryCount', width: 100 },
++                  {
++                    title: '错误信息',
++                    dataIndex: 'lastError',
++                    render: value => (
++                      <Typography.Text type="danger" ellipsis style={{ maxWidth: 260 }}>
++                        {String(value || '-')}
++                      </Typography.Text>
++                    ),
++                  },
++                  {
++                    title: '更新时间',
++                    dataIndex: 'updatedAt',
++                    width: 180,
++                    render: value => (value ? new Date(value).toLocaleString() : '-'),
++                  },
++                  {
++                    title: '操作',
++                    width: 180,
++                    render: (_, record) => {
++                      const item = record as AnimeSyncEpisodeJob;
++                      if (!isAdmin) {
++                        return '-';
++                      }
++                      return (
++                        <Space>
++                          <Button size="small" onClick={() => handleRetryJob(item.id)}>
++                            重试
++                          </Button>
++                          <Button size="small" type="warning" onClick={() => handleSkipJob(item.id)}>
++                            跳过
++                          </Button>
++                        </Space>
++                      );
++                    },
++                  },
++                ]}
++              />
++            </TabPane>
++          </Tabs>
++        </div>
++      </div>
++
++      <Modal
++        title={editingSubscription ? '编辑订阅' : '新建订阅'}
++        visible={modalVisible}
++        confirmLoading={saving}
++        onCancel={closeModal}
++        onOk={() => formApi?.submitForm()}
++      >
++        <AppForm
++          key={editingSubscription ? `edit-${editingSubscription.id}` : 'add'}
++          labelPosition="top"
++          initValues={
++            editingSubscription
++              ? {
++                  name: editingSubscription.name,
++                  rssUrl: editingSubscription.rssUrl,
++                  targetOpenlistPath: editingSubscription.targetOpenlistPath,
++                  qbitCategory: editingSubscription.qbitCategory || '',
++                  pollIntervalSec: editingSubscription.pollIntervalSec,
++                  enabled: editingSubscription.enabled,
++                }
++              : defaultFormValues
++          }
++          getFormApi={setFormApi}
++          onSubmit={handleSave}
++        >
++          <AppForm.Input field="name" label="订阅名称" placeholder="例如：海贼王" />
++          <AppForm.Input field="rssUrl" label="RSS 地址" placeholder="https://mikanani.me/RSS/Bangumi?bangumiId=xxx" />
++          <AppForm.Input field="targetOpenlistPath" label="目标目录" placeholder="/动漫/海贼王" />
++          <AppForm.Input field="qbitCategory" label="qB 分类（可选）" placeholder="anime" />
++          <AppForm.Input field="pollIntervalSec" label="轮询间隔（秒）" type="number" placeholder="300" />
++          <AppForm.RadioGroup field="enabled" label="是否启用">
++            <AppForm.Radio value>启用</AppForm.Radio>
++            <AppForm.Radio value={false}>停用</AppForm.Radio>
++          </AppForm.RadioGroup>
++        </AppForm>
++      </Modal>
++    </div>
++  );
++}
++
++export default AnimeSyncApp;
+diff --git a/apps/web-pc/src/apps/home/index.tsx b/apps/web-pc/src/apps/home/index.tsx
+index 64c405c..68b57e1 100644
+--- a/apps/web-pc/src/apps/home/index.tsx
++++ b/apps/web-pc/src/apps/home/index.tsx
+@@ -1,7 +1,7 @@
+ import { Avatar, Dropdown, Nav, Toast, Typography } from '@douyinfe/semi-ui';
+ import { AppCard } from './components';
+ import { IconAvatar, IconImage } from '@douyinfe/semi-icons-lab';
+-import { IconApps, IconExit, IconSetting } from '@douyinfe/semi-icons';
++import { IconApps, IconExit, IconSetting, IconVideo } from '@douyinfe/semi-icons';
+ import { clearAuthToken, getHttpErrorMessage, isAuthError } from '@/utils';
+ import { useNavigate } from 'react-router';
+ import { getCurrentUser } from '@/services/user';
+@@ -87,6 +87,9 @@ function HomeApp() {
+         {user?.featurePermissions?.includes(AppFeature.RANDOM_PIC) ? (
+           <AppCard title="随机图片" icon={<IconImage size="extra-large" />} link="/pic" />
+         ) : null}
++        {user?.featurePermissions?.includes(AppFeature.ANIME_SYNC) ? (
++          <AppCard title="番剧同步" icon={<IconVideo size="extra-large" />} link="/anime-sync" />
++        ) : null}
+       </div>
+     </div>
+   );
+diff --git a/apps/web-pc/src/apps/setting/pages/role/constants.ts b/apps/web-pc/src/apps/setting/pages/role/constants.ts
+index 395d280..6795f74 100644
+--- a/apps/web-pc/src/apps/setting/pages/role/constants.ts
++++ b/apps/web-pc/src/apps/setting/pages/role/constants.ts
+@@ -3,4 +3,5 @@ import { AppFeature } from '@volix/types';
+ export const featureLabelMap: Record<AppFeature, string> = {
+   [AppFeature.ACCOUNT_115]: '我的115（account115）',
+   [AppFeature.RANDOM_PIC]: '随机图片（randomPic）',
++  [AppFeature.ANIME_SYNC]: '番剧同步（animeSync）',
+ };
+diff --git a/apps/web-pc/src/layouts/router.ts b/apps/web-pc/src/layouts/router.ts
+index fdbb444..fdcbdb8 100644
+--- a/apps/web-pc/src/layouts/router.ts
++++ b/apps/web-pc/src/layouts/router.ts
+@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router';
+ import HomeApp from '@/apps/home';
+ import My115App from '@/apps/115';
+ import PicApp from '@/apps/pic';
++import AnimeSyncApp from '@/apps/anime-sync';
+ import AuthApp from '@/apps/auth';
+ import SettingApp from '@/apps/setting';
+ import SettingInfoApp from '@/apps/setting/pages/info';
+@@ -42,6 +43,10 @@ export const router = createBrowserRouter([
+         path: 'pic',
+         Component: PicApp,
+       },
++      {
++        path: 'anime-sync',
++        Component: AnimeSyncApp,
++      },
+       {
+         path: 'setting',
+         Component: SettingApp,
+diff --git a/apps/web-pc/src/services/anime-sync.ts b/apps/web-pc/src/services/anime-sync.ts
+new file mode 100644
+index 0000000..5b8a546
+--- /dev/null
++++ b/apps/web-pc/src/services/anime-sync.ts
+@@ -0,0 +1,55 @@
++import { http } from '@/utils';
++import type {
++  AnimeSyncEpisodeJob,
++  AnimeSyncOverview,
++  AnimeSyncRunResult,
++  AnimeSyncSubscription,
++  CreateAnimeSyncSubscriptionPayload,
++  UpdateAnimeSyncSubscriptionPayload,
++} from '@volix/types';
++
++export const getAnimeSyncOverview = () => {
++  return http.get<AnimeSyncOverview>('/anime-sync/overview');
++};
++
++export const getAnimeSyncSubscriptions = () => {
++  return http.get<AnimeSyncSubscription[]>('/anime-sync/subscriptions');
++};
++
++export const createAnimeSyncSubscription = (data: CreateAnimeSyncSubscriptionPayload) => {
++  return http.post<AnimeSyncSubscription>('/anime-sync/subscriptions', data);
++};
++
++export const updateAnimeSyncSubscription = (id: number, data: UpdateAnimeSyncSubscriptionPayload) => {
++  return http.put<AnimeSyncSubscription>(`/anime-sync/subscriptions/${id}`, data);
++};
++
++export const deleteAnimeSyncSubscription = (id: number) => {
++  return http.delete<{ success: boolean }>(`/anime-sync/subscriptions/${id}`);
++};
++
++export const toggleAnimeSyncSubscription = (id: number) => {
++  return http.post<AnimeSyncSubscription>(`/anime-sync/subscriptions/${id}/toggle`);
++};
++
++export const runAnimeSync = () => {
++  return http.post<AnimeSyncRunResult>('/anime-sync/run');
++};
++
++export const runAnimeSyncBySubscription = (id: number) => {
++  return http.post<AnimeSyncRunResult>(`/anime-sync/subscriptions/${id}/run`);
++};
++
++export const getAnimeSyncJobs = (subscriptionId?: number) => {
++  return http.get<AnimeSyncEpisodeJob[]>('/anime-sync/jobs', {
++    params: subscriptionId ? { subscriptionId } : undefined,
++  });
++};
++
++export const retryAnimeSyncJob = (id: number) => {
++  return http.post<AnimeSyncEpisodeJob>(`/anime-sync/jobs/${id}/retry`);
++};
++
++export const skipAnimeSyncJob = (id: number) => {
++  return http.post<AnimeSyncEpisodeJob>(`/anime-sync/jobs/${id}/skip`);
++};
+diff --git a/docs/anime-sync-design.md b/docs/anime-sync-design.md
+new file mode 100644
+index 0000000..ed9da2e
+--- /dev/null
++++ b/docs/anime-sync-design.md
+@@ -0,0 +1,432 @@
++# Volix 番剧同步任务设计文档
++
++## 1. 背景与目标
++
++### 1.1 背景
++当前系统已有：
++- 用户/角色/权限体系（`AppFeature`）
++- qBittorrent 账号配置与 SDK
++- OpenList 账号配置与 SDK
++- 后端任务模块骨架（`app_task`）
++
++用户希望实现“订阅番剧自动同步”能力：
++1. 从 Mikan 订阅动画（RSS）。
++2. 定时检测是否更新。
++3. 有更新则自动加入 qBittorrent 下载。
++4. 下载完成后，使用 OpenList 处理目标目录：
++   - 检查当前剧集与重复剧集
++   - 保证目标目录对同一集“有且仅有 1 条中文字幕版本”
++5. 将 qBittorrent 下载好的剧集复制到 OpenList 目标目录。
++6. 成功后清理 qBittorrent 中对应任务与文件。
++
++### 1.2 目标
++- 形成可持续运行的“番剧同步模块”（前后端独立功能模块）。
++- 在主页提供入口与状态概览。
++- 具备幂等、可重试、可观测、可人工干预能力。
++
++### 1.3 非目标（首期）
++- 不做复杂转码。
++- 不做多语言智能字幕匹配模型。
++- 不做分布式多实例并发调度（先单实例安全）。
++
++---
++
++## 2. 功能范围
++
++### 2.1 首期功能（MVP）
++- 订阅管理：增删改查、启停。
++- 同步任务调度：按订阅周期轮询 RSS。
++- 新番集发现：解析 RSS，识别唯一集。
++- 自动下载：提交 qBittorrent。
++- 完成检测：轮询 qBittorrent 下载状态。
++- OpenList 目录去重：同集只保留一条中文字幕文件。
++- 复制入库：从下载目录复制到目标目录。
++- 清理下载：删除 qBittorrent 任务及数据。
++- 任务状态页：可查看每个剧集流水线状态与错误。
++
++### 2.2 后续增强
++- 支持多个下载客户端。
++- 更智能命名解析（season/episode/group/resolution）。
++- 手动“重跑某一步”。
++- 更丰富通知（邮件/站内）。
++
++---
++
++## 3. 前端模块设计
++
++## 3.1 路由与入口
++
++### 主页入口
++- 在首页新增一个功能卡片：`番剧同步`。
++- 仅当用户有对应功能权限（新增 `AppFeature.ANIME_SYNC`）时展示。
++
++### 路由建议
++- `/anime-sync`：模块首页（订阅列表 + 运行状态概览）
++- `/anime-sync/subscriptions`：订阅管理
++- `/anime-sync/subscriptions/add`：新增订阅
++- `/anime-sync/subscriptions/edit/:id`：编辑订阅
++- `/anime-sync/jobs`：任务列表（按状态过滤）
++- `/anime-sync/jobs/:id`：任务详情（流水线步骤、错误日志、操作按钮）
++
++## 3.2 页面结构
++
++### 模块首页
++- 统计卡：
++  - 启用订阅数
++  - 运行中任务数
++  - 最近 24h 成功/失败
++- 最近任务列表（10 条）
++- 快速操作：手动触发全量轮询
++
++### 订阅管理
++- 字段：
++  - 订阅名称
++  - RSS URL
++  - 目标目录（OpenList）
++  - qBittorrent 分类（可选）
++  - 轮询间隔（秒）
++  - 启用状态
++- 支持：新增、编辑、启停、删除
++
++### 任务列表
++- 维度：订阅、剧集标题、状态、更新时间、错误摘要
++- 支持筛选：状态、订阅、时间范围
++- 支持动作：重试、跳过、终止
++
++---
++
++## 4. 后端模块设计
++
++## 4.1 模块目录建议
++
++```txt
++apps/api/src/modules/anime-sync/
++  model/
++    subscription.model.ts
++    episode-job.model.ts
++    run-log.model.ts
++  service/
++    rss.service.ts
++    parser.service.ts
++    scheduler.service.ts
++    pipeline.service.ts
++    dedupe.service.ts
++    sdk-bridge.service.ts
++  controller/
++    anime-sync.controller.ts
++  anime-sync.route.ts
++  types/
++    anime-sync.types.ts
++  index.ts
++```
++
++## 4.2 SDK 桥接（复用现有配置）
++
++### qBittorrent
++- 从 `app_config.account_qbittorrent` 获取连接信息。
++- 通过 `createQbittorrentSdk` 构建客户端。
++
++### OpenList
++- 从 `app_config.account_openlist` 获取连接信息。
++- 通过 `createOpenlistSdk` 登录后执行文件操作。
++
++### 配置可用性检查
++- 启动任务前统一校验：
++  - qB 配置完整
++  - OpenList 配置完整
++  - 认证成功
++- 失败时更新任务状态 `failed` 并写错误日志。
++
++---
++
++## 5. 数据库设计
++
++## 5.1 订阅表 `app_anime_subscription`
++
++字段建议：
++- `id` INTEGER PK
++- `name` STRING NOT NULL
++- `rss_url` STRING NOT NULL
++- `target_openlist_path` STRING NOT NULL
++- `qbit_category` STRING NULL
++- `poll_interval_sec` INTEGER NOT NULL DEFAULT 300
++- `enabled` BOOLEAN NOT NULL DEFAULT true
++- `last_polled_at` DATE NULL
++- `last_success_at` DATE NULL
++- `created_at` DATE
++- `updated_at` DATE
++
++索引建议：
++- `enabled`
++- `updated_at`
++
++## 5.2 剧集任务表 `app_anime_episode_job`
++
++字段建议：
++- `id` INTEGER PK
++- `subscription_id` INTEGER FK
++- `episode_key` STRING NOT NULL （唯一）
++- `title` STRING NOT NULL
++- `magnet` TEXT NOT NULL
++- `torrent_url` TEXT NULL
++- `qbit_hash` STRING NULL
++- `status` STRING NOT NULL
++- `retry_count` INTEGER DEFAULT 0
++- `last_error` TEXT NULL
++- `meta_json` TEXT NULL
++- `discovered_at` DATE
++- `completed_at` DATE NULL
++- `created_at` DATE
++- `updated_at` DATE
++
++唯一约束：
++- `(subscription_id, episode_key)`
++
++索引建议：
++- `status`
++- `subscription_id, updated_at`
++
++## 5.3 执行日志表 `app_anime_run_log`
++
++字段建议：
++- `id` INTEGER PK
++- `job_id` INTEGER FK
++- `step` STRING
++- `level` STRING (`info/warn/error`)
++- `message` TEXT
++- `detail_json` TEXT NULL
++- `created_at` DATE
++
++---
++
++## 6. 状态机设计（核心）
++
++## 6.1 状态定义
++- `discovered`：已发现新集，待入种
++- `queued`：已提交到 qB
++- `downloading`：下载中
++- `downloaded`：下载完成
++- `dedup_done`：目标目录去重完成
++- `copied`：已复制到目标目录
++- `cleaned`：已清理 qB（终态成功）
++- `failed`：失败（可重试）
++- `skipped`：人工跳过（终态）
++
++## 6.2 状态推进规则
++- 仅允许“单步前进”或进入 `failed`。
++- `failed` 可重试，重试后回到失败前一步。
++- 每次推进必须写日志。
++
++## 6.3 幂等要求
++- 同一步骤重复执行不得产生脏副作用。
++  - 入种：若已有 `qbit_hash` 且在 qB 中存在，则不重复 add。
++  - 复制：若目标已存在同名且大小一致，视为已复制。
++  - 清理：qB 任务不存在时视为已清理。
++
++---
++
++## 7. 核心流程（端到端）
++
++## 7.1 定时轮询
++1. 调度器每分钟扫描启用订阅。
++2. 对到期订阅执行 RSS 拉取。
++3. 解析条目并生成候选 episode。
++4. 写入新 job（去重后）。
++
++## 7.2 执行管道
++1. `discovered -> queued`：向 qB 提交 magnet/torrent。
++2. `queued/downloading -> downloaded`：轮询 qB 完成状态。
++3. `downloaded -> dedup_done`：OpenList 目标目录去重。
++4. `dedup_done -> copied`：将下载文件复制到目标目录。
++5. `copied -> cleaned`：删除 qB 任务和本地数据。
++
++## 7.3 去重策略（首期）
++
++同集识别（优先顺序）：
++1. 明确集号解析（SxxEyy / 第xx话）
++2. 文件名正则抽取
++3. 回退：标题归一化哈希
++
++中文字幕筛选：
++- 命中关键词：`简中|中字|CHS|GB|简体`
++
++保留规则：
++1. 优先中文字幕
++2. 再按分辨率（2160 > 1080 > 720）
++3. 再按文件大小
++4. 再按修改时间
++
++其余候选：
++- 首期直接删除（可配置安全模式：先移动到回收目录）
++
++---
++
++## 8. API 设计（首期）
++
++## 8.1 订阅管理
++- `GET /api/anime-sync/subscriptions`
++- `POST /api/anime-sync/subscriptions`
++- `PUT /api/anime-sync/subscriptions/:id`
++- `DELETE /api/anime-sync/subscriptions/:id`
++- `POST /api/anime-sync/subscriptions/:id/toggle`
++
++## 8.2 任务管理
++- `GET /api/anime-sync/jobs`
++- `GET /api/anime-sync/jobs/:id`
++- `POST /api/anime-sync/jobs/:id/retry`
++- `POST /api/anime-sync/jobs/:id/skip`
++
++## 8.3 手动执行
++- `POST /api/anime-sync/run`（全局触发）
++- `POST /api/anime-sync/subscriptions/:id/run`（单订阅触发）
++
++## 8.4 概览
++- `GET /api/anime-sync/overview`
++
++---
++
++## 9. 调度与并发控制
++
++## 9.1 调度方式
++- 复用 `node-schedule` 或固定 `setInterval`（建议后者先行，简单稳定）。
++- 每分钟 tick，一次最多推进 N 个任务（防止阻塞）。
++
++## 9.2 并发限制
++- 订阅级锁：同一订阅同一时刻只跑一个实例。
++- Job 级锁：同一个 job 同时只允许一个 worker 处理。
++
++## 9.3 进程重启恢复
++- 启动时扫描 `queued/downloading/downloaded/dedup_done/copied` 的任务继续推进。
++
++---
++
++## 10. 错误处理与重试
++
++### 10.1 可重试错误
++- 网络错误
++- SDK 认证过期
++- OpenList 暂时不可用
++- qB 暂时不可用
++
++策略：
++- 指数退避（1m/5m/15m）
++- `retry_count` 超限后保持 `failed`，等待人工处理
++
++### 10.2 不可重试错误
++- 订阅 URL 无效
++- 目标路径非法
++- 权限永久不足
++
++策略：
++- 直接 `failed`
++- 记录明确错误码与提示
++
++---
++
++## 11. 观测与运维
++
++### 11.1 日志
++- 模块日志分类：`animeSync`
++- 每步写结构化日志：`subscriptionId/jobId/step/status/cost`
++
++### 11.2 指标（可后续接入）
++- 每分钟发现新集数
++- 任务成功率
++- 平均处理时长
++- 失败原因分布
++
++### 11.3 管理动作
++- 手动重试失败任务
++- 手动跳过任务
++- 手动触发订阅轮询
++
++---
++
++## 12. 权限设计
++
++新增功能枚举：
++- `AppFeature.ANIME_SYNC = 'animeSync'`
++
++页面与接口权限：
++- 订阅配置、手动触发、任务操作：建议管理员可用。
++- 普通用户：可只读概览（可选）。
++
++---
++
++## 13. 与当前代码的对接点
++
++### 13.1 需要新增
++- 新模块：`modules/anime-sync`
++- 新表：`app_anime_subscription`、`app_anime_episode_job`、`app_anime_run_log`
++- 新 feature 枚举：`AppFeature.ANIME_SYNC`
++- 前端主页入口与模块页面
++
++### 13.2 需要补强现有 SDK
++- qB SDK：补 `add torrent` 接口（magnet/torrent URL）
++- OpenList SDK：补全分页拉取、按路径批量处理辅助方法
++
++### 13.3 配置复用
++- 直接复用 `app_config.account_qbittorrent` 与 `app_config.account_openlist`
++- 不新增重复账号配置页
++
++---
++
++## 14. 里程碑计划
++
++## M1（3~5 天）
++- 数据表 + 基础 API（订阅 CRUD）
++- RSS 拉取与新集发现
++- job 入库与状态页基础
++
++## M2（3~5 天）
++- qB 入种 + 下载完成检测
++- 基础失败重试
++
++## M3（4~6 天）
++- OpenList 去重 + 复制
++- qB 清理
++- 端到端跑通
++
++## M4（2~3 天）
++- 前端管理页完善
++- 错误日志与重试操作
++- 文档补充与验收
++
++---
++
++## 15. 验收标准
++
++1. 新建订阅后可自动发现新集并生成任务。
++2. 新集可自动入 qB 下载并被检测到完成。
++3. 完成后目标目录同集仅保留一条中文字幕版本。
++4. 新集文件可复制到目标目录。
++5. qB 中对应任务与文件可被清理。
++6. 失败任务可查看错误并手动重试。
++7. 系统重启后可继续处理中断任务。
++
++---
++
++## 16. 风险清单与缓解
++
++1. 文件名解析不稳定
++- 缓解：分层匹配 + 保守删除策略 + `safe_mode`
++
++2. OpenList 与 qB 路径映射不一致
++- 缓解：订阅级配置显式声明 source/target 根路径，启动前校验
++
++3. API 频率与稳定性
++- 缓解：轮询限频、并发上限、错误退避
++
++4. 误删风险
++- 缓解：首期开 `safe_mode` 默认 true，先移动回收目录
++
++---
++
++## 17. 后续可选扩展
++
++- RSS 解析增强（多源）
++- 剧集命名模板与标准化重命名
++- Telegram/邮件通知
++- 自动整理季目录
++- Webhook 触发（替代轮询）
++
+diff --git a/packages/types/src/api/anime-sync.ts b/packages/types/src/api/anime-sync.ts
+new file mode 100644
+index 0000000..350ab16
+--- /dev/null
++++ b/packages/types/src/api/anime-sync.ts
+@@ -0,0 +1,75 @@
++export enum AnimeSyncJobStatus {
++  DISCOVERED = 'discovered',
++  QUEUED = 'queued',
++  DOWNLOADING = 'downloading',
++  DOWNLOADED = 'downloaded',
++  DEDUP_DONE = 'dedup_done',
++  COPIED = 'copied',
++  CLEANED = 'cleaned',
++  FAILED = 'failed',
++  SKIPPED = 'skipped',
++}
++
++export interface AnimeSyncSubscription {
++  id: number;
++  name: string;
++  rssUrl: string;
++  targetOpenlistPath: string;
++  qbitCategory?: string;
++  pollIntervalSec: number;
++  enabled: boolean;
++  lastPolledAt?: string;
++  lastSuccessAt?: string;
++  createdAt?: string;
++  updatedAt?: string;
++}
++
++export interface CreateAnimeSyncSubscriptionPayload {
++  name: string;
++  rssUrl: string;
++  targetOpenlistPath: string;
++  qbitCategory?: string;
++  pollIntervalSec?: number;
++  enabled?: boolean;
++}
++
++export interface UpdateAnimeSyncSubscriptionPayload {
++  name?: string;
++  rssUrl?: string;
++  targetOpenlistPath?: string;
++  qbitCategory?: string;
++  pollIntervalSec?: number;
++  enabled?: boolean;
++}
++
++export interface AnimeSyncEpisodeJob {
++  id: number;
++  subscriptionId: number;
++  episodeKey: string;
++  title: string;
++  magnet: string;
++  torrentUrl?: string;
++  qbitHash?: string;
++  status: AnimeSyncJobStatus;
++  retryCount: number;
++  lastError?: string;
++  discoveredAt?: string;
++  completedAt?: string;
++  createdAt?: string;
++  updatedAt?: string;
++}
++
++export interface AnimeSyncOverview {
++  subscriptionCount: number;
++  enabledSubscriptionCount: number;
++  discoveredJobCount: number;
++  failedJobCount: number;
++}
++
++export interface AnimeSyncRunResult {
++  scannedSubscriptionCount: number;
++  discoveredJobCount: number;
++  processedJobCount?: number;
++  failedJobCount?: number;
++  completedJobCount?: number;
++}
+diff --git a/packages/types/src/api/index.ts b/packages/types/src/api/index.ts
+index 06c1ddf..fe77b32 100644
+--- a/packages/types/src/api/index.ts
++++ b/packages/types/src/api/index.ts
+@@ -7,3 +7,4 @@ export interface ResponseData<T = any> {
+ export * from './115';
+ export * from './user';
+ export * from './file';
++export * from './anime-sync';
+diff --git a/packages/types/src/api/user.ts b/packages/types/src/api/user.ts
+index e4552b4..2c7115b 100644
+--- a/packages/types/src/api/user.ts
++++ b/packages/types/src/api/user.ts
+@@ -6,6 +6,7 @@ export enum UserRole {
+ export enum AppFeature {
+   ACCOUNT_115 = 'account115',
+   RANDOM_PIC = 'randomPic',
++  ANIME_SYNC = 'animeSync',
+ }
+ 
+ export enum AccountConfigPlatform {
+-- 
+2.50.1 (Apple Git-155)
+

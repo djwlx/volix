@@ -8,6 +8,7 @@ import { File115Model } from '../modules/115';
 import { FileModel } from '../modules/file';
 import { RoleModel, UserModel } from '../modules/user';
 import { TaskModel } from '../modules/task';
+import { AnimeSyncEpisodeJobModel, AnimeSyncRunLogModel, AnimeSyncSubscriptionModel } from '../modules/anime-sync';
 
 const DEFAULT_USER_FEATURES: AppFeature[] = [AppFeature.RANDOM_PIC];
 
@@ -22,7 +23,17 @@ const syncModels = async () => {
     alter: process.env.DB_SYNC_ALTER ? process.env.DB_SYNC_ALTER === 'true' : process.env.NODE_ENV !== 'production',
     force: forceSync,
   };
-  const models = [ConfigModel, UserModel, RoleModel, File115Model, FileModel, TaskModel];
+  const models = [
+    ConfigModel,
+    UserModel,
+    RoleModel,
+    File115Model,
+    FileModel,
+    TaskModel,
+    AnimeSyncSubscriptionModel,
+    AnimeSyncEpisodeJobModel,
+    AnimeSyncRunLogModel,
+  ];
   try {
     for (const model of models) {
       await model.sync(syncOptions);
@@ -93,6 +104,52 @@ const ensureRoleTableAndSeed = async () => {
   }
 };
 
+const normalizeSqliteTimestampsToBeijing = async () => {
+  const queryInterface = sequelize.getQueryInterface();
+
+  try {
+    const tables = await queryInterface.showAllTables();
+    const queryGenerator = (queryInterface as unknown as {
+      queryGenerator: { quoteTable: (value: string) => string; quoteIdentifier: (value: string) => string };
+    }).queryGenerator;
+    const tableNames = tables
+      .map(item => {
+        if (typeof item === 'string') {
+          return item;
+        }
+        return (item as { tableName?: string; name?: string }).tableName || (item as { name?: string }).name || '';
+      })
+      .filter(Boolean)
+      .filter(name => name !== 'sqlite_sequence');
+
+    let updatedCount = 0;
+
+    for (const tableName of tableNames) {
+      const quotedTable = queryGenerator.quoteTable(tableName);
+      const columns = await queryInterface.describeTable(tableName);
+      const timestampColumns = Object.keys(columns).filter(columnName => columnName.endsWith('_at'));
+      for (const columnName of timestampColumns) {
+        const quotedColumn = queryGenerator.quoteIdentifier(columnName);
+        const [, result] = await sequelize.query(
+          `
+          UPDATE ${quotedTable}
+          SET ${quotedColumn} = strftime('%Y-%m-%d %H:%M:%f', ${quotedColumn}, '+8 hours') || ' +08:00'
+          WHERE ${quotedColumn} LIKE '% +00:00'
+          `
+        );
+        const changes = typeof result === 'object' && result && 'changes' in result ? Number((result as { changes?: number }).changes) : 0;
+        updatedCount += Number.isFinite(changes) ? changes : 0;
+      }
+    }
+
+    if (updatedCount > 0) {
+      log.info(`数据库时区统一完成：共转换 ${updatedCount} 条 UTC 时间为北京时间`);
+    }
+  } catch (error) {
+    log.warn('数据库时区统一跳过:', error);
+  }
+};
+
 const initApp = async () => {
   // // 生成必要的文件夹
   const pathList = [
@@ -118,6 +175,7 @@ const initApp = async () => {
 
   await syncModels();
   await ensureRoleTableAndSeed();
+  await normalizeSqliteTimestampsToBeijing();
 };
 
 export default initApp;

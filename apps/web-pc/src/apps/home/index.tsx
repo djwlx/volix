@@ -1,7 +1,7 @@
 import { Avatar, Dropdown, Nav, Toast, Typography } from '@douyinfe/semi-ui';
 import { AppCard } from './components';
 import { IconAvatar, IconImage } from '@douyinfe/semi-icons-lab';
-import { IconApps, IconExit, IconSetting } from '@douyinfe/semi-icons';
+import { IconApps, IconExit, IconSetting, IconVideo } from '@douyinfe/semi-icons';
 import { clearAuthToken, getHttpErrorMessage, isAuthError } from '@/utils';
 import { useNavigate } from 'react-router';
 import { getCurrentUser } from '@/services/user';
@@ -86,6 +86,9 @@ function HomeApp() {
         ) : null}
         {user?.featurePermissions?.includes(AppFeature.RANDOM_PIC) ? (
           <AppCard title="随机图片" icon={<IconImage size="extra-large" />} link="/pic" />
+        ) : null}
+        {user?.featurePermissions?.includes(AppFeature.ANIME_SYNC) ? (
+          <AppCard title="番剧同步" icon={<IconVideo size="extra-large" />} link="/anime-sync" />
         ) : null}
       </div>
     </div>
