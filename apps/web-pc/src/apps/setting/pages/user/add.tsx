@@ -7,7 +7,7 @@ import { useOutletContext } from 'react-router';
 import { UserRole } from '@volix/types';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 import type { RoleInfoResponse } from '@volix/types';
-import type { SettingOutletContext } from './index';
+import type { SettingOutletContext } from '@/apps/setting/types';
 
 interface UserAddFormValues {
   email: string;
@@ -28,7 +28,7 @@ const defaultValues: UserAddFormValues = {
 };
 
 function SettingUserAddApp() {
-  const { isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
+  const { user, isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
   const [roleList, setRoleList] = useState<RoleInfoResponse[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -37,6 +37,9 @@ function SettingUserAddApp() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!user) {
+      return;
+    }
     if (!isAdmin) {
       requestNavigate('/setting/user');
       return;
@@ -44,7 +47,7 @@ function SettingUserAddApp() {
     getRoleList()
       .then(res => setRoleList(res.data))
       .catch(() => Toast.error('获取角色列表失败'));
-  }, [isAdmin, requestNavigate]);
+  }, [user, isAdmin, requestNavigate]);
 
   useEffect(() => {
     if (!isDirty) {

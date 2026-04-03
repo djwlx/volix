@@ -4,7 +4,7 @@ import { getRoleList, removeRole } from '@/services/user';
 import { useOutletContext } from 'react-router';
 import { AppFeature } from '@volix/types';
 import type { RoleInfoResponse } from '@volix/types';
-import type { SettingOutletContext } from './index';
+import type { SettingOutletContext } from '@/apps/setting/types';
 import { featureLabelMap } from './constants';
 
 function SettingRoleApp() {

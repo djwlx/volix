@@ -1,18 +1,25 @@
-import { UserRole } from '@volix/types';
+import { AccountConfigPlatform, UserRole } from '@volix/types';
 import { AppFeature } from '@volix/types';
 import type {
+  AccountConfigMap,
   AdminCreateUserPayload,
   AdminUpdateUserPayload,
   AssignUserRolePayload,
   CreateRolePayload,
   LoginUserPayload,
   RegisterUserPayload,
+  SendRegisterCodePayload,
   SetUserRolePayload,
+  SmtpAccountConfigItem,
+  ServiceAccountConfigItem,
+  UpdateAccountConfigPayload,
   UpdateRolePayload,
+  UpdateSystemConfigPayload,
   UpdateUserProfilePayload,
 } from '@volix/types';
 import jwt from '../../../utils/jwt';
 import { badRequest, unauthorized } from '../../shared/http-handler';
+import { AppConfigEnum, getConfig, setConfig } from '../../config';
 import {
   addRole,
   addUser,
@@ -28,11 +35,25 @@ import {
   updateRole,
   updateUser,
 } from '../service/user.service';
+import {
+  assertRegisterCodeCanSend,
+  generateRegisterVerifyCode,
+  saveRegisterVerifyCode,
+  sendRegisterCodeMail,
+  verifyRegisterCode,
+} from '../service/email.service';
 
 const EMAIL_REGEXP = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const AVATAR_URL_REGEXP = /^(https?:\/\/|\/file\/)/;
 const DEFAULT_ROLE_KEY = 'default';
 const ROLE_KEY_PREFIX = 'role';
+const DEFAULT_USER_FEATURES: AppFeature[] = [AppFeature.RANDOM_PIC];
+const ACCOUNT_CONFIG_KEY_MAP: Record<AccountConfigPlatform, AppConfigEnum> = {
+  [AccountConfigPlatform.QBITTORRENT]: AppConfigEnum.account_qbittorrent,
+  [AccountConfigPlatform.OPENLIST]: AppConfigEnum.account_openlist,
+  [AccountConfigPlatform.SMTP]: AppConfigEnum.account_smtp,
+};
+const REGISTER_EMAIL_VERIFY_CONFIG_KEY = AppConfigEnum.register_email_verify_enabled;
 
 const ensureDefaultRole = async () => {
   const role = await queryRole({
@@ -45,7 +66,7 @@ const ensureDefaultRole = async () => {
   return addRole({
     role_key: DEFAULT_ROLE_KEY,
     role_name: '默认角色',
-    features: stringifyRoleFeatures([AppFeature.ACCOUNT_115, AppFeature.RANDOM_PIC]),
+    features: stringifyRoleFeatures(DEFAULT_USER_FEATURES),
   });
 };
 
@@ -83,6 +104,102 @@ const normalizeRoleFeatures = (features: unknown) => {
 
 const buildAutoRoleKey = () => {
   return `${ROLE_KEY_PREFIX}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+};
+
+const normalizeServiceAccountConfig = (config: unknown): ServiceAccountConfigItem => {
+  if (!config || typeof config !== 'object') {
+    badRequest('配置格式错误');
+  }
+
+  const raw = config as Partial<ServiceAccountConfigItem>;
+  const baseUrl = typeof raw.baseUrl === 'string' ? raw.baseUrl.trim() : '';
+  const username = typeof raw.username === 'string' ? raw.username.trim() : '';
+  const password = typeof raw.password === 'string' ? raw.password.trim() : '';
+
+  if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
+    badRequest('baseUrl 必须是 http/https 地址');
+  }
+  if (!username) {
+    badRequest('username 不能为空');
+  }
+  if (!password) {
+    badRequest('password 不能为空');
+  }
+
+  return {
+    baseUrl,
+    username,
+    password,
+  };
+};
+
+const normalizeSmtpAccountConfig = (config: unknown): SmtpAccountConfigItem => {
+  if (!config || typeof config !== 'object') {
+    badRequest('SMTP 配置格式错误');
+  }
+  const raw = config as Partial<SmtpAccountConfigItem>;
+  const host = typeof raw.host === 'string' ? raw.host.trim() : '';
+  const port = typeof raw.port === 'number' ? raw.port : Number(raw.port);
+  const secure = Boolean(raw.secure);
+  const username = typeof raw.username === 'string' ? raw.username.trim() : '';
+  const password = typeof raw.password === 'string' ? raw.password.trim() : '';
+  const fromEmail = typeof raw.fromEmail === 'string' ? raw.fromEmail.trim() : '';
+
+  if (!host) {
+    badRequest('SMTP host 不能为空');
+  }
+  if (!Number.isFinite(port) || port <= 0 || port > 65535) {
+    badRequest('SMTP port 非法');
+  }
+  if (!username) {
+    badRequest('SMTP username 不能为空');
+  }
+  if (!password) {
+    badRequest('SMTP password 不能为空');
+  }
+  if (!EMAIL_REGEXP.test(fromEmail)) {
+    badRequest('SMTP 发件邮箱格式错误');
+  }
+
+  return {
+    host,
+    port,
+    secure,
+    username,
+    password,
+    fromEmail,
+  };
+};
+
+const parseServiceAccountConfig = (raw?: string): ServiceAccountConfigItem | null => {
+  if (!raw) {
+    return null;
+  }
+  try {
+    return normalizeServiceAccountConfig(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+};
+
+const parseSmtpAccountConfig = (raw?: string): SmtpAccountConfigItem | null => {
+  if (!raw) {
+    return null;
+  }
+  try {
+    return normalizeSmtpAccountConfig(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+};
+
+const parseBooleanConfig = (raw?: string) => raw === 'true';
+
+const getSystemConfigData = async () => {
+  const config = await getConfig(REGISTER_EMAIL_VERIFY_CONFIG_KEY);
+  return {
+    registerEmailVerifyEnabled: parseBooleanConfig(config?.[REGISTER_EMAIL_VERIFY_CONFIG_KEY]),
+  };
 };
 
 const toUserResponse = async (data: {
@@ -135,7 +252,8 @@ export const loginUser: MyMiddleware = async ctx => {
 
 export const registerUser: MyMiddleware = async ctx => {
   const param = ctx.request.body as RegisterUserPayload;
-  const { email, password } = param;
+  const email = param.email?.trim();
+  const password = param.password?.trim();
   if (!email || !password) {
     badRequest('邮箱或密码不能为空');
   }
@@ -148,6 +266,22 @@ export const registerUser: MyMiddleware = async ctx => {
   });
   if (findOne) {
     badRequest('用户已存在');
+  }
+
+  const systemConfig = await getSystemConfigData();
+  const smtpConfigData = await getConfig(AppConfigEnum.account_smtp);
+  const smtpConfig = parseSmtpAccountConfig(smtpConfigData?.[AppConfigEnum.account_smtp]);
+  const shouldVerifyEmail = systemConfig.registerEmailVerifyEnabled && Boolean(smtpConfig);
+
+  if (shouldVerifyEmail) {
+    const verifyCode = (param.verifyCode || '').trim();
+    if (!verifyCode) {
+      badRequest('请输入邮箱验证码');
+    }
+    const isValid = verifyRegisterCode(email, verifyCode);
+    if (!isValid) {
+      badRequest('验证码错误或已过期');
+    }
   }
 
   const userCount = await countUsers();
@@ -178,6 +312,65 @@ export const registerUser: MyMiddleware = async ctx => {
   };
 };
 
+export const getRegisterConfig: MyMiddleware = async () => {
+  const [systemConfig, smtpConfigData] = await Promise.all([
+    getSystemConfigData(),
+    getConfig(AppConfigEnum.account_smtp),
+  ]);
+  const smtpConfig = parseSmtpAccountConfig(smtpConfigData?.[AppConfigEnum.account_smtp]);
+
+  return {
+    emailVerificationRequired: systemConfig.registerEmailVerifyEnabled && Boolean(smtpConfig),
+  };
+};
+
+export const sendRegisterCode: MyMiddleware = async ctx => {
+  const param = (ctx.request.body || {}) as SendRegisterCodePayload;
+  const email = param.email?.trim();
+
+  if (!email || !EMAIL_REGEXP.test(email)) {
+    badRequest('邮箱格式错误');
+  }
+
+  const [systemConfig, smtpConfigData] = await Promise.all([
+    getSystemConfigData(),
+    getConfig(AppConfigEnum.account_smtp),
+  ]);
+  const smtpConfig = parseSmtpAccountConfig(smtpConfigData?.[AppConfigEnum.account_smtp]);
+
+  if (!systemConfig.registerEmailVerifyEnabled) {
+    badRequest('当前未开启注册邮箱验证');
+  }
+  if (!smtpConfig) {
+    badRequest('请先在系统中配置 SMTP');
+  }
+  const smtp = smtpConfig as SmtpAccountConfigItem;
+
+  const exists = await queryUser({ email });
+  if (exists) {
+    badRequest('用户已存在');
+  }
+
+  assertRegisterCodeCanSend(email);
+  const code = generateRegisterVerifyCode();
+
+  await sendRegisterCodeMail({
+    smtpHost: smtp.host,
+    smtpPort: smtp.port,
+    smtpSecure: smtp.secure,
+    smtpUsername: smtp.username,
+    smtpPassword: smtp.password,
+    fromEmail: smtp.fromEmail,
+    toEmail: email,
+    code,
+  });
+  saveRegisterVerifyCode(email, code);
+
+  return {
+    success: true,
+  };
+};
+
 export const getCurrentUser: MyMiddleware = async ctx => {
   const userId = ctx.state.userInfo?.id;
   if (!userId) {
@@ -204,6 +397,77 @@ export const getCurrentUser: MyMiddleware = async ctx => {
     role: (user.dataValues.role || UserRole.USER) as UserRole,
     roleKey: user.dataValues.role_key,
     featurePermissions,
+  };
+};
+
+export const getAccountConfigs: MyMiddleware = async ctx => {
+  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
+    unauthorized('仅管理员可访问');
+  }
+
+  const configData = await getConfig(Object.values(ACCOUNT_CONFIG_KEY_MAP));
+  const result: AccountConfigMap = {};
+
+  if (configData?.[AppConfigEnum.account_qbittorrent]) {
+    result[AccountConfigPlatform.QBITTORRENT] =
+      parseServiceAccountConfig(configData[AppConfigEnum.account_qbittorrent]) || undefined;
+  }
+  if (configData?.[AppConfigEnum.account_openlist]) {
+    result[AccountConfigPlatform.OPENLIST] =
+      parseServiceAccountConfig(configData[AppConfigEnum.account_openlist]) || undefined;
+  }
+  if (configData?.[AppConfigEnum.account_smtp]) {
+    result[AccountConfigPlatform.SMTP] = parseSmtpAccountConfig(configData[AppConfigEnum.account_smtp]) || undefined;
+  }
+
+  return result;
+};
+
+export const updateAccountConfig: MyMiddleware = async ctx => {
+  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
+    unauthorized('仅管理员可操作');
+  }
+
+  const param = (ctx.request.body || {}) as UpdateAccountConfigPayload;
+  const { platform } = param;
+
+  if (!platform || !ACCOUNT_CONFIG_KEY_MAP[platform]) {
+    badRequest('platform 参数错误');
+  }
+
+  const config =
+    platform === AccountConfigPlatform.SMTP
+      ? normalizeSmtpAccountConfig(param.config)
+      : normalizeServiceAccountConfig(param.config);
+  const configKey = ACCOUNT_CONFIG_KEY_MAP[platform];
+  await setConfig(configKey, JSON.stringify(config));
+
+  return {
+    platform,
+    config,
+  };
+};
+
+export const getSystemConfig: MyMiddleware = async ctx => {
+  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
+    unauthorized('仅管理员可访问');
+  }
+  return getSystemConfigData();
+};
+
+export const updateSystemConfig: MyMiddleware = async ctx => {
+  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
+    unauthorized('仅管理员可操作');
+  }
+
+  const param = (ctx.request.body || {}) as UpdateSystemConfigPayload;
+  if (typeof param.registerEmailVerifyEnabled !== 'boolean') {
+    badRequest('registerEmailVerifyEnabled 参数错误');
+  }
+
+  await setConfig(REGISTER_EMAIL_VERIFY_CONFIG_KEY, String(param.registerEmailVerifyEnabled));
+  return {
+    registerEmailVerifyEnabled: param.registerEmailVerifyEnabled,
   };
 };
 

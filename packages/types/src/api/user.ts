@@ -8,6 +8,58 @@ export enum AppFeature {
   RANDOM_PIC = 'randomPic',
 }
 
+export enum AccountConfigPlatform {
+  QBITTORRENT = 'qbittorrent',
+  OPENLIST = 'openlist',
+  SMTP = 'smtp',
+}
+
+export interface ServiceAccountConfigItem {
+  baseUrl: string;
+  username: string;
+  password: string;
+}
+
+export interface SmtpAccountConfigItem {
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  password: string;
+  fromEmail: string;
+}
+
+export interface AccountConfigMap {
+  qbittorrent?: ServiceAccountConfigItem;
+  openlist?: ServiceAccountConfigItem;
+  smtp?: SmtpAccountConfigItem;
+}
+
+export interface UpdateAccountConfigPayload {
+  platform: AccountConfigPlatform;
+  config: ServiceAccountConfigItem | SmtpAccountConfigItem;
+}
+
+export interface RegisterConfigResponse {
+  emailVerificationRequired: boolean;
+}
+
+export interface SendRegisterCodePayload {
+  email: string;
+}
+
+export interface SendRegisterCodeResponse {
+  success: boolean;
+}
+
+export interface SystemConfigResponse {
+  registerEmailVerifyEnabled: boolean;
+}
+
+export interface UpdateSystemConfigPayload {
+  registerEmailVerifyEnabled: boolean;
+}
+
 export interface LoginUserPayload {
   email: string;
   password: string;
@@ -16,6 +68,7 @@ export interface LoginUserPayload {
 export interface RegisterUserPayload {
   email: string;
   password: string;
+  verifyCode?: string;
 }
 
 export interface LoginUserResponse {

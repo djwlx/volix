@@ -2,80 +2,42 @@ import { PATH } from './path';
 import fs from 'fs';
 import { log } from './logger';
 import sequelize from './sequelize';
-import { DataTypes } from 'sequelize';
 import { UserRole, AppFeature } from '@volix/types';
+import { ConfigModel } from '../modules/config';
+import { File115Model } from '../modules/115';
+import { FileModel } from '../modules/file';
+import { RoleModel, UserModel } from '../modules/user';
+import { TaskModel } from '../modules/task';
 
-const ensureUserTableColumns = async () => {
-  const queryInterface = sequelize.getQueryInterface();
+const DEFAULT_USER_FEATURES: AppFeature[] = [AppFeature.RANDOM_PIC];
+
+const syncModels = async () => {
+  const forceRequested = process.env.DB_SYNC_FORCE === 'true';
+  const allowDestructive = process.env.ALLOW_DESTRUCTIVE_DB_SYNC === 'true';
+  const forceSync = forceRequested && allowDestructive;
+  if (forceRequested && !allowDestructive) {
+    log.warn('检测到 DB_SYNC_FORCE=true，但未开启 ALLOW_DESTRUCTIVE_DB_SYNC，已忽略危险重建操作');
+  }
+  const syncOptions = {
+    alter: process.env.DB_SYNC_ALTER ? process.env.DB_SYNC_ALTER === 'true' : process.env.NODE_ENV !== 'production',
+    force: forceSync,
+  };
+  const models = [ConfigModel, UserModel, RoleModel, File115Model, FileModel, TaskModel];
   try {
-    const columns = await queryInterface.describeTable('app_user');
-    if (!columns.avatar) {
-      await queryInterface.addColumn('app_user', 'avatar', {
-        type: DataTypes.STRING,
-        allowNull: true,
-      });
-      log.info('数据库迁移完成: app_user.avatar 已补齐');
+    for (const model of models) {
+      await model.sync(syncOptions);
     }
-    if (!columns.role_key) {
-      await queryInterface.addColumn('app_user', 'role_key', {
-        type: DataTypes.STRING,
-        allowNull: false,
-        defaultValue: 'default',
-      });
-      log.info('数据库迁移完成: app_user.role_key 已补齐');
-    }
+    log.info(`数据库模型同步完成: alter=${syncOptions.alter}, force=${syncOptions.force}`);
   } catch (error) {
-    log.warn('检查/迁移 app_user 表结构时跳过:', error);
+    log.error('数据库模型同步失败:', error);
+    throw error;
   }
 };
 
 const ensureRoleTableAndSeed = async () => {
-  const queryInterface = sequelize.getQueryInterface();
   try {
-    const tables = await queryInterface.showAllTables();
-    const exists = tables.some(item => {
-      if (typeof item === 'string') {
-        return item === 'app_role';
-      }
-      const tableName = (item as { tableName?: string; name?: string }).tableName || (item as { name?: string }).name;
-      return tableName === 'app_role';
-    });
-    if (!exists) {
-      await queryInterface.createTable('app_role', {
-        id: {
-          type: DataTypes.INTEGER,
-          primaryKey: true,
-          autoIncrement: true,
-          allowNull: false,
-        },
-        role_key: {
-          type: DataTypes.STRING,
-          allowNull: false,
-          unique: true,
-        },
-        role_name: {
-          type: DataTypes.STRING,
-          allowNull: false,
-        },
-        features: {
-          type: DataTypes.TEXT,
-          allowNull: false,
-          defaultValue: '[]',
-        },
-        created_at: {
-          type: DataTypes.DATE,
-          allowNull: false,
-        },
-        updated_at: {
-          type: DataTypes.DATE,
-          allowNull: false,
-        },
-      });
-      log.info('数据库迁移完成: app_role 表已创建');
-    }
-
     const now = new Date();
-    await queryInterface.sequelize.query(
+    await sequelize.query(
       `
       INSERT INTO app_role (role_key, role_name, features, created_at, updated_at)
       SELECT :roleKey, :roleName, :features, :now, :now
@@ -85,13 +47,28 @@ const ensureRoleTableAndSeed = async () => {
         replacements: {
           roleKey: 'default',
           roleName: '默认角色',
-          features: JSON.stringify([AppFeature.ACCOUNT_115, AppFeature.RANDOM_PIC]),
+          features: JSON.stringify(DEFAULT_USER_FEATURES),
           now,
         },
       }
     );
 
-    await queryInterface.sequelize.query(
+    await sequelize.query(
+      `
+      UPDATE app_role
+      SET features = :features, updated_at = :now
+      WHERE role_key = :roleKey
+      `,
+      {
+        replacements: {
+          roleKey: 'default',
+          features: JSON.stringify(DEFAULT_USER_FEATURES),
+          now,
+        },
+      }
+    );
+
+    await sequelize.query(
       `
       UPDATE app_user
       SET role_key = 'default'
@@ -99,7 +76,7 @@ const ensureRoleTableAndSeed = async () => {
       `
     );
 
-    await queryInterface.sequelize.query(
+    await sequelize.query(
       `
       UPDATE app_user
       SET role_key = 'default'
@@ -112,7 +89,7 @@ const ensureRoleTableAndSeed = async () => {
       }
     );
   } catch (error) {
-    log.warn('检查/迁移 app_role 表结构时跳过:', error);
+    log.warn('角色默认数据初始化时跳过:', error);
   }
 };
 
@@ -139,7 +116,7 @@ const initApp = async () => {
     }
   }
 
-  await ensureUserTableColumns();
+  await syncModels();
   await ensureRoleTableAndSeed();
 };
 

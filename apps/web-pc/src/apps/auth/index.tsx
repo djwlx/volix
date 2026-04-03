@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Toast, Typography } from '@douyinfe/semi-ui';
-import type { LoginUserPayload } from '@volix/types';
-import { loginUser, registerUser } from '@/services/user';
+import type { LoginUserPayload, RegisterUserPayload } from '@volix/types';
+import { getRegisterConfig, loginUser, registerUser, sendRegisterCode } from '@/services/user';
 import { AppForm } from '@/components';
 import { setAuthToken } from '@/utils';
 import { useLocation, useNavigate } from 'react-router';
+import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 
 type Mode = 'login' | 'register';
 
@@ -29,13 +30,35 @@ const getErrorMessage = (error: unknown) => {
 function AuthApp() {
   const [mode, setMode] = useState<Mode>('login');
   const [loading, setLoading] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [registerEmailVerifyRequired, setRegisterEmailVerifyRequired] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [formApi, setFormApi] = useState<FormApi<Record<string, unknown>>>();
   const navigate = useNavigate();
   const location = useLocation();
   const modeText = useMemo(() => modeTextMap[mode], [mode]);
   const redirectTo = ((location.state as { from?: string } | null)?.from || '/') as string;
 
+  useEffect(() => {
+    getRegisterConfig()
+      .then(res => {
+        setRegisterEmailVerifyRequired(Boolean(res.data?.emailVerificationRequired));
+      })
+      .catch(() => {
+        setRegisterEmailVerifyRequired(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (countdown <= 0) {
+      return;
+    }
+    const timer = window.setTimeout(() => setCountdown(prev => prev - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [countdown]);
+
   const onSubmit = async (values: unknown) => {
-    const payload = values as LoginUserPayload;
+    const payload = values as LoginUserPayload & RegisterUserPayload;
     try {
       setLoading(true);
 
@@ -63,6 +86,24 @@ function AuthApp() {
     }
   };
 
+  const onSendCode = async () => {
+    const email = String(formApi?.getValue('email') || '').trim();
+    if (!email) {
+      Toast.warning('请先输入邮箱');
+      return;
+    }
+    try {
+      setSendingCode(true);
+      await sendRegisterCode({ email });
+      setCountdown(60);
+      Toast.success('验证码已发送，请检查邮箱');
+    } catch (error) {
+      Toast.error(getErrorMessage(error));
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
   return (
     <div
       style={{
@@ -82,7 +123,7 @@ function AuthApp() {
           borderRadius: 12,
         }}
       >
-        <AppForm onSubmit={onSubmit} labelPosition="top">
+        <AppForm onSubmit={onSubmit} labelPosition="top" getFormApi={setFormApi}>
           <AppForm.Input
             field="email"
             label="邮箱"
@@ -102,6 +143,19 @@ function AuthApp() {
               { min: 6, message: '密码至少 6 位' },
             ]}
           />
+          {mode === 'register' && registerEmailVerifyRequired ? (
+            <>
+              <AppForm.Input
+                field="verifyCode"
+                label="邮箱验证码"
+                placeholder="请输入邮箱验证码"
+                rules={[{ required: true, message: '请输入邮箱验证码' }]}
+              />
+              <Button onClick={onSendCode} loading={sendingCode} disabled={countdown > 0} style={{ width: '100%' }}>
+                {countdown > 0 ? `${countdown}s 后重发` : '发送验证码'}
+              </Button>
+            </>
+          ) : null}
 
           <Button htmlType="submit" theme="solid" type="primary" loading={loading} style={{ width: '100%' }}>
             {modeText.submitText}

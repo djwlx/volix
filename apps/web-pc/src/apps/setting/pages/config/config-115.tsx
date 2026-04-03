@@ -5,7 +5,7 @@ import { UserRole } from '@volix/types';
 import { Login } from '@/apps/115/login';
 import { UserInfo } from '@/apps/115/user-info';
 import { useUserInfo } from '@/apps/115/hooks/useUserInfo';
-import type { SettingOutletContext } from './index';
+import type { SettingOutletContext } from '@/apps/setting/types';
 
 function SettingConfig115App() {
   const { user, requestNavigate } = useOutletContext<SettingOutletContext>();
@@ -14,10 +14,13 @@ function SettingConfig115App() {
   const isAdmin = user?.role === UserRole.ADMIN;
 
   useEffect(() => {
+    if (!user) {
+      return;
+    }
     if (!isAdmin) {
       requestNavigate('/setting/info');
     }
-  }, [isAdmin, requestNavigate]);
+  }, [user, isAdmin, requestNavigate]);
 
   if (!isAdmin) {
     return (

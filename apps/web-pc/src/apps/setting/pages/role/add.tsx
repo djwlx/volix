@@ -4,7 +4,7 @@ import { createRole } from '@/services/user';
 import { AppForm } from '@/components';
 import { useOutletContext } from 'react-router';
 import { AppFeature } from '@volix/types';
-import type { SettingOutletContext } from './index';
+import type { SettingOutletContext } from '@/apps/setting/types';
 import { featureLabelMap } from './constants';
 
 interface RoleAddFormValues {
@@ -18,7 +18,7 @@ const defaultValues: RoleAddFormValues = {
 };
 
 function SettingRoleAddApp() {
-  const { isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
+  const { user, isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
   const [creatingRole, setCreatingRole] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
@@ -32,10 +32,13 @@ function SettingRoleAddApp() {
   );
 
   useEffect(() => {
+    if (!user) {
+      return;
+    }
     if (!isAdmin) {
       requestNavigate('/setting/role');
     }
-  }, [isAdmin, requestNavigate]);
+  }, [user, isAdmin, requestNavigate]);
 
   useEffect(() => {
     if (!isDirty) {

@@ -7,7 +7,7 @@ import { useOutletContext, useParams } from 'react-router';
 import { UserRole } from '@volix/types';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 import type { RoleInfoResponse, UserInfoResponse } from '@volix/types';
-import type { SettingOutletContext } from './index';
+import type { SettingOutletContext } from '@/apps/setting/types';
 
 interface UserEditFormValues {
   email: string;
@@ -18,7 +18,7 @@ interface UserEditFormValues {
 }
 
 function SettingUserEditApp() {
-  const { isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
+  const { user, isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
   const { id = '' } = useParams();
   const [roleList, setRoleList] = useState<RoleInfoResponse[]>([]);
   const [origin, setOrigin] = useState<UserInfoResponse>();
@@ -43,12 +43,15 @@ function SettingUserEditApp() {
   };
 
   useEffect(() => {
+    if (!user) {
+      return;
+    }
     if (!isAdmin) {
       requestNavigate('/setting/user');
       return;
     }
     loadData().catch(() => Toast.error('获取用户信息失败'));
-  }, [isAdmin, id, requestNavigate]);
+  }, [user, isAdmin, id, requestNavigate]);
 
   useEffect(() => {
     if (!isDirty) {

@@ -5,7 +5,7 @@ import { AppForm } from '@/components';
 import { useOutletContext, useParams } from 'react-router';
 import { AppFeature } from '@volix/types';
 import type { RoleInfoResponse } from '@volix/types';
-import type { SettingOutletContext } from './index';
+import type { SettingOutletContext } from '@/apps/setting/types';
 import { featureLabelMap } from './constants';
 
 interface RoleEditFormValues {
@@ -13,7 +13,7 @@ interface RoleEditFormValues {
 }
 
 function SettingRoleEditApp() {
-  const { isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
+  const { user, isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
   const { roleKey = '' } = useParams();
   const [roleInfo, setRoleInfo] = useState<RoleInfoResponse>();
   const [saving, setSaving] = useState(false);
@@ -42,6 +42,9 @@ function SettingRoleEditApp() {
   );
 
   useEffect(() => {
+    if (!user) {
+      return;
+    }
     if (!isAdmin) {
       requestNavigate('/setting/role');
       return;
@@ -49,7 +52,7 @@ function SettingRoleEditApp() {
     loadRole().catch(() => {
       Toast.error('获取角色信息失败');
     });
-  }, [isAdmin, roleKey]);
+  }, [user, isAdmin, roleKey, requestNavigate]);
 
   useEffect(() => {
     if (!isDirty) {

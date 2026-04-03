@@ -5,7 +5,7 @@ import { uploadLocalFile } from '@/services/file';
 import { AppForm } from '@/components';
 import { useOutletContext } from 'react-router';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
-import type { SettingOutletContext } from './index';
+import type { SettingOutletContext } from '@/apps/setting/types';
 
 interface InfoFormValues {
   email: string;
@@ -23,14 +23,17 @@ function SettingInfoApp() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (!user) {
+      return;
+    }
     const nextValues: InfoFormValues = {
-      email: user?.email || '',
-      nickname: user?.nickname || '',
-      avatar: user?.avatar || '',
+      email: user.email || '',
+      nickname: user.nickname || '',
+      avatar: user.avatar || '',
     };
     setFormInitValues(nextValues);
     setPreview({ nickname: nextValues.nickname, avatar: nextValues.avatar });
-  }, [user?.nickname, user?.avatar]);
+  }, [user]);
 
   const onSave = async (values: unknown) => {
     const payload = values as InfoFormValues;
@@ -80,9 +83,9 @@ function SettingInfoApp() {
           <Typography.Text type="secondary">支持填写头像图片 URL，保存后即时生效</Typography.Text>
         </div>
 
-        {formInitValues ? (
+        {user && formInitValues ? (
           <AppForm
-            key={user?.id ? String(user.id) : 'me'}
+            key={String(user.id)}
             labelPosition="top"
             initValues={formInitValues}
             getFormApi={setFormApi}

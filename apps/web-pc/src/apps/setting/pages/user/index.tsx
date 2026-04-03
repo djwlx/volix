@@ -3,7 +3,7 @@ import { Avatar, Button, Card, Empty, Table, Toast } from '@douyinfe/semi-ui';
 import { getRoleList, getUserList } from '@/services/user';
 import { useOutletContext } from 'react-router';
 import type { RoleInfoResponse, UserInfoResponse } from '@volix/types';
-import type { SettingOutletContext } from './index';
+import type { SettingOutletContext } from '@/apps/setting/types';
 
 function SettingUserApp() {
   const { isAdmin, requestNavigate } = useOutletContext<SettingOutletContext>();

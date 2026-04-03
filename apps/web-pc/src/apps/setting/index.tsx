@@ -7,19 +7,14 @@ import { useLocation, useNavigate, Outlet } from 'react-router';
 import { getCurrentUser } from '@/services/user';
 import { UserRole } from '@volix/types';
 import type { UserInfoResponse } from '@volix/types';
-
-export interface SettingOutletContext {
-  user?: UserInfoResponse;
-  isAdmin: boolean;
-  refreshUser: () => Promise<void>;
-  requestNavigate: (to: string) => void;
-  registerLeaveGuard: (guard: (() => boolean) | null) => void;
-}
+import { Loading } from '@/components';
+import type { SettingOutletContext } from './types';
 
 function SettingApp() {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState<UserInfoResponse>();
+  const [userLoading, setUserLoading] = useState(true);
   const [isNavCollapsed, setIsNavCollapsed] = useState(false);
   const leaveGuardRef = useRef<(() => boolean) | null>(null);
 
@@ -50,18 +45,33 @@ function SettingApp() {
   }, []);
 
   useEffect(() => {
+    setUserLoading(true);
     refreshUser().catch(error => {
       if (isAuthError(error)) {
         onLogout();
         return;
       }
       Toast.error(getHttpErrorMessage(error, '获取用户信息失败，请稍后重试'));
+    }).finally(() => {
+      setUserLoading(false);
     });
   }, []);
 
   const activeKey = useMemo(() => {
     if (location.pathname.startsWith('/setting/config/115')) {
       return 'config/115';
+    }
+    if (location.pathname.startsWith('/setting/config/qbittorrent')) {
+      return 'config/qbittorrent';
+    }
+    if (location.pathname.startsWith('/setting/config/openlist')) {
+      return 'config/openlist';
+    }
+    if (location.pathname.startsWith('/setting/config/smtp')) {
+      return 'config/smtp';
+    }
+    if (location.pathname.startsWith('/setting/system')) {
+      return 'system';
     }
     if (location.pathname.startsWith('/setting/role')) {
       return 'role';
@@ -101,6 +111,11 @@ function SettingApp() {
                 icon: <IconUserGroup />,
               },
               {
+                itemKey: 'system',
+                text: '系统配置',
+                icon: <IconSetting />,
+              },
+              {
                 itemKey: 'config',
                 text: '账号配置',
                 icon: <IconConfigStroked />,
@@ -110,6 +125,21 @@ function SettingApp() {
                     text: '115',
                     icon: <IconCloud />,
                   },
+                  {
+                    itemKey: 'config/qbittorrent',
+                    text: 'qBittorrent',
+                    icon: <IconCloud />,
+                  },
+                  {
+                    itemKey: 'config/openlist',
+                    text: 'OpenList',
+                    icon: <IconCloud />,
+                  },
+                  {
+                    itemKey: 'config/smtp',
+                    text: 'SMTP',
+                    icon: <IconCloud />,
+                  },
                 ],
               },
             ],
@@ -117,6 +147,10 @@ function SettingApp() {
         ]
       : []),
   ];
+
+  if (userLoading) {
+    return <Loading type="page" text="正在加载设置..." />;
+  }
 
   return (
     <div style={{ width: '100%', overflowX: 'hidden' }}>

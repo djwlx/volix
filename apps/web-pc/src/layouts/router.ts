@@ -4,27 +4,34 @@ import My115App from '@/apps/115';
 import PicApp from '@/apps/pic';
 import AuthApp from '@/apps/auth';
 import SettingApp from '@/apps/setting';
-import SettingInfoApp from '@/apps/setting/info';
-import SettingUserApp from '@/apps/setting/user';
-import SettingRoleApp from '@/apps/setting/role';
-import SettingRoleAddApp from '@/apps/setting/role-add';
-import SettingRoleEditApp from '@/apps/setting/role-edit';
-import SettingUserAddApp from '@/apps/setting/user-add';
-import SettingUserEditApp from '@/apps/setting/user-edit';
-import SettingConfig115App from '@/apps/setting/config-115';
+import SettingInfoApp from '@/apps/setting/pages/info';
+import SettingUserApp from '@/apps/setting/pages/user';
+import SettingRoleApp from '@/apps/setting/pages/role';
+import SettingRoleAddApp from '@/apps/setting/pages/role/add';
+import SettingRoleEditApp from '@/apps/setting/pages/role/edit';
+import SettingUserAddApp from '@/apps/setting/pages/user/add';
+import SettingUserEditApp from '@/apps/setting/pages/user/edit';
+import SettingConfig115App from '@/apps/setting/pages/config/config-115';
+import SettingConfigQbittorrentApp from '@/apps/setting/pages/config/config-qbittorrent';
+import SettingConfigOpenlistApp from '@/apps/setting/pages/config/config-openlist';
+import SettingConfigSmtpApp from '@/apps/setting/pages/config/config-smtp';
+import SettingSystemApp from '@/apps/setting/pages/system';
 import RequireAuth from './require-auth';
 import GuestOnly from './guest-only';
 import RedirectToSetting from './redirect-to-setting';
+import AppErrorBoundary from './error-boundary';
 
 export const router = createBrowserRouter([
   {
     path: '/auth',
     Component: GuestOnly,
+    ErrorBoundary: AppErrorBoundary,
     children: [{ index: true, Component: AuthApp }],
   },
   {
     path: '/',
     Component: RequireAuth,
+    ErrorBoundary: AppErrorBoundary,
     children: [
       { index: true, Component: HomeApp },
       {
@@ -47,7 +54,11 @@ export const router = createBrowserRouter([
           { path: 'role', Component: SettingRoleApp },
           { path: 'role/add', Component: SettingRoleAddApp },
           { path: 'role/edit/:roleKey', Component: SettingRoleEditApp },
+          { path: 'system', Component: SettingSystemApp },
           { path: 'config/115', Component: SettingConfig115App },
+          { path: 'config/qbittorrent', Component: SettingConfigQbittorrentApp },
+          { path: 'config/openlist', Component: SettingConfigOpenlistApp },
+          { path: 'config/smtp', Component: SettingConfigSmtpApp },
         ],
       },
       { path: 'admin', Component: RedirectToSetting },

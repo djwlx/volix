@@ -1,14 +1,22 @@
 import { http } from '@/utils';
 import type {
+  AccountConfigMap,
   AdminCreateUserPayload,
   AdminUpdateUserPayload,
+  AccountConfigPlatform,
   AssignUserRolePayload,
   CreateRolePayload,
   LoginUserPayload,
   LoginUserResponse,
   RoleInfoResponse,
   RegisterUserPayload,
+  RegisterConfigResponse,
+  SendRegisterCodePayload,
+  SendRegisterCodeResponse,
   SetUserRolePayload,
+  SystemConfigResponse,
+  UpdateSystemConfigPayload,
+  UpdateAccountConfigPayload,
   UpdateRolePayload,
   UpdateUserProfilePayload,
   UserInfoResponse,
@@ -22,8 +30,32 @@ export const registerUser = (data: RegisterUserPayload) => {
   return http.post('/user/register', data);
 };
 
+export const getRegisterConfig = () => {
+  return http.get<RegisterConfigResponse>('/user/register-config');
+};
+
+export const sendRegisterCode = (data: SendRegisterCodePayload) => {
+  return http.post<SendRegisterCodeResponse>('/user/register-code', data);
+};
+
 export const getCurrentUser = () => {
   return http.get<UserInfoResponse>('/user/me');
+};
+
+export const getAccountConfigs = () => {
+  return http.get<AccountConfigMap>('/user/account-configs');
+};
+
+export const updateAccountConfig = (data: UpdateAccountConfigPayload) => {
+  return http.put<{ platform: AccountConfigPlatform; config: UpdateAccountConfigPayload['config'] }>('/user/account-configs', data);
+};
+
+export const getSystemConfig = () => {
+  return http.get<SystemConfigResponse>('/user/system-config');
+};
+
+export const updateSystemConfig = (data: UpdateSystemConfigPayload) => {
+  return http.put<SystemConfigResponse>('/user/system-config', data);
 };
 
 export const getUserList = () => {
