@@ -1,11 +1,12 @@
 import { IconDelete, IconMinusCircle, IconPlus } from '@douyinfe/semi-icons';
-import { Button, Card, Descriptions, Space, Modal, Tag, Form, ArrayField, Popconfirm, Toast } from '@douyinfe/semi-ui';
+import { Button, Card, Descriptions, Space, Modal, Tag, Popconfirm, Toast } from '@douyinfe/semi-ui';
 import { FilePath } from './components';
 import { useEffect, useMemo, useState } from 'react';
 import type { Data } from '@douyinfe/semi-ui/lib/es/descriptions';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 import { clear115Pic, get115PicInfo, set115PicInfo } from '@/services/115';
 import { useModal } from '@/hooks';
+import { AppForm } from '@/components';
 
 export function PicSetting() {
   const [count, setCount] = useState(0);
@@ -89,16 +90,16 @@ export function PicSetting() {
         </Space>
       </div>
       <Modal onCancel={closeModal} onOk={onSubmit} title="开始缓存" visible={visible} centered>
-        <div style={{ fontWeight: 500 }}>请填写文件夹cid</div>
-        <Form getFormApi={setForm} allowEmpty>
-          <ArrayField field="paths" initValue={[{ path: '' }]}>
-            {({ add, arrayFields }) => {
+        <AppForm getFormApi={setForm} allowEmpty labelPosition="left">
+          <AppForm.ArrayField field="paths" initValue={[{ path: '' }]}>
+            {({ add, arrayFields }: { add: () => void; arrayFields: Array<{ field: string; key: string; remove: () => void }> }) => {
               return (
                 <>
-                  {arrayFields.map(({ field, key, remove }, index) => {
+                  {arrayFields.map(({ field, key, remove }, index: number) => {
                     return (
                       <div style={{ display: 'flex' }} key={key}>
-                        <Form.Input
+                        <AppForm.Input
+                          label={index === 0 ? '文件夹 CID' : ' '}
                           rules={[
                             {
                               required: true,
@@ -107,7 +108,7 @@ export function PicSetting() {
                           ]}
                           fieldStyle={{ flex: 1 }}
                           field={`${field}[path]`}
-                          noLabel
+                          placeholder="请输入文件夹 CID"
                         />
                         {index !== 0 ? (
                           <Button
@@ -127,8 +128,8 @@ export function PicSetting() {
                 </>
               );
             }}
-          </ArrayField>
-        </Form>
+          </AppForm.ArrayField>
+        </AppForm>
       </Modal>
     </Card>
   );

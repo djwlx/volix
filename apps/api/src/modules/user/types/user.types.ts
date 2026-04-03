@@ -1,11 +1,14 @@
+import type { AppFeature, LoginUserPayload, RegisterUserPayload, UserRole } from '@volix/types';
 export type { LoginUserPayload, RegisterUserPayload } from '@volix/types';
 
 export interface UserEntity {
   id?: string;
   email: string;
   nickname?: string;
+  avatar?: string;
   password: string;
-  role?: 'user' | 'admin';
+  role?: UserRole;
+  role_key?: string;
 }
 
 export interface UserQueryParams {
@@ -13,12 +16,34 @@ export interface UserQueryParams {
   email?: string;
   password?: string;
   nickname?: string;
-  role?: 'user' | 'admin';
+  avatar?: string;
+  role?: UserRole;
+  role_key?: string;
 }
 
 export interface CreateUserParams {
   email: string;
   password: string;
   nickname?: string;
-  role?: 'user' | 'admin';
+  avatar?: string;
+  role?: UserRole;
+  role_key?: string;
+}
+
+export interface RoleEntity {
+  id?: string;
+  role_key: string;
+  role_name: string;
+  features?: string;
+}
+
+export interface CreateRoleParams {
+  role_key: string;
+  role_name: string;
+  features: string;
+}
+
+export interface RoleFeaturesMap {
+  roleKey: string;
+  features: AppFeature[];
 }

@@ -2,6 +2,8 @@ import JWT from '../utils/jwt';
 import config from '../../config/index';
 import { pathToRegexp } from 'path-to-regexp';
 import { resError } from '../utils/response';
+import { queryUser } from '../modules/user';
+import { UserRole } from '@volix/types';
 
 interface AuthenticateParam {
   include?: string[];
@@ -42,8 +44,28 @@ const authenticate = (option?: AuthenticateParam): MyMiddleware => {
       try {
         const data = JWT.getData(token);
         const { id } = data;
+        const userInfo = await queryUser({ id: id as string | number });
+        if (!userInfo) {
+          resError(ctx, {
+            code: 401,
+            message: '用户不存在',
+          });
+          return;
+        }
+        if (userInfo.dataValues.id === undefined || userInfo.dataValues.id === null || !userInfo.dataValues.email) {
+          resError(ctx, {
+            code: 401,
+            message: '用户信息异常',
+          });
+          return;
+        }
         ctx.state.userInfo = {
-          id,
+          id: userInfo.dataValues.id,
+          email: userInfo.dataValues.email,
+          nickname: userInfo.dataValues.nickname,
+          avatar: userInfo.dataValues.avatar,
+          role: (userInfo.dataValues.role || UserRole.USER) as UserRole,
+          roleKey: userInfo.dataValues.role_key,
         };
         await next();
       } catch (e) {

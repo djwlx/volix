@@ -1,8 +1,14 @@
 import { Context } from 'koa';
+import type { UserRole } from '@volix/types';
 interface MyContext extends Context {
   state: {
     userInfo?: {
       id: string | number;
+      email: string;
+      nickname?: string;
+      avatar?: string;
+      role: UserRole;
+      roleKey?: string;
     };
   };
 }

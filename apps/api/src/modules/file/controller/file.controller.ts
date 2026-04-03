@@ -14,19 +14,21 @@ export const uploadFile: MyMiddleware = async ctx => {
   }
 
   const { originalFilename, size, mimetype, filepath } = file as UploadedFileFormData;
+  const safeOriginalName = path.basename(originalFilename || 'upload.bin');
   const fileUuid = uuidV4();
-  const newName = `${fileUuid}.${originalFilename}`;
+  const newName = `${fileUuid}.${safeOriginalName}`;
   const newPath = `${PATH.upload}/${newName}`;
+  const publicPath = `/file/${encodeURIComponent(newName)}`;
 
   fs.renameSync(filepath, newPath);
 
   return saveFile({
-    extension: path.extname(originalFilename),
-    name: originalFilename,
+    extension: path.extname(safeOriginalName),
+    name: safeOriginalName,
     uuid: fileUuid,
     size,
     mime_type: mimetype,
-    path: `/api/download/${fileUuid}`,
+    path: publicPath,
   });
 };
 

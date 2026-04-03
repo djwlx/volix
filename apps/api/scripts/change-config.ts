@@ -4,11 +4,11 @@ function changeConfig(key: AppConfigEnum, value: string) {
   setConfig(key, value)
     .then(() => {
       console.log(`配置项 ${key} 已更新为 ${value}`);
-      process.exit(0);
+      process.exitCode = 0;
     })
     .catch(e => {
       console.error('更新配置失败:', e);
-      process.exit(1);
+      process.exitCode = 1;
     });
 }
 

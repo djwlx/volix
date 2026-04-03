@@ -1,8 +1,18 @@
 import type { ResponseData } from '@volix/types';
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
+import { getAuthToken, getTokenHeaderKey } from './auth';
 
 const instance: AxiosInstance = axios.create({
   baseURL: `/api`,
+});
+
+instance.interceptors.request.use(config => {
+  const token = getAuthToken();
+  if (token) {
+    config.headers = config.headers || {};
+    (config.headers as Record<string, string>)[getTokenHeaderKey()] = token;
+  }
+  return config;
 });
 
 // 返回时直接取 data，简化调用方处理

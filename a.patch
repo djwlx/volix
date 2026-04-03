@@ -1,0 +1,3804 @@
+From f388efc2533ea9a13e45ffcc32078344157dc335 Mon Sep 17 00:00:00 2001
+From: DJWL <1602951127@qq.com>
+Date: Fri, 3 Apr 2026 17:22:23 +0800
+Subject: [PATCH] feat: user login
+
+---
+ .npmrc                                        |   2 +-
+ README.md                                     | 186 +++++-
+ apps/api/scripts/change-config.ts             |   4 +-
+ apps/api/scripts/set-admin-user.ts            |  37 ++
+ apps/api/scripts/start.ts                     |  10 +-
+ apps/api/src/index.d.ts                       |   6 +
+ apps/api/src/middleware/authenticate.ts       |  24 +-
+ apps/api/src/middleware/global-info.ts        |  10 +-
+ .../file/controller/file.controller.ts        |  10 +-
+ .../user/controller/user.controller.ts        | 593 +++++++++++++++++-
+ apps/api/src/modules/user/index.ts            |   1 +
+ apps/api/src/modules/user/model/role.model.ts |  26 +
+ apps/api/src/modules/user/model/user.model.ts |  15 +-
+ .../src/modules/user/service/user.service.ts  |  88 ++-
+ apps/api/src/modules/user/types/user.types.ts |  31 +-
+ apps/api/src/modules/user/user.route.ts       |  35 +-
+ apps/api/src/utils/dependencies.ts            | 117 ++++
+ apps/web-pc/src/apps/115/index.tsx            |  16 +-
+ apps/web-pc/src/apps/115/pic-setting.tsx      |  21 +-
+ apps/web-pc/src/apps/admin/index.tsx          | 209 ++++++
+ apps/web-pc/src/apps/auth/index.tsx           | 122 ++++
+ apps/web-pc/src/apps/home/index.tsx           |  84 ++-
+ apps/web-pc/src/apps/setting/config-115.tsx   |  49 ++
+ apps/web-pc/src/apps/setting/constants.ts     |   6 +
+ apps/web-pc/src/apps/setting/index.tsx        | 206 ++++++
+ apps/web-pc/src/apps/setting/info.tsx         | 126 ++++
+ apps/web-pc/src/apps/setting/role-add.tsx     | 114 ++++
+ apps/web-pc/src/apps/setting/role-edit.tsx    | 134 ++++
+ apps/web-pc/src/apps/setting/role.tsx         | 115 ++++
+ apps/web-pc/src/apps/setting/user-add.tsx     | 191 ++++++
+ apps/web-pc/src/apps/setting/user-edit.tsx    | 190 ++++++
+ apps/web-pc/src/apps/setting/user.tsx         | 105 ++++
+ apps/web-pc/src/components/form/index.tsx     |  27 +
+ apps/web-pc/src/components/index.tsx          |   1 +
+ apps/web-pc/src/layouts/guest-only.tsx        |  15 +
+ .../src/layouts/redirect-to-setting.tsx       |   7 +
+ apps/web-pc/src/layouts/require-auth.tsx      |  14 +
+ apps/web-pc/src/layouts/router.ts             |  35 ++
+ apps/web-pc/src/services/file.ts              |  12 +
+ apps/web-pc/src/services/user.ts              |  71 +++
+ apps/web-pc/src/utils/auth.ts                 |  20 +
+ apps/web-pc/src/utils/error.ts                |   8 +
+ apps/web-pc/src/utils/http.ts                 |  10 +
+ apps/web-pc/src/utils/index.ts                |   2 +
+ apps/web-pc/tsconfig.app.json                 |   2 +-
+ apps/web-pc/vite.config.ts                    |   5 +
+ packages/types/src/api/user.ts                |  68 ++
+ 47 files changed, 3128 insertions(+), 52 deletions(-)
+ create mode 100644 apps/api/scripts/set-admin-user.ts
+ create mode 100644 apps/api/src/modules/user/model/role.model.ts
+ create mode 100644 apps/web-pc/src/apps/admin/index.tsx
+ create mode 100644 apps/web-pc/src/apps/auth/index.tsx
+ create mode 100644 apps/web-pc/src/apps/setting/config-115.tsx
+ create mode 100644 apps/web-pc/src/apps/setting/constants.ts
+ create mode 100644 apps/web-pc/src/apps/setting/index.tsx
+ create mode 100644 apps/web-pc/src/apps/setting/info.tsx
+ create mode 100644 apps/web-pc/src/apps/setting/role-add.tsx
+ create mode 100644 apps/web-pc/src/apps/setting/role-edit.tsx
+ create mode 100644 apps/web-pc/src/apps/setting/role.tsx
+ create mode 100644 apps/web-pc/src/apps/setting/user-add.tsx
+ create mode 100644 apps/web-pc/src/apps/setting/user-edit.tsx
+ create mode 100644 apps/web-pc/src/apps/setting/user.tsx
+ create mode 100644 apps/web-pc/src/components/form/index.tsx
+ create mode 100644 apps/web-pc/src/layouts/guest-only.tsx
+ create mode 100644 apps/web-pc/src/layouts/redirect-to-setting.tsx
+ create mode 100644 apps/web-pc/src/layouts/require-auth.tsx
+ create mode 100644 apps/web-pc/src/services/file.ts
+ create mode 100644 apps/web-pc/src/services/user.ts
+ create mode 100644 apps/web-pc/src/utils/auth.ts
+ create mode 100644 apps/web-pc/src/utils/error.ts
+
+diff --git a/.npmrc b/.npmrc
+index 5e4086a..fa81015 100644
+--- a/.npmrc
++++ b/.npmrc
+@@ -1 +1 @@
+-registry=https://registry.npmmirror.com/
++# registry=https://registry.npmmirror.com/
+diff --git a/README.md b/README.md
+index 8bde406..0e9884d 100644
+--- a/README.md
++++ b/README.md
+@@ -1 +1,185 @@
+-# Volix
+\ No newline at end of file
++# Volix
++
++一个面向个人场景的开源工具包（Personal Toolkit）。
++
++Volix 的目标是把日常会反复使用的小工具统一放在一个系统里，提供：
++- 统一登录与权限管理
++- 可扩展的功能模块（按功能枚举控制可见性）
++- 简单可部署的前后端一体化架构
++
++当前项目以个人自托管为主，适合在本地或轻量服务器部署，后续会持续增强扩展能力。
++
++## 核心功能
++
++### 1. 用户与权限系统
++- 邮箱注册/登录
++- JWT 鉴权
++- 用户角色：`user` / `admin`
++- 角色组与功能权限绑定（基于 `AppFeature` 枚举）
++- 管理员可管理用户、角色、角色权限
++
++### 2. 个人设置中心
++- 个人信息维护（昵称、头像）
++- 支持头像上传（上传后自动使用 `/file/...` 路径）
++- 完整后台布局（顶部 + 左侧菜单 + 内容区）
++
++### 3. 工具模块（当前）
++- `我的 115`（账号配置、资源相关能力）
++- `随机图片`
++
++> 首页展示的工具会根据当前用户的功能权限动态显示。
++
++## 技术栈
++
++### 前端
++- React 18
++- React Router 7
++- Semi Design (`@douyinfe/semi-ui`)
++- Vite
++- TypeScript
++
++### 后端
++- Node.js + Koa
++- Sequelize + SQLite
++- JWT
++- koa-body / koa-static / koa-router
++
++### 工程化
++- pnpm workspace
++- Turborepo
++
++## 项目结构
++
++```txt
++volix/
++├─ apps/
++│  ├─ web-pc/      # 前端应用
++│  └─ api/         # 后端 API
++├─ packages/
++│  ├─ types/       # 前后端共享类型（含 AppFeature 枚举）
++│  └─ utils/       # 共享工具
++├─ data/           # 本地数据目录（sqlite 等）
++└─ dist/           # 打包产物（release 后生成）
++```
++
++## 快速开始（开发环境）
++
++## 环境要求
++- Node.js: `>=20 <25`（建议 Node 20）
++- pnpm: `8.15.9`
++
++## 安装依赖
++
++```bash
++pnpm install
++```
++
++## 启动开发环境（前后端）
++
++```bash
++pnpm dev
++```
++
++默认情况下：
++- 前端开发服务：Vite（默认 5173）
++- 后端服务：`http://localhost:3000`
++
++前端通过 Vite 代理访问后端：
++- `/api` -> `http://localhost:3000`
++- `/file` -> `http://localhost:3000`
++
++## 单独启动
++
++```bash
++# 仅后端
++pnpm --filter @volix/api dev
++
++# 仅前端
++pnpm --filter @volix/web-pc dev
++```
++
++## 构建与部署
++
++## 1) 本地生产构建
++
++```bash
++pnpm release
++```
++
++## 2) 生成可部署产物（前后端合并）
++
++```bash
++pnpm build
++```
++
++该命令会执行仓库内脚本，将前端产物复制到后端静态目录，并整理根目录 `dist/` 为可运行部署包。
++
++## 3) 生产启动（API 包内）
++
++```bash
++pnpm --filter @volix/api start
++```
++
++## 4) Docker（可选）
++
++仓库提供了 `Dockerfile`，基于根目录 `dist/` 进行镜像构建。
++
++典型流程：
++
++```bash
++pnpm build
++docker build -t volix:latest .
++docker run -d -p 3000:3000 -v $(pwd)/data:/app/data --name volix volix:latest
++```
++
++## 配置说明
++
++当前后端基础配置位于：
++- `apps/api/config/index.ts`
++
++默认配置：
++- `port: 3000`
++- `token: volix-token`（请求头键名）
++
++> 建议在生产环境通过配置管理或环境注入方式覆盖敏感配置。
++
++## 数据与初始化
++
++后端启动时会自动：
++- 创建必要目录（如上传目录）
++- 执行基础数据迁移（补齐用户表字段、角色表等）
++- 初始化默认角色与默认功能权限
++
++相关逻辑见：
++- `apps/api/src/utils/dependencies.ts`
++
++## 开发脚本（常用）
++
++```bash
++pnpm dev                # 前后端并行开发
++pnpm release            # turbo 构建
++pnpm build              # 打包并整理部署产物
++pnpm typecheck          # 类型检查任务
++```
++
++## 后续计划（Roadmap）
++
++### 近期待办
++- 完善插件化机制：支持工具模块按目录注册/启停
++- 丰富权限粒度：从“页面可见”扩展到“操作级权限”
++- 增强设置中心：统一表单校验规则、统一错误提示
++- 优化移动端体验：更好的布局与交互适配
++
++### 中期规划
++- 增加更多个人工具模块（文件处理、效率工具、自动化任务）
++- 支持多存储后端（如对象存储）
++- 提供更清晰的配置体系（环境变量 + 配置文件）
++
++### 长期规划
++- 模块市场化（社区共享模块）
++- 更完整的审计日志与安全策略
++- 多端统一（Web / 桌面端）
++
++---
++
++如果这个项目对你有帮助，欢迎 Star。
+diff --git a/apps/api/scripts/change-config.ts b/apps/api/scripts/change-config.ts
+index 09bfd55..96e651d 100644
+--- a/apps/api/scripts/change-config.ts
++++ b/apps/api/scripts/change-config.ts
+@@ -4,11 +4,11 @@ function changeConfig(key: AppConfigEnum, value: string) {
+   setConfig(key, value)
+     .then(() => {
+       console.log(`配置项 ${key} 已更新为 ${value}`);
+-      process.exit(0);
++      process.exitCode = 0;
+     })
+     .catch(e => {
+       console.error('更新配置失败:', e);
+-      process.exit(1);
++      process.exitCode = 1;
+     });
+ }
+ 
+diff --git a/apps/api/scripts/set-admin-user.ts b/apps/api/scripts/set-admin-user.ts
+new file mode 100644
+index 0000000..448582b
+--- /dev/null
++++ b/apps/api/scripts/set-admin-user.ts
+@@ -0,0 +1,37 @@
++import { UserRole } from '@volix/types';
++import { UserModel } from '../src/modules/user/model/user.model';
++
++async function setAdminUserById(userId: number) {
++  try {
++    const user = await UserModel.findByPk(userId);
++
++    if (!user) {
++      console.error(`未找到 id=${userId} 的用户`);
++      process.exitCode = 1;
++      return;
++    }
++
++    if (user.dataValues.role === UserRole.ADMIN) {
++      console.log(`id=${userId} 的用户已经是管理员`);
++      process.exitCode = 0;
++      return;
++    }
++
++    await UserModel.update(
++      { role: UserRole.ADMIN },
++      {
++        where: {
++          id: userId,
++        },
++      }
++    );
++
++    console.log(`已将 id=${userId} 的用户设置为管理员`);
++    process.exitCode = 0;
++  } catch (error) {
++    console.error('更新用户角色失败:', error);
++    process.exitCode = 1;
++  }
++}
++
++setAdminUserById(1);
+diff --git a/apps/api/scripts/start.ts b/apps/api/scripts/start.ts
+index d3359c3..7390608 100644
+--- a/apps/api/scripts/start.ts
++++ b/apps/api/scripts/start.ts
+@@ -1,19 +1,13 @@
+ import { ConfigModel } from '../src/modules/config';
+ import { File115Model } from '../src/modules/115';
+ import { FileModel } from '../src/modules/file';
+-import { UserModel } from '../src/modules/user';
++import { RoleModel, UserModel } from '../src/modules/user';
+ import { TaskModel } from '../src/modules/task';
+ import { log } from '../src/utils/logger';
+ 
+ // 数据库模型同步
+ async function syncModels() {
+-  const syncPromises = [
+-    ConfigModel.sync(),
+-    UserModel.sync({ force: true }),
+-    File115Model.sync(),
+-    FileModel.sync(),
+-    TaskModel.sync(),
+-  ];
++  const syncPromises = [ConfigModel.sync(), UserModel.sync(), RoleModel.sync(), File115Model.sync(), FileModel.sync(), TaskModel.sync()];
+   try {
+     await Promise.all(syncPromises);
+     log.info('数据库模型同步成功');
+diff --git a/apps/api/src/index.d.ts b/apps/api/src/index.d.ts
+index 8f3c9c2..9e74372 100644
+--- a/apps/api/src/index.d.ts
++++ b/apps/api/src/index.d.ts
+@@ -1,8 +1,14 @@
+ import { Context } from 'koa';
++import type { UserRole } from '@volix/types';
+ interface MyContext extends Context {
+   state: {
+     userInfo?: {
+       id: string | number;
++      email: string;
++      nickname?: string;
++      avatar?: string;
++      role: UserRole;
++      roleKey?: string;
+     };
+   };
+ }
+diff --git a/apps/api/src/middleware/authenticate.ts b/apps/api/src/middleware/authenticate.ts
+index e353aee..f7b0c8c 100644
+--- a/apps/api/src/middleware/authenticate.ts
++++ b/apps/api/src/middleware/authenticate.ts
+@@ -2,6 +2,8 @@ import JWT from '../utils/jwt';
+ import config from '../../config/index';
+ import { pathToRegexp } from 'path-to-regexp';
+ import { resError } from '../utils/response';
++import { queryUser } from '../modules/user';
++import { UserRole } from '@volix/types';
+ 
+ interface AuthenticateParam {
+   include?: string[];
+@@ -42,8 +44,28 @@ const authenticate = (option?: AuthenticateParam): MyMiddleware => {
+       try {
+         const data = JWT.getData(token);
+         const { id } = data;
++        const userInfo = await queryUser({ id: id as string | number });
++        if (!userInfo) {
++          resError(ctx, {
++            code: 401,
++            message: '用户不存在',
++          });
++          return;
++        }
++        if (userInfo.dataValues.id === undefined || userInfo.dataValues.id === null || !userInfo.dataValues.email) {
++          resError(ctx, {
++            code: 401,
++            message: '用户信息异常',
++          });
++          return;
++        }
+         ctx.state.userInfo = {
+-          id,
++          id: userInfo.dataValues.id,
++          email: userInfo.dataValues.email,
++          nickname: userInfo.dataValues.nickname,
++          avatar: userInfo.dataValues.avatar,
++          role: (userInfo.dataValues.role || UserRole.USER) as UserRole,
++          roleKey: userInfo.dataValues.role_key,
+         };
+         await next();
+       } catch (e) {
+diff --git a/apps/api/src/middleware/global-info.ts b/apps/api/src/middleware/global-info.ts
+index 9090822..a97a6aa 100644
+--- a/apps/api/src/middleware/global-info.ts
++++ b/apps/api/src/middleware/global-info.ts
+@@ -1,4 +1,5 @@
+ import { queryUser } from '../modules/user';
++import { UserRole } from '@volix/types';
+ 
+ // 权限校验中间件，鉴权通过之后，将用户信息保存在state中方便后续操作没有权限返回401
+ const getGlobalInfo = (): MyMiddleware => {
+@@ -8,9 +9,14 @@ const getGlobalInfo = (): MyMiddleware => {
+       return next();
+     }
+     const userInfo = await queryUser({ id: userId });
+-    if (userInfo) {
++    if (userInfo && userInfo.dataValues.id !== undefined && userInfo.dataValues.id !== null && userInfo.dataValues.email) {
+       ctx.state.userInfo = {
+-        id: userId,
++        id: userInfo.dataValues.id,
++        email: userInfo.dataValues.email,
++        nickname: userInfo.dataValues.nickname,
++        avatar: userInfo.dataValues.avatar,
++        role: (userInfo.dataValues.role || UserRole.USER) as UserRole,
++        roleKey: userInfo.dataValues.role_key,
+       };
+     }
+     next();
+diff --git a/apps/api/src/modules/file/controller/file.controller.ts b/apps/api/src/modules/file/controller/file.controller.ts
+index 13f294f..d0495f0 100644
+--- a/apps/api/src/modules/file/controller/file.controller.ts
++++ b/apps/api/src/modules/file/controller/file.controller.ts
+@@ -14,19 +14,21 @@ export const uploadFile: MyMiddleware = async ctx => {
+   }
+ 
+   const { originalFilename, size, mimetype, filepath } = file as UploadedFileFormData;
++  const safeOriginalName = path.basename(originalFilename || 'upload.bin');
+   const fileUuid = uuidV4();
+-  const newName = `${fileUuid}.${originalFilename}`;
++  const newName = `${fileUuid}.${safeOriginalName}`;
+   const newPath = `${PATH.upload}/${newName}`;
++  const publicPath = `/file/${encodeURIComponent(newName)}`;
+ 
+   fs.renameSync(filepath, newPath);
+ 
+   return saveFile({
+-    extension: path.extname(originalFilename),
+-    name: originalFilename,
++    extension: path.extname(safeOriginalName),
++    name: safeOriginalName,
+     uuid: fileUuid,
+     size,
+     mime_type: mimetype,
+-    path: `/api/download/${fileUuid}`,
++    path: publicPath,
+   });
+ };
+ 
+diff --git a/apps/api/src/modules/user/controller/user.controller.ts b/apps/api/src/modules/user/controller/user.controller.ts
+index 5bcc043..317ad13 100644
+--- a/apps/api/src/modules/user/controller/user.controller.ts
++++ b/apps/api/src/modules/user/controller/user.controller.ts
+@@ -1,9 +1,110 @@
+-import type { LoginUserPayload, RegisterUserPayload } from '@volix/types';
++import { UserRole } from '@volix/types';
++import { AppFeature } from '@volix/types';
++import type {
++  AdminCreateUserPayload,
++  AdminUpdateUserPayload,
++  AssignUserRolePayload,
++  CreateRolePayload,
++  LoginUserPayload,
++  RegisterUserPayload,
++  SetUserRolePayload,
++  UpdateRolePayload,
++  UpdateUserProfilePayload,
++} from '@volix/types';
+ import jwt from '../../../utils/jwt';
+-import { badRequest } from '../../shared/http-handler';
+-import { addUser, queryUser } from '../service/user.service';
++import { badRequest, unauthorized } from '../../shared/http-handler';
++import {
++  addRole,
++  addUser,
++  countUsers,
++  countUsersByRoleKey,
++  deleteRole,
++  parseRoleFeatures,
++  queryRole,
++  queryRoles,
++  queryUser,
++  queryUsers,
++  stringifyRoleFeatures,
++  updateRole,
++  updateUser,
++} from '../service/user.service';
+ 
+ const EMAIL_REGEXP = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
++const AVATAR_URL_REGEXP = /^(https?:\/\/|\/file\/)/;
++const DEFAULT_ROLE_KEY = 'default';
++const ROLE_KEY_PREFIX = 'role';
++
++const ensureDefaultRole = async () => {
++  const role = await queryRole({
++    role_key: DEFAULT_ROLE_KEY,
++  });
++  if (role) {
++    return role;
++  }
++
++  return addRole({
++    role_key: DEFAULT_ROLE_KEY,
++    role_name: '默认角色',
++    features: stringifyRoleFeatures([AppFeature.ACCOUNT_115, AppFeature.RANDOM_PIC]),
++  });
++};
++
++const getFeaturePermissionsByRoleKey = async (roleKey?: string) => {
++  if (!roleKey) {
++    return [] as AppFeature[];
++  }
++
++  const role = await queryRole({
++    role_key: roleKey,
++  });
++
++  return parseRoleFeatures(role?.dataValues.features);
++};
++
++const getFeaturePermissions = async (systemRole: UserRole | undefined, roleKey?: string) => {
++  if (systemRole === UserRole.ADMIN) {
++    return Object.values(AppFeature);
++  }
++  return getFeaturePermissionsByRoleKey(roleKey);
++};
++
++const normalizeRoleFeatures = (features: unknown) => {
++  if (!Array.isArray(features)) {
++    badRequest('features 必须是数组');
++  }
++  const values = features as string[];
++  const validSet = new Set(Object.values(AppFeature));
++  const invalid = values.find(item => !validSet.has(item as AppFeature));
++  if (invalid) {
++    badRequest(`非法功能权限: ${invalid}`);
++  }
++  return Array.from(new Set(values)) as AppFeature[];
++};
++
++const buildAutoRoleKey = () => {
++  return `${ROLE_KEY_PREFIX}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
++};
++
++const toUserResponse = async (data: {
++  id?: string | number;
++  email?: string;
++  nickname?: string;
++  avatar?: string;
++  role?: UserRole;
++  role_key?: string;
++}) => {
++  const role = (data.role || UserRole.USER) as UserRole;
++  const roleKey = data.role_key || DEFAULT_ROLE_KEY;
++  return {
++    id: data.id,
++    email: data.email,
++    nickname: data.nickname,
++    avatar: data.avatar,
++    role,
++    roleKey,
++    featurePermissions: await getFeaturePermissions(role, roleKey),
++  };
++};
+ 
+ export const loginUser: MyMiddleware = async ctx => {
+   const param = ctx.request.body as LoginUserPayload;
+@@ -27,7 +128,9 @@ export const loginUser: MyMiddleware = async ctx => {
+     badRequest('用户信息异常');
+   }
+ 
+-  return jwt.setToken({ id: userId as string | number });
++  return {
++    token: jwt.setToken({ id: userId as string | number }),
++  };
+ };
+ 
+ export const registerUser: MyMiddleware = async ctx => {
+@@ -47,8 +150,488 @@ export const registerUser: MyMiddleware = async ctx => {
+     badRequest('用户已存在');
+   }
+ 
+-  return addUser({
++  const userCount = await countUsers();
++  const role = userCount === 0 ? UserRole.ADMIN : UserRole.USER;
++
++  const user = await addUser({
+     email,
+     password,
++    role,
++    role_key: DEFAULT_ROLE_KEY,
++  });
++
++  await ensureDefaultRole();
++
++  const featurePermissions = await getFeaturePermissions(
++    (user.dataValues.role || role) as UserRole,
++    user.dataValues.role_key
++  );
++
++  return {
++    id: user.dataValues.id,
++    email: user.dataValues.email,
++    nickname: user.dataValues.nickname,
++    avatar: user.dataValues.avatar,
++    role: (user.dataValues.role || role) as UserRole,
++    roleKey: user.dataValues.role_key,
++    featurePermissions,
++  };
++};
++
++export const getCurrentUser: MyMiddleware = async ctx => {
++  const userId = ctx.state.userInfo?.id;
++  if (!userId) {
++    unauthorized('未登录');
++  }
++
++  const user = await queryUser({ id: userId as string | number });
++  if (!user) {
++    unauthorized('用户不存在');
++    return;
++  }
++
++  await ensureDefaultRole();
++  const featurePermissions = await getFeaturePermissions(
++    (user.dataValues.role || UserRole.USER) as UserRole,
++    user.dataValues.role_key
++  );
++
++  return {
++    id: user.dataValues.id,
++    email: user.dataValues.email,
++    nickname: user.dataValues.nickname,
++    avatar: user.dataValues.avatar,
++    role: (user.dataValues.role || UserRole.USER) as UserRole,
++    roleKey: user.dataValues.role_key,
++    featurePermissions,
++  };
++};
++
++export const getUserList: MyMiddleware = async ctx => {
++  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
++    unauthorized('仅管理员可访问');
++  }
++
++  await ensureDefaultRole();
++  const allRoles = await queryRoles();
++  const featureMap = new Map<string, AppFeature[]>(
++    allRoles.map(item => [item.dataValues.role_key, parseRoleFeatures(item.dataValues.features)])
++  );
++
++  const list = await queryUsers();
++  return list.map(item => ({
++    id: item.dataValues.id,
++    email: item.dataValues.email,
++    nickname: item.dataValues.nickname,
++    avatar: item.dataValues.avatar,
++    role: (item.dataValues.role || UserRole.USER) as UserRole,
++    roleKey: item.dataValues.role_key,
++    featurePermissions:
++      item.dataValues.role === UserRole.ADMIN
++        ? Object.values(AppFeature)
++        : (featureMap.get(item.dataValues.role_key || DEFAULT_ROLE_KEY) || []),
++  }));
++};
++
++export const setUserRole: MyMiddleware = async ctx => {
++  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
++    unauthorized('仅管理员可操作');
++  }
++
++  const param = ctx.request.body as SetUserRolePayload;
++  const { userId, role } = param;
++
++  if (!userId || !role || !Object.values(UserRole).includes(role as UserRole)) {
++    badRequest('参数错误');
++  }
++
++  const targetUser = await queryUser({ id: userId });
++  if (!targetUser) {
++    badRequest('目标用户不存在');
++    return;
++  }
++
++  if (String(ctx.state.userInfo?.id) === String(userId) && role !== UserRole.ADMIN) {
++    badRequest('不能取消自己的管理员权限');
++  }
++
++  await updateUser(userId, { role });
++
++  return {
++    id: targetUser.dataValues.id,
++    email: targetUser.dataValues.email,
++    nickname: targetUser.dataValues.nickname,
++    avatar: targetUser.dataValues.avatar,
++    role,
++    roleKey: targetUser.dataValues.role_key,
++    featurePermissions: await getFeaturePermissions(role as UserRole, targetUser.dataValues.role_key),
++  };
++};
++
++export const updateCurrentUserProfile: MyMiddleware = async ctx => {
++  const userId = ctx.state.userInfo?.id;
++  if (!userId) {
++    unauthorized('未登录');
++  }
++
++  const param = (ctx.request.body || {}) as UpdateUserProfilePayload;
++  const nextProfile: UpdateUserProfilePayload = {};
++
++  if (typeof param.nickname === 'string') {
++    const nickname = param.nickname.trim();
++    if (nickname.length > 32) {
++      badRequest('昵称长度不能超过 32');
++    }
++    nextProfile.nickname = nickname;
++  }
++
++  if (typeof param.avatar === 'string') {
++    const avatar = param.avatar.trim();
++    if (avatar && !AVATAR_URL_REGEXP.test(avatar)) {
++      badRequest('头像地址必须是 http/https 链接或 /file/ 开头的上传地址');
++    }
++    nextProfile.avatar = avatar;
++  }
++
++  if (Object.keys(nextProfile).length === 0) {
++    badRequest('未提供可更新的字段');
++  }
++
++  await updateUser(userId as string | number, nextProfile);
++
++  const updated = await queryUser({ id: userId as string | number });
++  if (!updated) {
++    badRequest('用户不存在');
++    return;
++  }
++
++  return {
++    id: updated.dataValues.id,
++    email: updated.dataValues.email,
++    nickname: updated.dataValues.nickname,
++    avatar: updated.dataValues.avatar,
++    role: (updated.dataValues.role || UserRole.USER) as UserRole,
++    roleKey: updated.dataValues.role_key,
++    featurePermissions: await getFeaturePermissions(
++      (updated.dataValues.role || UserRole.USER) as UserRole,
++      updated.dataValues.role_key
++    ),
++  };
++};
++
++export const getRoleList: MyMiddleware = async ctx => {
++  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
++    unauthorized('仅管理员可访问');
++  }
++
++  await ensureDefaultRole();
++  const roles = await queryRoles();
++  return roles.map(item => ({
++    roleKey: item.dataValues.role_key,
++    roleName: item.dataValues.role_name,
++    features: parseRoleFeatures(item.dataValues.features),
++  }));
++};
++
++export const createRole: MyMiddleware = async ctx => {
++  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
++    unauthorized('仅管理员可操作');
++  }
++
++  const param = (ctx.request.body || {}) as CreateRolePayload;
++  const roleKeyInput = param.roleKey?.trim();
++  const roleName = param.roleName?.trim();
++  const features = normalizeRoleFeatures(param.features);
++
++  if (!roleName) {
++    badRequest('角色名称不能为空');
++  }
++  if (roleKeyInput && !/^[a-zA-Z][a-zA-Z0-9_-]{1,31}$/.test(roleKeyInput)) {
++    badRequest('角色标识格式错误，需以字母开头，长度 2-32');
++  }
++  if (roleKeyInput === DEFAULT_ROLE_KEY) {
++    badRequest('default 角色不可手动创建');
++  }
++
++  let roleKey = roleKeyInput || '';
++  if (!roleKey) {
++    // 自动生成 roleKey，避免让用户手动输入系统标识
++    do {
++      roleKey = buildAutoRoleKey();
++    } while (await queryRole({ role_key: roleKey }));
++  } else {
++    const exists = await queryRole({ role_key: roleKey });
++    if (exists) {
++      badRequest('角色标识已存在');
++    }
++  }
++
++  const role = await addRole({
++    role_key: roleKey,
++    role_name: roleName,
++    features: stringifyRoleFeatures(features),
+   });
++
++  return {
++    roleKey: role.dataValues.role_key,
++    roleName: role.dataValues.role_name,
++    features,
++  };
++};
++
++export const updateRoleInfo: MyMiddleware = async ctx => {
++  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
++    unauthorized('仅管理员可操作');
++  }
++
++  const roleKey = (ctx.params.roleKey || '').trim();
++  const param = (ctx.request.body || {}) as UpdateRolePayload;
++  if (!roleKey) {
++    badRequest('roleKey 不能为空');
++  }
++  if (roleKey === DEFAULT_ROLE_KEY) {
++    badRequest('default 角色不可修改');
++  }
++
++  const role = await queryRole({ role_key: roleKey });
++  if (!role) {
++    badRequest('角色不存在');
++  }
++
++  const nextData: { role_name?: string; features?: string } = {};
++  if (typeof param.roleName === 'string') {
++    const roleName = param.roleName.trim();
++    if (!roleName) {
++      badRequest('角色名称不能为空');
++    }
++    nextData.role_name = roleName;
++  }
++  if (param.features !== undefined) {
++    const features = normalizeRoleFeatures(param.features);
++    nextData.features = stringifyRoleFeatures(features);
++  }
++  if (Object.keys(nextData).length === 0) {
++    badRequest('未提供可更新字段');
++  }
++
++  await updateRole(roleKey, nextData);
++  const updated = await queryRole({ role_key: roleKey });
++  if (!updated) {
++    badRequest('角色不存在');
++    return;
++  }
++
++  return {
++    roleKey: updated.dataValues.role_key,
++    roleName: updated.dataValues.role_name,
++    features: parseRoleFeatures(updated.dataValues.features),
++  };
++};
++
++export const removeRole: MyMiddleware = async ctx => {
++  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
++    unauthorized('仅管理员可操作');
++  }
++
++  const roleKey = (ctx.params.roleKey || '').trim();
++  if (!roleKey) {
++    badRequest('roleKey 不能为空');
++  }
++  if (roleKey === DEFAULT_ROLE_KEY) {
++    badRequest('default 角色不可删除');
++  }
++
++  const role = await queryRole({ role_key: roleKey });
++  if (!role) {
++    badRequest('角色不存在');
++  }
++
++  const userCount = await countUsersByRoleKey(roleKey);
++  if (userCount > 0) {
++    badRequest('该角色仍被用户使用，无法删除');
++  }
++
++  await deleteRole(roleKey);
++  return {
++    success: true,
++  };
++};
++
++export const assignUserRole: MyMiddleware = async ctx => {
++  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
++    unauthorized('仅管理员可操作');
++  }
++
++  const param = (ctx.request.body || {}) as AssignUserRolePayload;
++  const { userId } = param;
++  const roleKey = param.roleKey?.trim();
++  if (!userId || !roleKey) {
++    badRequest('参数错误');
++  }
++
++  const user = await queryUser({ id: userId });
++  if (!user) {
++    badRequest('用户不存在');
++    return;
++  }
++
++  const role = await queryRole({ role_key: roleKey });
++  if (!role) {
++    badRequest('角色不存在');
++    return;
++  }
++
++  await updateUser(userId, {
++    role_key: roleKey,
++  });
++
++  const updated = await queryUser({ id: userId });
++  if (!updated) {
++    badRequest('用户不存在');
++    return;
++  }
++
++  return toUserResponse(updated.dataValues);
++};
++
++export const getUserDetail: MyMiddleware = async ctx => {
++  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
++    unauthorized('仅管理员可访问');
++  }
++
++  const id = (ctx.params.id || '').trim();
++  if (!id) {
++    badRequest('用户ID不能为空');
++  }
++
++  const user = await queryUser({ id });
++  if (!user) {
++    badRequest('用户不存在');
++    return;
++  }
++
++  return toUserResponse(user.dataValues);
++};
++
++export const adminCreateUser: MyMiddleware = async ctx => {
++  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
++    unauthorized('仅管理员可操作');
++  }
++
++  const param = (ctx.request.body || {}) as AdminCreateUserPayload;
++  const email = param.email?.trim();
++  const password = param.password?.trim();
++  const nickname = typeof param.nickname === 'string' ? param.nickname.trim() : undefined;
++  const avatar = typeof param.avatar === 'string' ? param.avatar.trim() : undefined;
++  const role = (param.role || UserRole.USER) as UserRole;
++  const roleKey = (param.roleKey || DEFAULT_ROLE_KEY).trim();
++
++  if (!email || !password) {
++    badRequest('邮箱或密码不能为空');
++  }
++  if (!EMAIL_REGEXP.test(email)) {
++    badRequest('邮箱格式错误');
++  }
++  if (nickname && nickname.length > 32) {
++    badRequest('昵称长度不能超过 32');
++  }
++  if (avatar && !AVATAR_URL_REGEXP.test(avatar)) {
++    badRequest('头像地址必须是 http/https 链接或 /file/ 开头的上传地址');
++  }
++  if (!Object.values(UserRole).includes(role)) {
++    badRequest('系统角色非法');
++  }
++
++  await ensureDefaultRole();
++  const roleObj = await queryRole({ role_key: roleKey });
++  if (!roleObj) {
++    badRequest('角色组不存在');
++  }
++
++  const exists = await queryUser({ email });
++  if (exists) {
++    badRequest('用户已存在');
++  }
++
++  const user = await addUser({
++    email,
++    password,
++    nickname,
++    avatar,
++    role,
++    role_key: roleKey,
++  });
++
++  return toUserResponse(user.dataValues);
++};
++
++export const adminUpdateUser: MyMiddleware = async ctx => {
++  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
++    unauthorized('仅管理员可操作');
++  }
++
++  const id = (ctx.params.id || '').trim();
++  if (!id) {
++    badRequest('用户ID不能为空');
++  }
++
++  const target = await queryUser({ id });
++  if (!target) {
++    badRequest('用户不存在');
++    return;
++  }
++
++  const param = (ctx.request.body || {}) as AdminUpdateUserPayload;
++  const nextData: Record<string, unknown> = {};
++
++  if (typeof param.nickname === 'string') {
++    const nickname = param.nickname.trim();
++    if (nickname.length > 32) {
++      badRequest('昵称长度不能超过 32');
++    }
++    nextData.nickname = nickname;
++  }
++
++  if (typeof param.avatar === 'string') {
++    const avatar = param.avatar.trim();
++    if (avatar && !AVATAR_URL_REGEXP.test(avatar)) {
++      badRequest('头像地址必须是 http/https 链接或 /file/ 开头的上传地址');
++    }
++    nextData.avatar = avatar;
++  }
++
++  if (param.role !== undefined) {
++    if (!Object.values(UserRole).includes(param.role)) {
++      badRequest('系统角色非法');
++    }
++    if (String(ctx.state.userInfo?.id) === id && param.role !== UserRole.ADMIN) {
++      badRequest('不能取消自己的管理员权限');
++    }
++    nextData.role = param.role;
++  }
++
++  if (typeof param.roleKey === 'string') {
++    const roleKey = param.roleKey.trim();
++    if (!roleKey) {
++      badRequest('角色组不能为空');
++    }
++    const roleObj = await queryRole({ role_key: roleKey });
++    if (!roleObj) {
++      badRequest('角色组不存在');
++    }
++    nextData.role_key = roleKey;
++  }
++
++  if (Object.keys(nextData).length === 0) {
++    badRequest('未提供可更新字段');
++  }
++
++  await updateUser(id, nextData);
++  const updated = await queryUser({ id });
++  if (!updated) {
++    badRequest('用户不存在');
++    return;
++  }
++
++  return toUserResponse(updated.dataValues);
+ };
+diff --git a/apps/api/src/modules/user/index.ts b/apps/api/src/modules/user/index.ts
+index 7fd1bd8..345072f 100644
+--- a/apps/api/src/modules/user/index.ts
++++ b/apps/api/src/modules/user/index.ts
+@@ -1,4 +1,5 @@
+ export * from './model/user.model';
++export * from './model/role.model';
+ export * from './types/user.types';
+ export * from './service/user.service';
+ export * from './controller/user.controller';
+diff --git a/apps/api/src/modules/user/model/role.model.ts b/apps/api/src/modules/user/model/role.model.ts
+new file mode 100644
+index 0000000..c17fffd
+--- /dev/null
++++ b/apps/api/src/modules/user/model/role.model.ts
+@@ -0,0 +1,26 @@
++import sequelize from '../../../utils/sequelize';
++import { DataTypes, Model } from 'sequelize';
++
++export type RoleType = Model<{
++  id?: string | number;
++  role_key: string;
++  role_name: string;
++  features?: string;
++}>;
++
++export const RoleModel = sequelize.define<RoleType>('app_role', {
++  role_key: {
++    type: DataTypes.STRING,
++    allowNull: false,
++    unique: true,
++  },
++  role_name: {
++    type: DataTypes.STRING,
++    allowNull: false,
++  },
++  features: {
++    type: DataTypes.TEXT,
++    allowNull: false,
++    defaultValue: '[]',
++  },
++});
+diff --git a/apps/api/src/modules/user/model/user.model.ts b/apps/api/src/modules/user/model/user.model.ts
+index 70f7330..aa4c652 100644
+--- a/apps/api/src/modules/user/model/user.model.ts
++++ b/apps/api/src/modules/user/model/user.model.ts
+@@ -1,3 +1,4 @@
++import { UserRole } from '@volix/types';
+ import sequelize from '../../../utils/sequelize';
+ import { DataTypes, Model } from 'sequelize';
+ 
+@@ -5,8 +6,10 @@ export type UserType = Model<{
+   id?: string | number;
+   email: string;
+   nickname?: string;
++  avatar?: string;
+   password: string;
+-  role?: 'user' | 'admin';
++  role?: UserRole;
++  role_key?: string;
+ }>;
+ 
+ export const UserModel = sequelize.define<UserType>('app_user', {
+@@ -19,12 +22,20 @@ export const UserModel = sequelize.define<UserType>('app_user', {
+   nickname: {
+     type: DataTypes.STRING,
+   },
++  avatar: {
++    type: DataTypes.STRING,
++  },
+   password: {
+     type: DataTypes.STRING,
+   },
+   role: {
++    type: DataTypes.ENUM(...Object.values(UserRole)),
++    allowNull: false,
++    defaultValue: UserRole.USER,
++  },
++  role_key: {
+     type: DataTypes.STRING,
+     allowNull: false,
+-    defaultValue: 'user',
++    defaultValue: 'default',
+   },
+ });
+diff --git a/apps/api/src/modules/user/service/user.service.ts b/apps/api/src/modules/user/service/user.service.ts
+index 3183292..9dab950 100644
+--- a/apps/api/src/modules/user/service/user.service.ts
++++ b/apps/api/src/modules/user/service/user.service.ts
+@@ -1,6 +1,9 @@
+ import type { WhereOptions } from 'sequelize';
++import { Op } from 'sequelize';
+ import { UserModel } from '../model/user.model';
+-import { CreateUserParams, UserEntity } from '../types/user.types';
++import { RoleModel } from '../model/role.model';
++import { AppFeature } from '@volix/types';
++import { CreateRoleParams, CreateUserParams, RoleEntity, UserEntity } from '../types/user.types';
+ 
+ export const queryUser = async (param: WhereOptions<UserEntity>) => {
+   return UserModel.findOne({ where: param });
+@@ -9,3 +12,86 @@ export const queryUser = async (param: WhereOptions<UserEntity>) => {
+ export const addUser = async (param: CreateUserParams) => {
+   return UserModel.create(param);
+ };
++
++export const countUsers = async () => {
++  return UserModel.count();
++};
++
++export const queryUsers = async () => {
++  return UserModel.findAll({
++    order: [['id', 'ASC']],
++  });
++};
++
++export const updateUser = async (id: string | number, param: Partial<UserEntity>) => {
++  return UserModel.update(param, {
++    where: { id },
++  });
++};
++
++export const queryRole = async (param: WhereOptions<RoleEntity>) => {
++  return RoleModel.findOne({ where: param });
++};
++
++export const queryRoles = async () => {
++  return RoleModel.findAll({
++    order: [['id', 'ASC']],
++  });
++};
++
++export const addRole = async (param: CreateRoleParams) => {
++  return RoleModel.create(param);
++};
++
++export const updateRole = async (roleKey: string, param: Partial<RoleEntity>) => {
++  return RoleModel.update(param, {
++    where: { role_key: roleKey },
++  });
++};
++
++export const deleteRole = async (roleKey: string) => {
++  return RoleModel.destroy({
++    where: { role_key: roleKey },
++  });
++};
++
++export const countUsersByRoleKey = async (roleKey: string) => {
++  return UserModel.count({
++    where: {
++      role_key: roleKey,
++    },
++  });
++};
++
++export const parseRoleFeatures = (raw: string | undefined) => {
++  if (!raw) {
++    return [] as AppFeature[];
++  }
++
++  try {
++    const features = JSON.parse(raw) as string[];
++    const validSet = new Set(Object.values(AppFeature));
++    return features.filter(item => validSet.has(item as AppFeature)) as AppFeature[];
++  } catch {
++    return [] as AppFeature[];
++  }
++};
++
++export const stringifyRoleFeatures = (features: AppFeature[]) => {
++  const validSet = new Set(Object.values(AppFeature));
++  const data = features.filter(item => validSet.has(item));
++  return JSON.stringify(Array.from(new Set(data)));
++};
++
++export const getUsersByRoleKeys = async (roleKeys: string[]) => {
++  if (roleKeys.length === 0) {
++    return [];
++  }
++  return UserModel.findAll({
++    where: {
++      role_key: {
++        [Op.in]: roleKeys,
++      },
++    },
++  });
++};
+diff --git a/apps/api/src/modules/user/types/user.types.ts b/apps/api/src/modules/user/types/user.types.ts
+index bb672c7..5d50020 100644
+--- a/apps/api/src/modules/user/types/user.types.ts
++++ b/apps/api/src/modules/user/types/user.types.ts
+@@ -1,11 +1,14 @@
++import type { AppFeature, LoginUserPayload, RegisterUserPayload, UserRole } from '@volix/types';
+ export type { LoginUserPayload, RegisterUserPayload } from '@volix/types';
+ 
+ export interface UserEntity {
+   id?: string;
+   email: string;
+   nickname?: string;
++  avatar?: string;
+   password: string;
+-  role?: 'user' | 'admin';
++  role?: UserRole;
++  role_key?: string;
+ }
+ 
+ export interface UserQueryParams {
+@@ -13,12 +16,34 @@ export interface UserQueryParams {
+   email?: string;
+   password?: string;
+   nickname?: string;
+-  role?: 'user' | 'admin';
++  avatar?: string;
++  role?: UserRole;
++  role_key?: string;
+ }
+ 
+ export interface CreateUserParams {
+   email: string;
+   password: string;
+   nickname?: string;
+-  role?: 'user' | 'admin';
++  avatar?: string;
++  role?: UserRole;
++  role_key?: string;
++}
++
++export interface RoleEntity {
++  id?: string;
++  role_key: string;
++  role_name: string;
++  features?: string;
++}
++
++export interface CreateRoleParams {
++  role_key: string;
++  role_name: string;
++  features: string;
++}
++
++export interface RoleFeaturesMap {
++  roleKey: string;
++  features: AppFeature[];
+ }
+diff --git a/apps/api/src/modules/user/user.route.ts b/apps/api/src/modules/user/user.route.ts
+index 8a6649c..1398e06 100644
+--- a/apps/api/src/modules/user/user.route.ts
++++ b/apps/api/src/modules/user/user.route.ts
+@@ -1,11 +1,42 @@
+ import Router from '@koa/router';
+ import { http } from '../shared/http-handler';
+-import { loginUser, registerUser } from './index';
++import {
++  adminCreateUser,
++  adminUpdateUser,
++  assignUserRole,
++  createRole,
++  getCurrentUser,
++  getUserDetail,
++  getRoleList,
++  getUserList,
++  loginUser,
++  registerUser,
++  removeRole,
++  setUserRole,
++  updateCurrentUserProfile,
++  updateRoleInfo,
++} from './index';
++import authenticate from '../../middleware/authenticate';
+ 
+ const router = new Router({
+   prefix: '/user',
+ });
+ 
+-router.post('/login', http(loginUser)).post('/register', http(registerUser));
++router
++  .post('/login', http(loginUser))
++  .post('/register', http(registerUser))
++  .use(authenticate())
++  .get('/me', http(getCurrentUser))
++  .put('/profile', http(updateCurrentUserProfile))
++  .get('/list', http(getUserList))
++  .put('/role', http(setUserRole))
++  .post('/admin-create', http(adminCreateUser))
++  .get('/roles', http(getRoleList))
++  .post('/roles', http(createRole))
++  .put('/roles/:roleKey', http(updateRoleInfo))
++  .delete('/roles/:roleKey', http(removeRole))
++  .put('/assign-role', http(assignUserRole))
++  .get('/:id', http(getUserDetail))
++  .put('/:id', http(adminUpdateUser));
+ 
+ export default router;
+diff --git a/apps/api/src/utils/dependencies.ts b/apps/api/src/utils/dependencies.ts
+index 8353b9f..d270a74 100644
+--- a/apps/api/src/utils/dependencies.ts
++++ b/apps/api/src/utils/dependencies.ts
+@@ -1,6 +1,120 @@
+ import { PATH } from './path';
+ import fs from 'fs';
+ import { log } from './logger';
++import sequelize from './sequelize';
++import { DataTypes } from 'sequelize';
++import { UserRole, AppFeature } from '@volix/types';
++
++const ensureUserTableColumns = async () => {
++  const queryInterface = sequelize.getQueryInterface();
++  try {
++    const columns = await queryInterface.describeTable('app_user');
++    if (!columns.avatar) {
++      await queryInterface.addColumn('app_user', 'avatar', {
++        type: DataTypes.STRING,
++        allowNull: true,
++      });
++      log.info('数据库迁移完成: app_user.avatar 已补齐');
++    }
++    if (!columns.role_key) {
++      await queryInterface.addColumn('app_user', 'role_key', {
++        type: DataTypes.STRING,
++        allowNull: false,
++        defaultValue: 'default',
++      });
++      log.info('数据库迁移完成: app_user.role_key 已补齐');
++    }
++  } catch (error) {
++    log.warn('检查/迁移 app_user 表结构时跳过:', error);
++  }
++};
++
++const ensureRoleTableAndSeed = async () => {
++  const queryInterface = sequelize.getQueryInterface();
++  try {
++    const tables = await queryInterface.showAllTables();
++    const exists = tables.some(item => {
++      if (typeof item === 'string') {
++        return item === 'app_role';
++      }
++      const tableName = (item as { tableName?: string; name?: string }).tableName || (item as { name?: string }).name;
++      return tableName === 'app_role';
++    });
++    if (!exists) {
++      await queryInterface.createTable('app_role', {
++        id: {
++          type: DataTypes.INTEGER,
++          primaryKey: true,
++          autoIncrement: true,
++          allowNull: false,
++        },
++        role_key: {
++          type: DataTypes.STRING,
++          allowNull: false,
++          unique: true,
++        },
++        role_name: {
++          type: DataTypes.STRING,
++          allowNull: false,
++        },
++        features: {
++          type: DataTypes.TEXT,
++          allowNull: false,
++          defaultValue: '[]',
++        },
++        created_at: {
++          type: DataTypes.DATE,
++          allowNull: false,
++        },
++        updated_at: {
++          type: DataTypes.DATE,
++          allowNull: false,
++        },
++      });
++      log.info('数据库迁移完成: app_role 表已创建');
++    }
++
++    const now = new Date();
++    await queryInterface.sequelize.query(
++      `
++      INSERT INTO app_role (role_key, role_name, features, created_at, updated_at)
++      SELECT :roleKey, :roleName, :features, :now, :now
++      WHERE NOT EXISTS (SELECT 1 FROM app_role WHERE role_key = :roleKey)
++      `,
++      {
++        replacements: {
++          roleKey: 'default',
++          roleName: '默认角色',
++          features: JSON.stringify([AppFeature.ACCOUNT_115, AppFeature.RANDOM_PIC]),
++          now,
++        },
++      }
++    );
++
++    await queryInterface.sequelize.query(
++      `
++      UPDATE app_user
++      SET role_key = 'default'
++      WHERE role_key IS NULL OR role_key = ''
++      `
++    );
++
++    await queryInterface.sequelize.query(
++      `
++      UPDATE app_user
++      SET role_key = 'default'
++      WHERE role = :userRole AND role_key = 'default'
++      `,
++      {
++        replacements: {
++          userRole: UserRole.USER,
++        },
++      }
++    );
++  } catch (error) {
++    log.warn('检查/迁移 app_role 表结构时跳过:', error);
++  }
++};
+ 
+ const initApp = async () => {
+   // // 生成必要的文件夹
+@@ -24,6 +138,9 @@ const initApp = async () => {
+       }
+     }
+   }
++
++  await ensureUserTableColumns();
++  await ensureRoleTableAndSeed();
+ };
+ 
+ export default initApp;
+diff --git a/apps/web-pc/src/apps/115/index.tsx b/apps/web-pc/src/apps/115/index.tsx
+index cb8fd18..77317b5 100644
+--- a/apps/web-pc/src/apps/115/index.tsx
++++ b/apps/web-pc/src/apps/115/index.tsx
+@@ -1,12 +1,13 @@
+ import { UserInfo } from './user-info';
+ import { PicSetting } from './pic-setting';
+-import { Space, Skeleton } from '@douyinfe/semi-ui';
++import { Button, Empty, Space, Skeleton } from '@douyinfe/semi-ui';
+ import { FileTree } from './file-tree';
+ import { useUserInfo } from './hooks/useUserInfo';
+-import { Login } from './login';
++import { useNavigate } from 'react-router';
+ 
+ function My115App() {
+   const { data, loading } = useUserInfo();
++  const navigate = useNavigate();
+ 
+   return (
+     <div style={{ padding: 16 }}>
+@@ -18,10 +19,19 @@ function My115App() {
+             <FileTree />
+           </Space>
+         ) : (
+-          <Login />
++          <Empty
++            title="尚未登录115账号"
++            description="请先前往 设置 > 账号配置 > 115 完成登录"
++            style={{ marginTop: 60 }}
++          >
++            <Button type="primary" onClick={() => navigate('/setting/config/115')}>
++              前往115配置
++            </Button>
++          </Empty>
+         )}
+       </Skeleton>
+     </div>
+   );
+ }
++
+ export default My115App;
+diff --git a/apps/web-pc/src/apps/115/pic-setting.tsx b/apps/web-pc/src/apps/115/pic-setting.tsx
+index 6c5267a..c11cf7a 100644
+--- a/apps/web-pc/src/apps/115/pic-setting.tsx
++++ b/apps/web-pc/src/apps/115/pic-setting.tsx
+@@ -1,11 +1,12 @@
+ import { IconDelete, IconMinusCircle, IconPlus } from '@douyinfe/semi-icons';
+-import { Button, Card, Descriptions, Space, Modal, Tag, Form, ArrayField, Popconfirm, Toast } from '@douyinfe/semi-ui';
++import { Button, Card, Descriptions, Space, Modal, Tag, Popconfirm, Toast } from '@douyinfe/semi-ui';
+ import { FilePath } from './components';
+ import { useEffect, useMemo, useState } from 'react';
+ import type { Data } from '@douyinfe/semi-ui/lib/es/descriptions';
+ import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
+ import { clear115Pic, get115PicInfo, set115PicInfo } from '@/services/115';
+ import { useModal } from '@/hooks';
++import { AppForm } from '@/components';
+ 
+ export function PicSetting() {
+   const [count, setCount] = useState(0);
+@@ -89,16 +90,16 @@ export function PicSetting() {
+         </Space>
+       </div>
+       <Modal onCancel={closeModal} onOk={onSubmit} title="开始缓存" visible={visible} centered>
+-        <div style={{ fontWeight: 500 }}>请填写文件夹cid</div>
+-        <Form getFormApi={setForm} allowEmpty>
+-          <ArrayField field="paths" initValue={[{ path: '' }]}>
+-            {({ add, arrayFields }) => {
++        <AppForm getFormApi={setForm} allowEmpty labelPosition="left">
++          <AppForm.ArrayField field="paths" initValue={[{ path: '' }]}>
++            {({ add, arrayFields }: { add: () => void; arrayFields: Array<{ field: string; key: string; remove: () => void }> }) => {
+               return (
+                 <>
+-                  {arrayFields.map(({ field, key, remove }, index) => {
++                  {arrayFields.map(({ field, key, remove }, index: number) => {
+                     return (
+                       <div style={{ display: 'flex' }} key={key}>
+-                        <Form.Input
++                        <AppForm.Input
++                          label={index === 0 ? '文件夹 CID' : ' '}
+                           rules={[
+                             {
+                               required: true,
+@@ -107,7 +108,7 @@ export function PicSetting() {
+                           ]}
+                           fieldStyle={{ flex: 1 }}
+                           field={`${field}[path]`}
+-                          noLabel
++                          placeholder="请输入文件夹 CID"
+                         />
+                         {index !== 0 ? (
+                           <Button
+@@ -127,8 +128,8 @@ export function PicSetting() {
+                 </>
+               );
+             }}
+-          </ArrayField>
+-        </Form>
++          </AppForm.ArrayField>
++        </AppForm>
+       </Modal>
+     </Card>
+   );
+diff --git a/apps/web-pc/src/apps/admin/index.tsx b/apps/web-pc/src/apps/admin/index.tsx
+new file mode 100644
+index 0000000..c0d651a
+--- /dev/null
++++ b/apps/web-pc/src/apps/admin/index.tsx
+@@ -0,0 +1,209 @@
++import { useEffect, useState } from 'react';
++import { Button, Card, Empty, Nav, Select, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
++import { IconArrowLeft, IconUserGroup } from '@douyinfe/semi-icons';
++import { IconAvatar, IconList } from '@douyinfe/semi-icons-lab';
++import { clearAuthToken } from '@/utils';
++import { useNavigate } from 'react-router';
++import { getCurrentUser, getUserList, setUserRole } from '@/services/user';
++import { UserRole } from '@volix/types';
++import type { UserInfoResponse } from '@volix/types';
++
++type MenuKey = 'profile' | 'users';
++
++function AdminApp() {
++  const navigate = useNavigate();
++  const [user, setUser] = useState<UserInfoResponse>();
++  const [userList, setUserList] = useState<UserInfoResponse[]>([]);
++  const [updatingUserId, setUpdatingUserId] = useState<string | number>();
++  const [activeMenu, setActiveMenu] = useState<MenuKey>('profile');
++  const [isNavCollapsed, setIsNavCollapsed] = useState(false);
++  const isAdmin = user?.role === UserRole.ADMIN;
++
++  const loadCurrentUser = async () => {
++    const res = await getCurrentUser();
++    setUser(res.data);
++  };
++
++  const loadUserList = async () => {
++    if (!isAdmin) {
++      return;
++    }
++    const res = await getUserList();
++    setUserList(res.data);
++  };
++
++  const onLogout = () => {
++    clearAuthToken();
++    navigate('/auth', { replace: true });
++  };
++
++  const onRoleChange = async (target: UserInfoResponse, role: UserRole) => {
++    try {
++      setUpdatingUserId(target.id);
++      await setUserRole({ userId: target.id, role });
++      Toast.success('角色更新成功');
++      await loadUserList();
++      if (String(target.id) === String(user?.id)) {
++        await loadCurrentUser();
++      }
++    } catch (error) {
++      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
++      Toast.error(message || '更新失败');
++    } finally {
++      setUpdatingUserId(undefined);
++    }
++  };
++
++  useEffect(() => {
++    loadCurrentUser().catch(() => {
++      onLogout();
++    });
++  }, []);
++
++  useEffect(() => {
++    loadUserList().catch(() => {
++      Toast.error('获取用户列表失败');
++    });
++  }, [isAdmin]);
++
++  useEffect(() => {
++    if (activeMenu === 'users' && !isAdmin) {
++      setActiveMenu('profile');
++    }
++  }, [activeMenu, isAdmin]);
++
++  const columns = [
++    {
++      title: '邮箱',
++      dataIndex: 'email',
++      key: 'email',
++    },
++    {
++      title: '角色',
++      dataIndex: 'role',
++      key: 'role',
++      render: (_: unknown, record: UserInfoResponse) => (
++        <Select
++          value={record.role}
++          style={{ width: 140 }}
++          disabled={updatingUserId === record.id}
++          onChange={value => {
++            if (!value || value === record.role) {
++              return;
++            }
++            onRoleChange(record, value as UserRole);
++          }}
++        >
++          <Select.Option value={UserRole.USER}>普通用户</Select.Option>
++          <Select.Option value={UserRole.ADMIN}>管理员</Select.Option>
++        </Select>
++      ),
++    },
++  ];
++
++  const navItems = [
++    {
++      itemKey: 'common-settings',
++      text: '普通设置',
++      items: [
++        {
++          itemKey: 'profile',
++          text: '个人信息',
++          icon: <IconAvatar />,
++        },
++      ],
++    },
++    {
++      itemKey: 'admin-settings',
++      text: '管理员设置',
++      items: [
++        {
++          itemKey: 'users',
++          text: '用户信息',
++          icon: <IconUserGroup />,
++          disabled: !isAdmin,
++        },
++      ],
++    },
++  ];
++
++  const renderContent = () => {
++    if (activeMenu === 'profile') {
++      return (
++        <Card title="个人信息" shadows="hover">
++          <div style={{ display: 'grid', gap: 12 }}>
++            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
++              <Typography.Text strong>邮箱：</Typography.Text>
++              <Typography.Text>{user?.email || '-'}</Typography.Text>
++            </div>
++            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
++              <Typography.Text strong>角色：</Typography.Text>
++              <Tag color={isAdmin ? 'red' : 'blue'}>{isAdmin ? '管理员' : '普通用户'}</Tag>
++            </div>
++          </div>
++        </Card>
++      );
++    }
++
++    if (!isAdmin) {
++      return (
++        <Card title="用户信息" shadows="hover">
++          <Empty title="暂无权限" description="仅管理员可查看用户信息" />
++        </Card>
++      );
++    }
++
++    return (
++      <Card title="用户信息" shadows="hover">
++        <Table<UserInfoResponse> rowKey="id" columns={columns} dataSource={userList} pagination={false} />
++      </Card>
++    );
++  };
++
++  return (
++    <div style={{ width: '100%' }}>
++      <Nav
++        mode="horizontal"
++        header={{
++          logo: <IconList style={{ height: 32, fontSize: 32 }} />,
++          text: '后台管理',
++        }}
++        footer={
++          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
++            <Typography.Text>{user?.email}</Typography.Text>
++            <Tag color={isAdmin ? 'red' : 'blue'}>{isAdmin ? '管理员' : '普通用户'}</Tag>
++            <Button icon={<IconArrowLeft />} onClick={() => navigate('/')}>
++              返回首页
++            </Button>
++          </div>
++        }
++      />
++
++      <div style={{ display: 'flex', minHeight: 'calc(100vh - 60px)' }}>
++        <Nav
++          mode="vertical"
++          style={{ width: isNavCollapsed ? 64 : 240, borderRight: '1px solid var(--semi-color-border)' }}
++          bodyStyle={{ paddingTop: 8 }}
++          items={navItems}
++          selectedKeys={[activeMenu]}
++          defaultOpenKeys={['common-settings', 'admin-settings']}
++          isCollapsed={isNavCollapsed}
++          onCollapseChange={setIsNavCollapsed}
++          footer={{
++            collapseButton: true,
++          }}
++          onSelect={data => {
++            const key = data.itemKey as MenuKey;
++            if (key === 'users' && !isAdmin) {
++              return;
++            }
++            setActiveMenu(key);
++          }}
++        />
++        <div style={{ flex: 1, padding: 16, boxSizing: 'border-box' }}>{renderContent()}</div>
++      </div>
++    </div>
++  );
++}
++
++export default AdminApp;
+diff --git a/apps/web-pc/src/apps/auth/index.tsx b/apps/web-pc/src/apps/auth/index.tsx
+new file mode 100644
+index 0000000..138c19a
+--- /dev/null
++++ b/apps/web-pc/src/apps/auth/index.tsx
+@@ -0,0 +1,122 @@
++import { useMemo, useState } from 'react';
++import { Button, Card, Toast, Typography } from '@douyinfe/semi-ui';
++import type { LoginUserPayload } from '@volix/types';
++import { loginUser, registerUser } from '@/services/user';
++import { AppForm } from '@/components';
++import { setAuthToken } from '@/utils';
++import { useLocation, useNavigate } from 'react-router';
++
++type Mode = 'login' | 'register';
++
++const modeTextMap: Record<Mode, { title: string; submitText: string; switchText: string }> = {
++  login: {
++    title: '账号登录',
++    submitText: '登录',
++    switchText: '没有账号？去注册',
++  },
++  register: {
++    title: '账号注册',
++    submitText: '注册',
++    switchText: '已有账号？去登录',
++  },
++};
++
++const getErrorMessage = (error: unknown) => {
++  const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
++  return message || '请求失败，请稍后重试';
++};
++
++function AuthApp() {
++  const [mode, setMode] = useState<Mode>('login');
++  const [loading, setLoading] = useState(false);
++  const navigate = useNavigate();
++  const location = useLocation();
++  const modeText = useMemo(() => modeTextMap[mode], [mode]);
++  const redirectTo = ((location.state as { from?: string } | null)?.from || '/') as string;
++
++  const onSubmit = async (values: unknown) => {
++    const payload = values as LoginUserPayload;
++    try {
++      setLoading(true);
++
++      if (mode === 'register') {
++        await registerUser(payload);
++        Toast.success('注册成功，请登录');
++        setMode('login');
++        return;
++      }
++
++      const res = await loginUser(payload);
++      const token = typeof res.data === 'string' ? res.data : res.data?.token;
++      if (!token) {
++        Toast.error('登录失败，未获取到 token');
++        return;
++      }
++
++      setAuthToken(token);
++      Toast.success('登录成功');
++      navigate(redirectTo, { replace: true });
++    } catch (error) {
++      Toast.error(getErrorMessage(error));
++    } finally {
++      setLoading(false);
++    }
++  };
++
++  return (
++    <div
++      style={{
++        minHeight: '100vh',
++        display: 'flex',
++        justifyContent: 'center',
++        alignItems: 'center',
++        background: 'linear-gradient(145deg, #e8f7ff 0%, #f8fff1 100%)',
++        padding: 16,
++      }}
++    >
++      <Card
++        title={modeText.title}
++        style={{
++          width: '100%',
++          maxWidth: 420,
++          borderRadius: 12,
++        }}
++      >
++        <AppForm onSubmit={onSubmit} labelPosition="top">
++          <AppForm.Input
++            field="email"
++            label="邮箱"
++            placeholder="请输入邮箱"
++            rules={[
++              { required: true, message: '请输入邮箱' },
++              { type: 'email', message: '邮箱格式错误' },
++            ]}
++          />
++          <AppForm.Input
++            field="password"
++            mode="password"
++            label="密码"
++            placeholder="请输入密码"
++            rules={[
++              { required: true, message: '请输入密码' },
++              { min: 6, message: '密码至少 6 位' },
++            ]}
++          />
++
++          <Button htmlType="submit" theme="solid" type="primary" loading={loading} style={{ width: '100%' }}>
++            {modeText.submitText}
++          </Button>
++        </AppForm>
++        <Typography.Text
++          link
++          onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
++          style={{ marginTop: 12, display: 'inline-block' }}
++        >
++          {modeText.switchText}
++        </Typography.Text>
++      </Card>
++    </div>
++  );
++}
++
++export default AuthApp;
+diff --git a/apps/web-pc/src/apps/home/index.tsx b/apps/web-pc/src/apps/home/index.tsx
+index f5ac43e..64c405c 100644
+--- a/apps/web-pc/src/apps/home/index.tsx
++++ b/apps/web-pc/src/apps/home/index.tsx
+@@ -1,20 +1,92 @@
+-import { Nav } from '@douyinfe/semi-ui';
++import { Avatar, Dropdown, Nav, Toast, Typography } from '@douyinfe/semi-ui';
+ import { AppCard } from './components';
+-import { IconAvatar, IconImage, IconList } from '@douyinfe/semi-icons-lab';
++import { IconAvatar, IconImage } from '@douyinfe/semi-icons-lab';
++import { IconApps, IconExit, IconSetting } from '@douyinfe/semi-icons';
++import { clearAuthToken, getHttpErrorMessage, isAuthError } from '@/utils';
++import { useNavigate } from 'react-router';
++import { getCurrentUser } from '@/services/user';
++import { useEffect, useState } from 'react';
++import { AppFeature } from '@volix/types';
++import type { UserInfoResponse } from '@volix/types';
+ 
+ function HomeApp() {
++  const navigate = useNavigate();
++  const [user, setUser] = useState<UserInfoResponse>();
++
++  const onLogout = () => {
++    clearAuthToken();
++    navigate('/auth', { replace: true });
++  };
++
++  useEffect(() => {
++    getCurrentUser()
++      .then(res => {
++        setUser(res.data);
++      })
++      .catch(error => {
++        if (isAuthError(error)) {
++          onLogout();
++          return;
++        }
++        Toast.error(getHttpErrorMessage(error, '获取用户信息失败，请稍后重试'));
++      });
++  }, []);
++
+   return (
+     <div style={{ width: '100%' }}>
+       <Nav
+         header={{
+-          logo: <IconList style={{ height: '36px', fontSize: 36 }} />,
++          logo: (
++            <div
++              onClick={() => navigate('/')}
++              style={{
++                width: 36,
++                height: 36,
++                borderRadius: 10,
++                background: 'linear-gradient(135deg, #14B8A6 0%, #22C55E 100%)',
++                display: 'flex',
++                alignItems: 'center',
++                justifyContent: 'center',
++                cursor: 'pointer',
++              }}
++            >
++              <IconApps style={{ fontSize: 20, color: '#fff' }} />
++            </div>
++          ),
+           text: '我的应用',
+         }}
++        footer={
++          <Dropdown
++            trigger="click"
++            position="bottomRight"
++            render={
++              <Dropdown.Menu>
++                <Dropdown.Item icon={<IconSetting />} onClick={() => navigate('/setting/info')}>
++                  系统管理
++                </Dropdown.Item>
++                <Dropdown.Item icon={<IconExit />} type="danger" onClick={onLogout}>
++                  退出登录
++                </Dropdown.Item>
++              </Dropdown.Menu>
++            }
++          >
++            <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
++              <Avatar size="small" color="blue" src={user?.avatar}>
++                {user?.nickname?.slice(0, 1) || user?.email?.slice(0, 1)?.toUpperCase() || 'U'}
++              </Avatar>
++              <Typography.Text>{user?.nickname || user?.email}</Typography.Text>
++            </div>
++          </Dropdown>
++        }
+         mode={'horizontal'}
+       />
+-      <div style={{ padding: 16, display: 'flex', gap: 8 }}>
+-        <AppCard title="我的115" icon={<IconAvatar size="extra-large" />} link="/115" />
+-        <AppCard title="随机图片" icon={<IconImage size="extra-large" />} link="/pic" />
++      <div style={{ padding: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
++        {user?.featurePermissions?.includes(AppFeature.ACCOUNT_115) ? (
++          <AppCard title="我的115" icon={<IconAvatar size="extra-large" />} link="/115" />
++        ) : null}
++        {user?.featurePermissions?.includes(AppFeature.RANDOM_PIC) ? (
++          <AppCard title="随机图片" icon={<IconImage size="extra-large" />} link="/pic" />
++        ) : null}
+       </div>
+     </div>
+   );
+diff --git a/apps/web-pc/src/apps/setting/config-115.tsx b/apps/web-pc/src/apps/setting/config-115.tsx
+new file mode 100644
+index 0000000..a1add85
+--- /dev/null
++++ b/apps/web-pc/src/apps/setting/config-115.tsx
+@@ -0,0 +1,49 @@
++import { Card, Empty, Skeleton, Space, Typography } from '@douyinfe/semi-ui';
++import { useOutletContext } from 'react-router';
++import { useEffect } from 'react';
++import { UserRole } from '@volix/types';
++import { Login } from '@/apps/115/login';
++import { UserInfo } from '@/apps/115/user-info';
++import { useUserInfo } from '@/apps/115/hooks/useUserInfo';
++import type { SettingOutletContext } from './index';
++
++function SettingConfig115App() {
++  const { user, requestNavigate } = useOutletContext<SettingOutletContext>();
++  const { data, loading } = useUserInfo();
++
++  const isAdmin = user?.role === UserRole.ADMIN;
++
++  useEffect(() => {
++    if (!isAdmin) {
++      requestNavigate('/setting/info');
++    }
++  }, [isAdmin, requestNavigate]);
++
++  if (!isAdmin) {
++    return (
++      <Card title="115" shadows="hover">
++        <Empty title="暂无权限" description="仅管理员可访问 115" />
++      </Card>
++    );
++  }
++
++  return (
++    <Card title="115" shadows="hover" style={{ width: '100%' }}>
++      <Skeleton placeholder={<Skeleton.Paragraph rows={6} />} loading={loading}>
++        {data ? (
++          <Space vertical spacing={12} style={{ width: '100%' }}>
++            <Typography.Text type="secondary">当前已绑定 115 账号</Typography.Text>
++            <UserInfo info={data} />
++          </Space>
++        ) : (
++          <Space vertical spacing={12} style={{ width: '100%' }}>
++            <Typography.Text type="secondary">请先扫码登录 115 账号</Typography.Text>
++            <Login />
++          </Space>
++        )}
++      </Skeleton>
++    </Card>
++  );
++}
++
++export default SettingConfig115App;
+diff --git a/apps/web-pc/src/apps/setting/constants.ts b/apps/web-pc/src/apps/setting/constants.ts
+new file mode 100644
+index 0000000..395d280
+--- /dev/null
++++ b/apps/web-pc/src/apps/setting/constants.ts
+@@ -0,0 +1,6 @@
++import { AppFeature } from '@volix/types';
++
++export const featureLabelMap: Record<AppFeature, string> = {
++  [AppFeature.ACCOUNT_115]: '我的115（account115）',
++  [AppFeature.RANDOM_PIC]: '随机图片（randomPic）',
++};
+diff --git a/apps/web-pc/src/apps/setting/index.tsx b/apps/web-pc/src/apps/setting/index.tsx
+new file mode 100644
+index 0000000..1fcb473
+--- /dev/null
++++ b/apps/web-pc/src/apps/setting/index.tsx
+@@ -0,0 +1,206 @@
++import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
++import { Avatar, Dropdown, Nav, Tag, Toast, Typography } from '@douyinfe/semi-ui';
++import { IconCloud, IconConfigStroked, IconExit, IconKanban, IconSetting, IconUserGroup, IconUserList } from '@douyinfe/semi-icons';
++import { IconAvatar } from '@douyinfe/semi-icons-lab';
++import { clearAuthToken, getHttpErrorMessage, isAuthError } from '@/utils';
++import { useLocation, useNavigate, Outlet } from 'react-router';
++import { getCurrentUser } from '@/services/user';
++import { UserRole } from '@volix/types';
++import type { UserInfoResponse } from '@volix/types';
++
++export interface SettingOutletContext {
++  user?: UserInfoResponse;
++  isAdmin: boolean;
++  refreshUser: () => Promise<void>;
++  requestNavigate: (to: string) => void;
++  registerLeaveGuard: (guard: (() => boolean) | null) => void;
++}
++
++function SettingApp() {
++  const navigate = useNavigate();
++  const location = useLocation();
++  const [user, setUser] = useState<UserInfoResponse>();
++  const [isNavCollapsed, setIsNavCollapsed] = useState(false);
++  const leaveGuardRef = useRef<(() => boolean) | null>(null);
++
++  const isAdmin = user?.role === UserRole.ADMIN;
++
++  const refreshUser = async () => {
++    const res = await getCurrentUser();
++    setUser(res.data);
++  };
++
++  const onLogout = useCallback(() => {
++    if (leaveGuardRef.current && !leaveGuardRef.current()) {
++      return;
++    }
++    clearAuthToken();
++    navigate('/auth', { replace: true });
++  }, [navigate]);
++
++  const requestNavigate = useCallback((to: string) => {
++    if (leaveGuardRef.current && !leaveGuardRef.current()) {
++      return;
++    }
++    navigate(to);
++  }, [navigate]);
++
++  const registerLeaveGuard = useCallback((guard: (() => boolean) | null) => {
++    leaveGuardRef.current = guard;
++  }, []);
++
++  useEffect(() => {
++    refreshUser().catch(error => {
++      if (isAuthError(error)) {
++        onLogout();
++        return;
++      }
++      Toast.error(getHttpErrorMessage(error, '获取用户信息失败，请稍后重试'));
++    });
++  }, []);
++
++  const activeKey = useMemo(() => {
++    if (location.pathname.startsWith('/setting/config/115')) {
++      return 'config/115';
++    }
++    if (location.pathname.startsWith('/setting/role')) {
++      return 'role';
++    }
++    if (location.pathname.startsWith('/setting/user')) {
++      return 'user';
++    }
++    return 'info';
++  }, [location.pathname]);
++
++  const navItems = [
++    {
++      itemKey: 'common-settings',
++      text: '普通设置',
++      items: [
++        {
++          itemKey: 'info',
++          text: '个人信息',
++          icon: <IconAvatar />,
++        },
++      ],
++    },
++    ...(isAdmin
++      ? [
++          {
++            itemKey: 'admin-settings',
++            text: '管理员设置',
++            items: [
++              {
++                itemKey: 'user',
++                text: '用户管理',
++                icon: <IconUserList />,
++              },
++              {
++                itemKey: 'role',
++                text: '角色管理',
++                icon: <IconUserGroup />,
++              },
++              {
++                itemKey: 'config',
++                text: '账号配置',
++                icon: <IconConfigStroked />,
++                items: [
++                  {
++                    itemKey: 'config/115',
++                    text: '115',
++                    icon: <IconCloud />,
++                  },
++                ],
++              },
++            ],
++          },
++        ]
++      : []),
++  ];
++
++  return (
++    <div style={{ width: '100%', overflowX: 'hidden' }}>
++      <Nav
++        mode="horizontal"
++        header={{
++          logo: (
++            <div
++              onClick={() => requestNavigate('/')}
++              style={{
++                width: 36,
++                height: 36,
++                borderRadius: 10,
++                background: 'linear-gradient(135deg, #3B82F6 0%, #6366F1 100%)',
++                display: 'flex',
++                alignItems: 'center',
++                justifyContent: 'center',
++                cursor: 'pointer',
++              }}
++            >
++              <IconKanban style={{ fontSize: 20, color: '#fff' }} />
++            </div>
++          ),
++          text: '后台管理',
++        }}
++        footer={
++          <Dropdown
++            trigger="click"
++            position="bottomRight"
++            render={
++              <Dropdown.Menu>
++                <Dropdown.Item icon={<IconSetting />} onClick={() => requestNavigate('/setting/info')}>
++                  系统管理
++                </Dropdown.Item>
++                <Dropdown.Item icon={<IconExit />} type="danger" onClick={onLogout}>
++                  退出登录
++                </Dropdown.Item>
++              </Dropdown.Menu>
++            }
++          >
++            <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
++              <Avatar size="small" src={user?.avatar}>
++                {user?.nickname?.slice(0, 1) || user?.email?.slice(0, 1)?.toUpperCase() || 'U'}
++              </Avatar>
++              <Typography.Text>{user?.nickname || user?.email}</Typography.Text>
++              <Tag color={isAdmin ? 'red' : 'blue'}>{isAdmin ? '管理员' : '普通用户'}</Tag>
++            </div>
++          </Dropdown>
++        }
++      />
++
++      <div style={{ display: 'flex', minHeight: 'calc(100vh - 60px)' }}>
++        <Nav
++          mode="vertical"
++          style={{
++            width: isNavCollapsed ? 64 : 240,
++            flexShrink: 0,
++            borderRight: '1px solid var(--semi-color-border)',
++          }}
++          bodyStyle={{ paddingTop: 8 }}
++          items={navItems}
++          selectedKeys={[activeKey]}
++          defaultOpenKeys={isAdmin ? ['common-settings', 'admin-settings', 'config'] : ['common-settings']}
++          isCollapsed={isNavCollapsed}
++          onCollapseChange={setIsNavCollapsed}
++          footer={{ collapseButton: true }}
++          onSelect={data => {
++            const key = data.itemKey;
++            if (key === 'config') {
++              return;
++            }
++            if (key === 'user' && !isAdmin) {
++              Toast.warning('仅管理员可访问用户信息');
++              return;
++            }
++            requestNavigate(`/setting/${key}`);
++          }}
++        />
++        <div style={{ flex: 1, minWidth: 0, padding: 16, boxSizing: 'border-box' }}>
++          <Outlet context={{ user, isAdmin, refreshUser, requestNavigate, registerLeaveGuard } satisfies SettingOutletContext} />
++        </div>
++      </div>
++    </div>
++  );
++}
++
++export default SettingApp;
+diff --git a/apps/web-pc/src/apps/setting/info.tsx b/apps/web-pc/src/apps/setting/info.tsx
+new file mode 100644
+index 0000000..ab10c11
+--- /dev/null
++++ b/apps/web-pc/src/apps/setting/info.tsx
+@@ -0,0 +1,126 @@
++import { useEffect, useRef, useState, type ChangeEvent } from 'react';
++import { Avatar, Button, Card, Space, Toast, Typography } from '@douyinfe/semi-ui';
++import { updateCurrentUserProfile } from '@/services/user';
++import { uploadLocalFile } from '@/services/file';
++import { AppForm } from '@/components';
++import { useOutletContext } from 'react-router';
++import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
++import type { SettingOutletContext } from './index';
++
++interface InfoFormValues {
++  email: string;
++  nickname: string;
++  avatar: string;
++}
++
++function SettingInfoApp() {
++  const { user, refreshUser } = useOutletContext<SettingOutletContext>();
++  const [saving, setSaving] = useState(false);
++  const [uploading, setUploading] = useState(false);
++  const [formApi, setFormApi] = useState<FormApi<Record<string, unknown>>>();
++  const [formInitValues, setFormInitValues] = useState<InfoFormValues>();
++  const [preview, setPreview] = useState<{ nickname: string; avatar: string }>({ nickname: '', avatar: '' });
++  const fileInputRef = useRef<HTMLInputElement>(null);
++
++  useEffect(() => {
++    const nextValues: InfoFormValues = {
++      email: user?.email || '',
++      nickname: user?.nickname || '',
++      avatar: user?.avatar || '',
++    };
++    setFormInitValues(nextValues);
++    setPreview({ nickname: nextValues.nickname, avatar: nextValues.avatar });
++  }, [user?.nickname, user?.avatar]);
++
++  const onSave = async (values: unknown) => {
++    const payload = values as InfoFormValues;
++    try {
++      setSaving(true);
++      await updateCurrentUserProfile({
++        nickname: payload.nickname,
++        avatar: payload.avatar,
++      });
++      await refreshUser();
++      Toast.success('个人信息已保存');
++    } catch (error) {
++      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
++      Toast.error(message || '保存失败');
++    } finally {
++      setSaving(false);
++    }
++  };
++
++  const onUploadAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
++    const file = event.target.files?.[0];
++    event.target.value = '';
++    if (!file) {
++      return;
++    }
++    try {
++      setUploading(true);
++      const res = await uploadLocalFile(file);
++      formApi?.setValue('avatar', res.data.path);
++      setPreview(prev => ({ ...prev, avatar: res.data.path }));
++      Toast.success('头像上传成功');
++    } catch (error) {
++      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
++      Toast.error(message || '头像上传失败');
++    } finally {
++      setUploading(false);
++    }
++  };
++
++  return (
++    <Card title="个人信息" shadows="hover" style={{ width: '100%' }}>
++      <div style={{ display: 'grid', gap: 16 }}>
++        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
++          <Avatar size="large" src={preview.avatar}>
++            {preview.nickname?.slice(0, 1) || user?.email?.slice(0, 1)?.toUpperCase() || 'U'}
++          </Avatar>
++          <Typography.Text type="secondary">支持填写头像图片 URL，保存后即时生效</Typography.Text>
++        </div>
++
++        {formInitValues ? (
++          <AppForm
++            key={user?.id ? String(user.id) : 'me'}
++            labelPosition="top"
++            initValues={formInitValues}
++            getFormApi={setFormApi}
++            onValueChange={values => {
++              const next = values as InfoFormValues;
++              setPreview({
++                nickname: next.nickname || '',
++                avatar: next.avatar || '',
++              });
++            }}
++            onSubmit={onSave}
++          >
++            <AppForm.Input field="email" label="邮箱" disabled />
++            <AppForm.Input field="nickname" label="昵称" maxLength={32} placeholder="请输入昵称" showClear />
++            <AppForm.Input field="avatar" label="头像 URL" placeholder="请输入头像链接（http/https 或 /file/）" showClear />
++          </AppForm>
++        ) : null}
++        <Space>
++          <Button loading={uploading} onClick={() => fileInputRef.current?.click()}>
++            上传头像
++          </Button>
++          <input
++            ref={fileInputRef}
++            type="file"
++            accept="image/*"
++            style={{ display: 'none' }}
++            onChange={onUploadAvatar}
++          />
++        </Space>
++
++        <div>
++          <Button type="primary" theme="solid" loading={saving} onClick={() => formApi?.submitForm()}>
++            保存修改
++          </Button>
++        </div>
++      </div>
++    </Card>
++  );
++}
++
++export default SettingInfoApp;
+diff --git a/apps/web-pc/src/apps/setting/role-add.tsx b/apps/web-pc/src/apps/setting/role-add.tsx
+new file mode 100644
+index 0000000..ab02193
+--- /dev/null
++++ b/apps/web-pc/src/apps/setting/role-add.tsx
+@@ -0,0 +1,114 @@
++import { useEffect, useMemo, useState } from 'react';
++import { Button, Card, Space, Toast } from '@douyinfe/semi-ui';
++import { createRole } from '@/services/user';
++import { AppForm } from '@/components';
++import { useOutletContext } from 'react-router';
++import { AppFeature } from '@volix/types';
++import type { SettingOutletContext } from './index';
++import { featureLabelMap } from './constants';
++
++interface RoleAddFormValues {
++  roleName: string;
++  features: AppFeature[];
++}
++
++const defaultValues: RoleAddFormValues = {
++  roleName: '',
++  features: [],
++};
++
++function SettingRoleAddApp() {
++  const { isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
++  const [creatingRole, setCreatingRole] = useState(false);
++  const [isDirty, setIsDirty] = useState(false);
++
++  const featureOptions = useMemo(
++    () =>
++      Object.values(AppFeature).map(feature => ({
++        label: featureLabelMap[feature],
++        value: feature,
++      })),
++    []
++  );
++
++  useEffect(() => {
++    if (!isAdmin) {
++      requestNavigate('/setting/role');
++    }
++  }, [isAdmin, requestNavigate]);
++
++  useEffect(() => {
++    if (!isDirty) {
++      registerLeaveGuard(null);
++      return;
++    }
++
++    const confirmLeave = () => window.confirm('当前有未保存内容，确定离开吗？');
++    registerLeaveGuard(confirmLeave);
++
++    const onBeforeUnload = (event: BeforeUnloadEvent) => {
++      event.preventDefault();
++      event.returnValue = '';
++    };
++    window.addEventListener('beforeunload', onBeforeUnload);
++
++    return () => {
++      registerLeaveGuard(null);
++      window.removeEventListener('beforeunload', onBeforeUnload);
++    };
++  }, [isDirty, registerLeaveGuard]);
++
++  const onCreateRole = async (values: unknown) => {
++    const payload = values as RoleAddFormValues;
++    try {
++      setCreatingRole(true);
++      await createRole({
++        roleName: payload.roleName?.trim(),
++        features: payload.features || [],
++      });
++      registerLeaveGuard(null);
++      Toast.success('角色创建成功');
++      requestNavigate('/setting/role');
++    } catch (error) {
++      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
++      Toast.error(message || '创建失败');
++    } finally {
++      setCreatingRole(false);
++    }
++  };
++
++  return (
++    <Card title="添加角色" shadows="hover" style={{ width: '100%' }}>
++      <Space vertical spacing={16} style={{ width: '100%' }}>
++        <AppForm
++          labelPosition="top"
++          initValues={defaultValues}
++          onValueChange={values => {
++            const next = values as RoleAddFormValues;
++            const dirty = Boolean(next.roleName?.trim() || (next.features || []).length > 0);
++            setIsDirty(dirty);
++          }}
++          onSubmit={onCreateRole}
++        >
++          <AppForm.Input field="roleName" label="角色名称" placeholder="例如 编辑角色、运营角色" />
++          <AppForm.Select
++            field="features"
++            label="功能权限"
++            multiple
++            style={{ width: '100%' }}
++            placeholder="选择该角色可访问的功能"
++            optionList={featureOptions}
++          />
++          <Space>
++            <Button type="primary" htmlType="submit" loading={creatingRole}>
++              保存角色
++            </Button>
++            <Button onClick={() => requestNavigate('/setting/role')}>取消</Button>
++          </Space>
++        </AppForm>
++      </Space>
++    </Card>
++  );
++}
++
++export default SettingRoleAddApp;
+diff --git a/apps/web-pc/src/apps/setting/role-edit.tsx b/apps/web-pc/src/apps/setting/role-edit.tsx
+new file mode 100644
+index 0000000..58a5ca6
+--- /dev/null
++++ b/apps/web-pc/src/apps/setting/role-edit.tsx
+@@ -0,0 +1,134 @@
++import { useEffect, useMemo, useState } from 'react';
++import { Button, Card, Empty, Space, Toast } from '@douyinfe/semi-ui';
++import { getRoleList, updateRoleInfo } from '@/services/user';
++import { AppForm } from '@/components';
++import { useOutletContext, useParams } from 'react-router';
++import { AppFeature } from '@volix/types';
++import type { RoleInfoResponse } from '@volix/types';
++import type { SettingOutletContext } from './index';
++import { featureLabelMap } from './constants';
++
++interface RoleEditFormValues {
++  features: AppFeature[];
++}
++
++function SettingRoleEditApp() {
++  const { isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
++  const { roleKey = '' } = useParams();
++  const [roleInfo, setRoleInfo] = useState<RoleInfoResponse>();
++  const [saving, setSaving] = useState(false);
++  const [isDirty, setIsDirty] = useState(false);
++
++  const isDefaultRole = roleKey === 'default';
++
++  const loadRole = async () => {
++    const res = await getRoleList();
++    const find = res.data.find(item => item.roleKey === roleKey);
++    if (!find) {
++      Toast.error('角色不存在');
++      requestNavigate('/setting/role');
++      return;
++    }
++    setRoleInfo(find);
++  };
++
++  const featureOptions = useMemo(
++    () =>
++      Object.values(AppFeature).map(feature => ({
++        label: featureLabelMap[feature],
++        value: feature,
++      })),
++    []
++  );
++
++  useEffect(() => {
++    if (!isAdmin) {
++      requestNavigate('/setting/role');
++      return;
++    }
++    loadRole().catch(() => {
++      Toast.error('获取角色信息失败');
++    });
++  }, [isAdmin, roleKey]);
++
++  useEffect(() => {
++    if (!isDirty) {
++      registerLeaveGuard(null);
++      return;
++    }
++    const confirmLeave = () => window.confirm('当前有未保存内容，确定离开吗？');
++    registerLeaveGuard(confirmLeave);
++    const onBeforeUnload = (event: BeforeUnloadEvent) => {
++      event.preventDefault();
++      event.returnValue = '';
++    };
++    window.addEventListener('beforeunload', onBeforeUnload);
++    return () => {
++      registerLeaveGuard(null);
++      window.removeEventListener('beforeunload', onBeforeUnload);
++    };
++  }, [isDirty, registerLeaveGuard]);
++
++  const onSave = async (values: unknown) => {
++    const payload = values as RoleEditFormValues;
++    try {
++      setSaving(true);
++      await updateRoleInfo(roleKey, { features: payload.features || [] });
++      registerLeaveGuard(null);
++      Toast.success('角色权限已更新');
++      requestNavigate('/setting/role');
++    } catch (error) {
++      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
++      Toast.error(message || '更新失败');
++    } finally {
++      setSaving(false);
++    }
++  };
++
++  if (!roleInfo) {
++    return (
++      <Card title="编辑角色" shadows="hover">
++        <Empty title="加载中" />
++      </Card>
++    );
++  }
++
++  return (
++    <Card title={`编辑角色：${roleInfo.roleName}`} shadows="hover" style={{ width: '100%' }}>
++      <Space vertical spacing={16} style={{ width: '100%' }}>
++        {isDefaultRole ? (
++          <Empty title="内置角色不可编辑" description="default 角色暂不支持编辑" />
++        ) : (
++          <>
++            <AppForm
++              labelPosition="top"
++              initValues={{ features: roleInfo.features || [] }}
++              onValueChange={values => {
++                const next = values as RoleEditFormValues;
++                const dirty = JSON.stringify(next.features || []) !== JSON.stringify(roleInfo.features || []);
++                setIsDirty(dirty);
++              }}
++              onSubmit={onSave}
++            >
++              <AppForm.Select
++                field="features"
++                label="功能权限"
++                multiple
++                style={{ width: '100%' }}
++                optionList={featureOptions}
++              />
++              <Space>
++                <Button type="primary" htmlType="submit" loading={saving}>
++                  保存修改
++                </Button>
++                <Button onClick={() => requestNavigate('/setting/role')}>取消</Button>
++              </Space>
++            </AppForm>
++          </>
++        )}
++      </Space>
++    </Card>
++  );
++}
++
++export default SettingRoleEditApp;
+diff --git a/apps/web-pc/src/apps/setting/role.tsx b/apps/web-pc/src/apps/setting/role.tsx
+new file mode 100644
+index 0000000..96d0e3e
+--- /dev/null
++++ b/apps/web-pc/src/apps/setting/role.tsx
+@@ -0,0 +1,115 @@
++import { useEffect, useState } from 'react';
++import { Button, Card, Empty, Popconfirm, Space, Table, Tag, Toast } from '@douyinfe/semi-ui';
++import { getRoleList, removeRole } from '@/services/user';
++import { useOutletContext } from 'react-router';
++import { AppFeature } from '@volix/types';
++import type { RoleInfoResponse } from '@volix/types';
++import type { SettingOutletContext } from './index';
++import { featureLabelMap } from './constants';
++
++function SettingRoleApp() {
++  const { isAdmin, requestNavigate } = useOutletContext<SettingOutletContext>();
++  const [roleList, setRoleList] = useState<RoleInfoResponse[]>([]);
++
++  const loadRoleList = async () => {
++    if (!isAdmin) {
++      return;
++    }
++    const res = await getRoleList();
++    setRoleList(res.data);
++  };
++
++  useEffect(() => {
++    loadRoleList().catch(() => {
++      Toast.error('获取角色列表失败');
++    });
++  }, [isAdmin]);
++
++  const onRemoveRole = async (roleKey: string) => {
++    try {
++      await removeRole(roleKey);
++      await loadRoleList();
++      Toast.success('角色已删除');
++    } catch (error) {
++      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
++      Toast.error(message || '删除失败');
++    }
++  };
++
++  if (!isAdmin) {
++    return (
++      <Card title="角色管理" shadows="hover">
++        <Empty title="暂无权限" description="仅管理员可查看角色管理" />
++      </Card>
++    );
++  }
++
++  return (
++    <Card
++      title="角色管理"
++      shadows="hover"
++      headerExtraContent={
++        <Button type="primary" onClick={() => requestNavigate('/setting/role/add')}>
++          添加角色
++        </Button>
++      }
++    >
++      <Space vertical spacing={12} style={{ width: '100%' }}>
++        <Table<RoleInfoResponse>
++          rowKey="roleKey"
++          pagination={false}
++          scroll={{ x: 980 }}
++          size="small"
++          dataSource={roleList}
++          columns={[
++            { title: '角色名称', dataIndex: 'roleName', key: 'roleName', width: 180 },
++            {
++              title: '功能权限',
++              dataIndex: 'features',
++              key: 'features',
++              render: (features: AppFeature[]) =>
++                features.length === 0 ? (
++                  '-'
++                ) : (
++                  <Space wrap>
++                    {features.map(feature => (
++                      <Tag key={feature} color="cyan">
++                        {featureLabelMap[feature]}
++                      </Tag>
++                    ))}
++                  </Space>
++                ),
++            },
++            {
++              title: '操作',
++              key: 'action',
++              width: 220,
++              render: (_: unknown, record: RoleInfoResponse) =>
++                record.roleKey === 'default' ? (
++                  <Tag color="grey">内置</Tag>
++                ) : (
++                  <Space>
++                    <Button theme="borderless" type="primary" onClick={() => requestNavigate(`/setting/role/edit/${record.roleKey}`)}>
++                      编辑
++                    </Button>
++                    <Popconfirm
++                      title="确定删除该角色吗？"
++                      content="删除后不可恢复，且仅当没有用户绑定该角色时可删除。"
++                      okType="danger"
++                      onConfirm={() => onRemoveRole(record.roleKey)}
++                    >
++                      <Button theme="borderless" type="danger">
++                        删除
++                      </Button>
++                    </Popconfirm>
++                  </Space>
++                ),
++            },
++          ]}
++        />
++      </Space>
++    </Card>
++  );
++}
++
++export default SettingRoleApp;
+diff --git a/apps/web-pc/src/apps/setting/user-add.tsx b/apps/web-pc/src/apps/setting/user-add.tsx
+new file mode 100644
+index 0000000..da15b2a
+--- /dev/null
++++ b/apps/web-pc/src/apps/setting/user-add.tsx
+@@ -0,0 +1,191 @@
++import { useEffect, useRef, useState, type ChangeEvent } from 'react';
++import { Button, Card, Space, Toast } from '@douyinfe/semi-ui';
++import { adminCreateUser, getRoleList } from '@/services/user';
++import { uploadLocalFile } from '@/services/file';
++import { AppForm } from '@/components';
++import { useOutletContext } from 'react-router';
++import { UserRole } from '@volix/types';
++import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
++import type { RoleInfoResponse } from '@volix/types';
++import type { SettingOutletContext } from './index';
++
++interface UserAddFormValues {
++  email: string;
++  password: string;
++  nickname: string;
++  avatar: string;
++  role: UserRole;
++  roleKey: string;
++}
++
++const defaultValues: UserAddFormValues = {
++  email: '',
++  password: '',
++  nickname: '',
++  avatar: '',
++  role: UserRole.USER,
++  roleKey: 'default',
++};
++
++function SettingUserAddApp() {
++  const { isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
++  const [roleList, setRoleList] = useState<RoleInfoResponse[]>([]);
++  const [saving, setSaving] = useState(false);
++  const [uploading, setUploading] = useState(false);
++  const [isDirty, setIsDirty] = useState(false);
++  const [formApi, setFormApi] = useState<FormApi<Record<string, unknown>>>();
++  const fileInputRef = useRef<HTMLInputElement>(null);
++
++  useEffect(() => {
++    if (!isAdmin) {
++      requestNavigate('/setting/user');
++      return;
++    }
++    getRoleList()
++      .then(res => setRoleList(res.data))
++      .catch(() => Toast.error('获取角色列表失败'));
++  }, [isAdmin, requestNavigate]);
++
++  useEffect(() => {
++    if (!isDirty) {
++      registerLeaveGuard(null);
++      return;
++    }
++    const confirmLeave = () => window.confirm('当前有未保存内容，确定离开吗？');
++    registerLeaveGuard(confirmLeave);
++    const onBeforeUnload = (event: BeforeUnloadEvent) => {
++      event.preventDefault();
++      event.returnValue = '';
++    };
++    window.addEventListener('beforeunload', onBeforeUnload);
++    return () => {
++      registerLeaveGuard(null);
++      window.removeEventListener('beforeunload', onBeforeUnload);
++    };
++  }, [isDirty, registerLeaveGuard]);
++
++  const onSubmit = async (values: unknown) => {
++    const payload = values as UserAddFormValues;
++    try {
++      setSaving(true);
++      await adminCreateUser({
++        email: payload.email.trim(),
++        password: payload.password.trim(),
++        nickname: payload.nickname?.trim(),
++        avatar: payload.avatar?.trim(),
++        role: payload.role,
++        roleKey: payload.roleKey,
++      });
++      registerLeaveGuard(null);
++      Toast.success('用户创建成功');
++      requestNavigate('/setting/user');
++    } catch (error) {
++      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
++      Toast.error(message || '创建失败');
++    } finally {
++      setSaving(false);
++    }
++  };
++
++  const onUploadAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
++    const file = event.target.files?.[0];
++    event.target.value = '';
++    if (!file) {
++      return;
++    }
++    try {
++      setUploading(true);
++      const res = await uploadLocalFile(file);
++      formApi?.setValue('avatar', res.data.path);
++      Toast.success('头像上传成功');
++    } catch (error) {
++      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
++      Toast.error(message || '头像上传失败');
++    } finally {
++      setUploading(false);
++    }
++  };
++
++  return (
++    <Card title="添加用户" shadows="hover" style={{ width: '100%' }}>
++      <Space vertical spacing={16} style={{ width: '100%' }}>
++        <AppForm
++          labelPosition="top"
++          initValues={defaultValues}
++          getFormApi={setFormApi}
++          onValueChange={values => {
++            const next = values as UserAddFormValues;
++            const dirty = Boolean(
++              next.email?.trim() ||
++              next.password?.trim() ||
++              next.nickname?.trim() ||
++              next.avatar?.trim() ||
++              next.role !== UserRole.USER ||
++              next.roleKey !== 'default'
++            );
++            setIsDirty(dirty);
++          }}
++          onSubmit={onSubmit}
++        >
++          <AppForm.Input
++            field="email"
++            label="邮箱"
++            placeholder="请输入邮箱"
++          />
++          <AppForm.Input
++            field="password"
++            label="密码"
++            mode="password"
++            placeholder="请输入密码"
++          />
++          <AppForm.Input
++            field="nickname"
++            label="昵称（可选）"
++            placeholder="请输入昵称"
++          />
++          <AppForm.Input
++            field="avatar"
++            label="头像URL（可选）"
++            placeholder="请输入头像URL（http/https 或 /file/）"
++          />
++          <AppForm.Select
++            field="role"
++            label="系统角色"
++            optionList={[
++              { label: '普通用户', value: UserRole.USER },
++              { label: '管理员', value: UserRole.ADMIN },
++            ]}
++          />
++          <AppForm.Select
++            field="roleKey"
++            label="角色组"
++            optionList={roleList.map(item => ({
++              label: item.roleName,
++              value: item.roleKey,
++            }))}
++          />
++        </AppForm>
++        <Space>
++          <Button loading={uploading} onClick={() => fileInputRef.current?.click()}>
++            上传头像
++          </Button>
++          <input
++            ref={fileInputRef}
++            type="file"
++            accept="image/*"
++            style={{ display: 'none' }}
++            onChange={onUploadAvatar}
++          />
++        </Space>
++        <Space>
++          <Button type="primary" loading={saving} onClick={() => formApi?.submitForm()}>
++            保存用户
++          </Button>
++          <Button onClick={() => requestNavigate('/setting/user')}>取消</Button>
++        </Space>
++      </Space>
++    </Card>
++  );
++}
++
++export default SettingUserAddApp;
+diff --git a/apps/web-pc/src/apps/setting/user-edit.tsx b/apps/web-pc/src/apps/setting/user-edit.tsx
+new file mode 100644
+index 0000000..c45e5bf
+--- /dev/null
++++ b/apps/web-pc/src/apps/setting/user-edit.tsx
+@@ -0,0 +1,190 @@
++import { useEffect, useRef, useState, type ChangeEvent } from 'react';
++import { Button, Card, Empty, Space, Toast } from '@douyinfe/semi-ui';
++import { adminUpdateUser, getRoleList, getUserDetail } from '@/services/user';
++import { uploadLocalFile } from '@/services/file';
++import { AppForm } from '@/components';
++import { useOutletContext, useParams } from 'react-router';
++import { UserRole } from '@volix/types';
++import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
++import type { RoleInfoResponse, UserInfoResponse } from '@volix/types';
++import type { SettingOutletContext } from './index';
++
++interface UserEditFormValues {
++  email: string;
++  nickname: string;
++  avatar: string;
++  role: UserRole;
++  roleKey: string;
++}
++
++function SettingUserEditApp() {
++  const { isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
++  const { id = '' } = useParams();
++  const [roleList, setRoleList] = useState<RoleInfoResponse[]>([]);
++  const [origin, setOrigin] = useState<UserInfoResponse>();
++  const [saving, setSaving] = useState(false);
++  const [uploading, setUploading] = useState(false);
++  const [formApi, setFormApi] = useState<FormApi<Record<string, unknown>>>();
++  const [formInitValues, setFormInitValues] = useState<UserEditFormValues>();
++  const [isDirty, setIsDirty] = useState(false);
++  const fileInputRef = useRef<HTMLInputElement>(null);
++
++  const loadData = async () => {
++    const [roleRes, userRes] = await Promise.all([getRoleList(), getUserDetail(id)]);
++    setRoleList(roleRes.data);
++    setOrigin(userRes.data);
++    setFormInitValues({
++      email: userRes.data.email || '',
++      nickname: userRes.data.nickname || '',
++      avatar: userRes.data.avatar || '',
++      role: userRes.data.role,
++      roleKey: userRes.data.roleKey || 'default',
++    });
++  };
++
++  useEffect(() => {
++    if (!isAdmin) {
++      requestNavigate('/setting/user');
++      return;
++    }
++    loadData().catch(() => Toast.error('获取用户信息失败'));
++  }, [isAdmin, id, requestNavigate]);
++
++  useEffect(() => {
++    if (!isDirty) {
++      registerLeaveGuard(null);
++      return;
++    }
++    const confirmLeave = () => window.confirm('当前有未保存内容，确定离开吗？');
++    registerLeaveGuard(confirmLeave);
++    const onBeforeUnload = (event: BeforeUnloadEvent) => {
++      event.preventDefault();
++      event.returnValue = '';
++    };
++    window.addEventListener('beforeunload', onBeforeUnload);
++    return () => {
++      registerLeaveGuard(null);
++      window.removeEventListener('beforeunload', onBeforeUnload);
++    };
++  }, [isDirty, registerLeaveGuard]);
++
++  const onSubmit = async (values: unknown) => {
++    const payload = values as UserEditFormValues;
++    try {
++      setSaving(true);
++      await adminUpdateUser(id, {
++        nickname: payload.nickname,
++        avatar: payload.avatar,
++        role: payload.role,
++        roleKey: payload.roleKey,
++      });
++      registerLeaveGuard(null);
++      Toast.success('用户信息已更新');
++      requestNavigate('/setting/user');
++    } catch (error) {
++      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
++      Toast.error(message || '更新失败');
++    } finally {
++      setSaving(false);
++    }
++  };
++
++  const onUploadAvatar = async (event: ChangeEvent<HTMLInputElement>) => {
++    const file = event.target.files?.[0];
++    event.target.value = '';
++    if (!file) {
++      return;
++    }
++    try {
++      setUploading(true);
++      const res = await uploadLocalFile(file);
++      formApi?.setValue('avatar', res.data.path);
++      Toast.success('头像上传成功');
++    } catch (error) {
++      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
++      Toast.error(message || '头像上传失败');
++    } finally {
++      setUploading(false);
++    }
++  };
++
++  if (!origin || !formInitValues) {
++    return (
++      <Card title="编辑用户" shadows="hover">
++        <Empty title="加载中" />
++      </Card>
++    );
++  }
++
++  return (
++    <Card title={`编辑用户：${origin.email}`} shadows="hover" style={{ width: '100%' }}>
++      <Space vertical spacing={16} style={{ width: '100%' }}>
++        <AppForm
++          key={`${origin.id}`}
++          labelPosition="top"
++          initValues={formInitValues}
++          getFormApi={setFormApi}
++          onValueChange={values => {
++            const next = values as UserEditFormValues;
++            const dirty = Boolean(
++              (origin.nickname || '') !== (next.nickname || '') ||
++              (origin.avatar || '') !== (next.avatar || '') ||
++              origin.role !== next.role ||
++              (origin.roleKey || 'default') !== (next.roleKey || 'default')
++            );
++            setIsDirty(dirty);
++          }}
++          onSubmit={onSubmit}
++        >
++          <AppForm.Input field="email" label="邮箱" disabled />
++          <AppForm.Input
++            field="nickname"
++            label="昵称（可选）"
++            placeholder="请输入昵称"
++          />
++          <AppForm.Input
++            field="avatar"
++            label="头像URL（可选）"
++            placeholder="请输入头像URL（http/https 或 /file/）"
++          />
++          <AppForm.Select
++            field="role"
++            label="系统角色"
++            optionList={[
++              { label: '普通用户', value: UserRole.USER },
++              { label: '管理员', value: UserRole.ADMIN },
++            ]}
++          />
++          <AppForm.Select
++            field="roleKey"
++            label="角色组"
++            optionList={roleList.map(item => ({
++              label: item.roleName,
++              value: item.roleKey,
++            }))}
++          />
++        </AppForm>
++        <Space>
++          <Button loading={uploading} onClick={() => fileInputRef.current?.click()}>
++            上传头像
++          </Button>
++          <input
++            ref={fileInputRef}
++            type="file"
++            accept="image/*"
++            style={{ display: 'none' }}
++            onChange={onUploadAvatar}
++          />
++        </Space>
++        <Space>
++          <Button type="primary" loading={saving} onClick={() => formApi?.submitForm()}>
++            保存修改
++          </Button>
++          <Button onClick={() => requestNavigate('/setting/user')}>取消</Button>
++        </Space>
++      </Space>
++    </Card>
++  );
++}
++
++export default SettingUserEditApp;
+diff --git a/apps/web-pc/src/apps/setting/user.tsx b/apps/web-pc/src/apps/setting/user.tsx
+new file mode 100644
+index 0000000..2eb7a5a
+--- /dev/null
++++ b/apps/web-pc/src/apps/setting/user.tsx
+@@ -0,0 +1,105 @@
++import { useEffect, useState } from 'react';
++import { Avatar, Button, Card, Empty, Table, Toast } from '@douyinfe/semi-ui';
++import { getRoleList, getUserList } from '@/services/user';
++import { useOutletContext } from 'react-router';
++import type { RoleInfoResponse, UserInfoResponse } from '@volix/types';
++import type { SettingOutletContext } from './index';
++
++function SettingUserApp() {
++  const { isAdmin, requestNavigate } = useOutletContext<SettingOutletContext>();
++  const [userList, setUserList] = useState<UserInfoResponse[]>([]);
++  const [roleList, setRoleList] = useState<RoleInfoResponse[]>([]);
++
++  const loadData = async () => {
++    if (!isAdmin) {
++      return;
++    }
++    const [usersRes, rolesRes] = await Promise.all([getUserList(), getRoleList()]);
++    setUserList(usersRes.data);
++    setRoleList(rolesRes.data);
++  };
++
++  useEffect(() => {
++    loadData().catch(() => {
++      Toast.error('获取用户信息失败');
++    });
++  }, [isAdmin]);
++
++  if (!isAdmin) {
++    return (
++      <Card title="用户管理" shadows="hover">
++        <Empty title="暂无权限" description="仅管理员可查看用户管理" />
++      </Card>
++    );
++  }
++
++  return (
++    <Card
++      title="用户管理"
++      shadows="hover"
++      headerExtraContent={
++        <Button type="primary" onClick={() => requestNavigate('/setting/user/add')}>
++          添加用户
++        </Button>
++      }
++    >
++      <Table<UserInfoResponse>
++        rowKey="id"
++        pagination={false}
++        scroll={{ x: 980 }}
++        size="small"
++        dataSource={userList}
++        columns={[
++          {
++            title: '头像',
++            dataIndex: 'avatar',
++            key: 'avatar',
++            width: 100,
++            render: (_: unknown, record: UserInfoResponse) => (
++              <Avatar size="small" src={record.avatar}>
++                {record.nickname?.slice(0, 1) || record.email.slice(0, 1).toUpperCase()}
++              </Avatar>
++            ),
++          },
++          {
++            title: '昵称',
++            dataIndex: 'nickname',
++            key: 'nickname',
++            render: (value: string | undefined) => value || '-',
++          },
++          {
++            title: '邮箱',
++            dataIndex: 'email',
++            key: 'email',
++          },
++          {
++            title: '系统角色',
++            dataIndex: 'role',
++            key: 'role',
++            width: 160,
++            render: (value: UserInfoResponse['role']) => (value === 'admin' ? '管理员' : '普通用户'),
++          },
++          {
++            title: '角色组',
++            dataIndex: 'roleKey',
++            key: 'roleKey',
++            width: 240,
++            render: (value: string | undefined) => roleList.find(item => item.roleKey === value)?.roleName || value || 'default',
++          },
++          {
++            title: '操作',
++            key: 'action',
++            width: 120,
++            render: (_: unknown, record: UserInfoResponse) => (
++              <Button theme="borderless" type="primary" onClick={() => requestNavigate(`/setting/user/edit/${record.id}`)}>
++                编辑
++              </Button>
++            ),
++          },
++        ]}
++      />
++    </Card>
++  );
++}
++
++export default SettingUserApp;
+diff --git a/apps/web-pc/src/components/form/index.tsx b/apps/web-pc/src/components/form/index.tsx
+new file mode 100644
+index 0000000..e83b1a6
+--- /dev/null
++++ b/apps/web-pc/src/components/form/index.tsx
+@@ -0,0 +1,27 @@
++import { ArrayField, Form } from '@douyinfe/semi-ui';
++import type { ComponentProps, JSX } from 'react';
++
++type AppFormStatics = Pick<typeof Form, 'Input' | 'Select' | 'Slot' | 'Radio' | 'RadioGroup' | 'Checkbox' | 'CheckboxGroup'> & {
++  ArrayField: typeof ArrayField;
++};
++
++type AppFormType = ((props: ComponentProps<typeof Form>) => JSX.Element) & AppFormStatics;
++
++const AppFormImpl = ({ labelAlign = 'left', ...restProps }: ComponentProps<typeof Form>) => {
++  const style = {
++    width: '100%',
++    ...(restProps.style || {}),
++  };
++  return <Form labelAlign={labelAlign} {...restProps} style={style} />;
++};
++
++export const AppForm = Object.assign(AppFormImpl, {
++  Input: Form.Input,
++  Select: Form.Select,
++  Slot: Form.Slot,
++  Radio: Form.Radio,
++  RadioGroup: Form.RadioGroup,
++  Checkbox: Form.Checkbox,
++  CheckboxGroup: Form.CheckboxGroup,
++  ArrayField,
++}) as AppFormType;
+diff --git a/apps/web-pc/src/components/index.tsx b/apps/web-pc/src/components/index.tsx
+index 22652cc..9635a8f 100644
+--- a/apps/web-pc/src/components/index.tsx
++++ b/apps/web-pc/src/components/index.tsx
+@@ -1 +1,2 @@
+ export * from './loading';
++export * from './form';
+diff --git a/apps/web-pc/src/layouts/guest-only.tsx b/apps/web-pc/src/layouts/guest-only.tsx
+new file mode 100644
+index 0000000..31c975a
+--- /dev/null
++++ b/apps/web-pc/src/layouts/guest-only.tsx
+@@ -0,0 +1,15 @@
++import { Navigate, Outlet, useLocation } from 'react-router';
++import { isAuthenticated } from '@/utils';
++
++function GuestOnly() {
++  const location = useLocation();
++
++  if (isAuthenticated()) {
++    const from = (location.state as { from?: string } | null)?.from;
++    const target = from && from !== '/auth' ? from : '/';
++    return <Navigate to={target} replace />;
++  }
++  return <Outlet />;
++}
++
++export default GuestOnly;
+diff --git a/apps/web-pc/src/layouts/redirect-to-setting.tsx b/apps/web-pc/src/layouts/redirect-to-setting.tsx
+new file mode 100644
+index 0000000..8557f11
+--- /dev/null
++++ b/apps/web-pc/src/layouts/redirect-to-setting.tsx
+@@ -0,0 +1,7 @@
++import { Navigate } from 'react-router';
++
++function RedirectToSetting() {
++  return <Navigate to="/setting/info" replace />;
++}
++
++export default RedirectToSetting;
+diff --git a/apps/web-pc/src/layouts/require-auth.tsx b/apps/web-pc/src/layouts/require-auth.tsx
+new file mode 100644
+index 0000000..f15a580
+--- /dev/null
++++ b/apps/web-pc/src/layouts/require-auth.tsx
+@@ -0,0 +1,14 @@
++import { Navigate, Outlet, useLocation } from 'react-router';
++import { isAuthenticated } from '@/utils';
++
++function RequireAuth() {
++  const location = useLocation();
++
++  if (!isAuthenticated()) {
++    const from = `${location.pathname}${location.search}${location.hash}`;
++    return <Navigate to="/auth" replace state={{ from }} />;
++  }
++  return <Outlet />;
++}
++
++export default RequireAuth;
+diff --git a/apps/web-pc/src/layouts/router.ts b/apps/web-pc/src/layouts/router.ts
+index 787920e..fea3f18 100644
+--- a/apps/web-pc/src/layouts/router.ts
++++ b/apps/web-pc/src/layouts/router.ts
+@@ -2,10 +2,29 @@ import { createBrowserRouter } from 'react-router';
+ import HomeApp from '@/apps/home';
+ import My115App from '@/apps/115';
+ import PicApp from '@/apps/pic';
++import AuthApp from '@/apps/auth';
++import SettingApp from '@/apps/setting';
++import SettingInfoApp from '@/apps/setting/info';
++import SettingUserApp from '@/apps/setting/user';
++import SettingRoleApp from '@/apps/setting/role';
++import SettingRoleAddApp from '@/apps/setting/role-add';
++import SettingRoleEditApp from '@/apps/setting/role-edit';
++import SettingUserAddApp from '@/apps/setting/user-add';
++import SettingUserEditApp from '@/apps/setting/user-edit';
++import SettingConfig115App from '@/apps/setting/config-115';
++import RequireAuth from './require-auth';
++import GuestOnly from './guest-only';
++import RedirectToSetting from './redirect-to-setting';
+ 
+ export const router = createBrowserRouter([
++  {
++    path: '/auth',
++    Component: GuestOnly,
++    children: [{ index: true, Component: AuthApp }],
++  },
+   {
+     path: '/',
++    Component: RequireAuth,
+     children: [
+       { index: true, Component: HomeApp },
+       {
+@@ -16,6 +35,22 @@ export const router = createBrowserRouter([
+         path: 'pic',
+         Component: PicApp,
+       },
++      {
++        path: 'setting',
++        Component: SettingApp,
++        children: [
++          { index: true, Component: RedirectToSetting },
++          { path: 'info', Component: SettingInfoApp },
++          { path: 'user', Component: SettingUserApp },
++          { path: 'user/add', Component: SettingUserAddApp },
++          { path: 'user/edit/:id', Component: SettingUserEditApp },
++          { path: 'role', Component: SettingRoleApp },
++          { path: 'role/add', Component: SettingRoleAddApp },
++          { path: 'role/edit/:roleKey', Component: SettingRoleEditApp },
++          { path: 'config/115', Component: SettingConfig115App },
++        ],
++      },
++      { path: 'admin', Component: RedirectToSetting },
+     ],
+   },
+ ]);
+diff --git a/apps/web-pc/src/services/file.ts b/apps/web-pc/src/services/file.ts
+new file mode 100644
+index 0000000..83a96a4
+--- /dev/null
++++ b/apps/web-pc/src/services/file.ts
+@@ -0,0 +1,12 @@
++import { http } from '@/utils';
++import type { UploadFileResponse } from '@volix/types';
++
++export const uploadLocalFile = (file: File) => {
++  const formData = new FormData();
++  formData.append('file', file);
++  return http.post<UploadFileResponse>('/file/upload', formData, {
++    headers: {
++      'Content-Type': 'multipart/form-data',
++    },
++  });
++};
+diff --git a/apps/web-pc/src/services/user.ts b/apps/web-pc/src/services/user.ts
+new file mode 100644
+index 0000000..fe31786
+--- /dev/null
++++ b/apps/web-pc/src/services/user.ts
+@@ -0,0 +1,71 @@
++import { http } from '@/utils';
++import type {
++  AdminCreateUserPayload,
++  AdminUpdateUserPayload,
++  AssignUserRolePayload,
++  CreateRolePayload,
++  LoginUserPayload,
++  LoginUserResponse,
++  RoleInfoResponse,
++  RegisterUserPayload,
++  SetUserRolePayload,
++  UpdateRolePayload,
++  UpdateUserProfilePayload,
++  UserInfoResponse,
++} from '@volix/types';
++
++export const loginUser = (data: LoginUserPayload) => {
++  return http.post<LoginUserResponse>('/user/login', data);
++};
++
++export const registerUser = (data: RegisterUserPayload) => {
++  return http.post('/user/register', data);
++};
++
++export const getCurrentUser = () => {
++  return http.get<UserInfoResponse>('/user/me');
++};
++
++export const getUserList = () => {
++  return http.get<UserInfoResponse[]>('/user/list');
++};
++
++export const setUserRole = (data: SetUserRolePayload) => {
++  return http.put<UserInfoResponse>('/user/role', data);
++};
++
++export const updateCurrentUserProfile = (data: UpdateUserProfilePayload) => {
++  return http.put<UserInfoResponse>('/user/profile', data);
++};
++
++export const getRoleList = () => {
++  return http.get<RoleInfoResponse[]>('/user/roles');
++};
++
++export const createRole = (data: CreateRolePayload) => {
++  return http.post<RoleInfoResponse>('/user/roles', data);
++};
++
++export const updateRoleInfo = (roleKey: string, data: UpdateRolePayload) => {
++  return http.put<RoleInfoResponse>(`/user/roles/${roleKey}`, data);
++};
++
++export const removeRole = (roleKey: string) => {
++  return http.delete<{ success: boolean }>(`/user/roles/${roleKey}`);
++};
++
++export const assignUserRole = (data: AssignUserRolePayload) => {
++  return http.put<UserInfoResponse>('/user/assign-role', data);
++};
++
++export const getUserDetail = (id: string | number) => {
++  return http.get<UserInfoResponse>(`/user/${id}`);
++};
++
++export const adminCreateUser = (data: AdminCreateUserPayload) => {
++  return http.post<UserInfoResponse>('/user/admin-create', data);
++};
++
++export const adminUpdateUser = (id: string | number, data: AdminUpdateUserPayload) => {
++  return http.put<UserInfoResponse>(`/user/${id}`, data);
++};
+diff --git a/apps/web-pc/src/utils/auth.ts b/apps/web-pc/src/utils/auth.ts
+new file mode 100644
+index 0000000..f6b0649
+--- /dev/null
++++ b/apps/web-pc/src/utils/auth.ts
+@@ -0,0 +1,20 @@
++const AUTH_STORAGE_KEY = 'volix-token';
++const TOKEN_HEADER_KEY = 'volix-token';
++
++export const getAuthToken = () => {
++  return localStorage.getItem(AUTH_STORAGE_KEY);
++};
++
++export const setAuthToken = (token: string) => {
++  localStorage.setItem(AUTH_STORAGE_KEY, token);
++};
++
++export const clearAuthToken = () => {
++  localStorage.removeItem(AUTH_STORAGE_KEY);
++};
++
++export const isAuthenticated = () => {
++  return Boolean(getAuthToken());
++};
++
++export const getTokenHeaderKey = () => TOKEN_HEADER_KEY;
+diff --git a/apps/web-pc/src/utils/error.ts b/apps/web-pc/src/utils/error.ts
+new file mode 100644
+index 0000000..8f76e99
+--- /dev/null
++++ b/apps/web-pc/src/utils/error.ts
+@@ -0,0 +1,8 @@
++export const isAuthError = (error: unknown) => {
++  const status = (error as { response?: { status?: number } })?.response?.status;
++  return status === 401 || status === 403;
++};
++
++export const getHttpErrorMessage = (error: unknown, fallback = '请求失败，请稍后重试') => {
++  return (error as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
++};
+diff --git a/apps/web-pc/src/utils/http.ts b/apps/web-pc/src/utils/http.ts
+index d06d4ee..cbeaa31 100644
+--- a/apps/web-pc/src/utils/http.ts
++++ b/apps/web-pc/src/utils/http.ts
+@@ -1,10 +1,20 @@
+ import type { ResponseData } from '@volix/types';
+ import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
++import { getAuthToken, getTokenHeaderKey } from './auth';
+ 
+ const instance: AxiosInstance = axios.create({
+   baseURL: `/api`,
+ });
+ 
++instance.interceptors.request.use(config => {
++  const token = getAuthToken();
++  if (token) {
++    config.headers = config.headers || {};
++    (config.headers as Record<string, string>)[getTokenHeaderKey()] = token;
++  }
++  return config;
++});
++
+ // 返回时直接取 data，简化调用方处理
+ instance.interceptors.response.use(
+   (response: AxiosResponse) => response.data,
+diff --git a/apps/web-pc/src/utils/index.ts b/apps/web-pc/src/utils/index.ts
+index c202386..e50f668 100644
+--- a/apps/web-pc/src/utils/index.ts
++++ b/apps/web-pc/src/utils/index.ts
+@@ -1 +1,3 @@
+ export * from './http';
++export * from './auth';
++export * from './error';
+diff --git a/apps/web-pc/tsconfig.app.json b/apps/web-pc/tsconfig.app.json
+index b8c6006..d3cf8df 100644
+--- a/apps/web-pc/tsconfig.app.json
++++ b/apps/web-pc/tsconfig.app.json
+@@ -26,7 +26,7 @@
+     "strict": true,
+     "noUnusedLocals": true,
+     "noUnusedParameters": true,
+-    "erasableSyntaxOnly": true,
++    "erasableSyntaxOnly": false,
+     "noFallthroughCasesInSwitch": true,
+     "noUncheckedSideEffectImports": true
+   },
+diff --git a/apps/web-pc/vite.config.ts b/apps/web-pc/vite.config.ts
+index e6b5399..3de1865 100644
+--- a/apps/web-pc/vite.config.ts
++++ b/apps/web-pc/vite.config.ts
+@@ -17,6 +17,11 @@ export default defineConfig({
+         changeOrigin: true,
+         secure: false,
+       },
++      '/file': {
++        target: 'http://localhost:3000',
++        changeOrigin: true,
++        secure: false,
++      },
+     },
+   },
+ });
+diff --git a/packages/types/src/api/user.ts b/packages/types/src/api/user.ts
+index 2da1482..eaaa6f3 100644
+--- a/packages/types/src/api/user.ts
++++ b/packages/types/src/api/user.ts
+@@ -1,3 +1,13 @@
++export enum UserRole {
++  USER = 'user',
++  ADMIN = 'admin',
++}
++
++export enum AppFeature {
++  ACCOUNT_115 = 'account115',
++  RANDOM_PIC = 'randomPic',
++}
++
+ export interface LoginUserPayload {
+   email: string;
+   password: string;
+@@ -11,3 +21,61 @@ export interface RegisterUserPayload {
+ export interface LoginUserResponse {
+   token: string;
+ }
++
++export interface UserInfoResponse {
++  id: string | number;
++  email: string;
++  nickname?: string;
++  avatar?: string;
++  role: UserRole;
++  roleKey?: string;
++  featurePermissions: AppFeature[];
++}
++
++export interface SetUserRolePayload {
++  userId: string | number;
++  role: UserRole;
++}
++
++export interface UpdateUserProfilePayload {
++  nickname?: string;
++  avatar?: string;
++}
++
++export interface RoleInfoResponse {
++  roleKey: string;
++  roleName: string;
++  features: AppFeature[];
++}
++
++export interface CreateRolePayload {
++  roleKey?: string;
++  roleName: string;
++  features: AppFeature[];
++}
++
++export interface UpdateRolePayload {
++  roleName?: string;
++  features?: AppFeature[];
++}
++
++export interface AssignUserRolePayload {
++  userId: string | number;
++  roleKey: string;
++}
++
++export interface AdminCreateUserPayload {
++  email: string;
++  password: string;
++  nickname?: string;
++  avatar?: string;
++  role?: UserRole;
++  roleKey?: string;
++}
++
++export interface AdminUpdateUserPayload {
++  nickname?: string;
++  avatar?: string;
++  role?: UserRole;
++  roleKey?: string;
++}
+-- 
+2.50.1 (Apple Git-155)
+
