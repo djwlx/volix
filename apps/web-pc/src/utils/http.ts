@@ -1,6 +1,6 @@
 import type { ResponseData } from '@volix/types';
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
-import { getAuthToken, getTokenHeaderKey } from './auth';
+import { getAuthToken, getTokenHeaderKey, clearAuthToken } from './auth';
 
 const instance: AxiosInstance = axios.create({
   baseURL: `/api`,
@@ -18,7 +18,15 @@ instance.interceptors.request.use(config => {
 // 返回时直接取 data，简化调用方处理
 instance.interceptors.response.use(
   (response: AxiosResponse) => response.data,
-  error => Promise.reject(error)
+  error => {
+    // 处理 401/403 未授权错误
+    if (error?.response?.status === 401 || error?.response?.status === 403) {
+      clearAuthToken();
+      // 跳转到登录页（不能修改 location，由路由层处理）
+      window.dispatchEvent(new Event('auth:unauthorized'));
+    }
+    return Promise.reject(error);
+  }
 );
 
 type Http = {
