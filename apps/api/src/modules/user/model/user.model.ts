@@ -17,7 +17,6 @@ export const UserModel = sequelize.define<UserType>('app_user', {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
-    field: 'username',
   },
   nickname: {
     type: DataTypes.STRING,

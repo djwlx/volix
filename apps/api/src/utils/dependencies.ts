@@ -2,6 +2,7 @@ import { PATH } from './path';
 import fs from 'fs';
 import { log } from './logger';
 import sequelize from './sequelize';
+import { Model, ModelStatic, Attributes } from 'sequelize';
 import { UserRole, AppFeature } from '@volix/types';
 import { ConfigModel } from '../modules/config';
 import { File115Model } from '../modules/115';
@@ -11,31 +12,87 @@ import { TaskModel } from '../modules/task';
 
 const DEFAULT_USER_FEATURES: AppFeature[] = [AppFeature.RANDOM_PIC];
 
-const syncModels = async () => {
+/**
+ * 同步单个模型的表结构
+ */
+const syncModelSchema = async (model: ModelStatic<Model>) => {
+  const queryInterface = sequelize.getQueryInterface();
+  const tableName = model.tableName || model.name;
+  const tables = await queryInterface.showAllTables();
+
+  // 表不存在，创建新表
+  if (!tables.includes(tableName)) {
+    await model.sync();
+    log.info(`✓ 新建表: ${tableName}`);
+    return;
+  }
+
+  // 表存在，同步新增列
+  const dbColumns = await queryInterface.describeTable(tableName);
+  const dbColumnNames = Object.keys(dbColumns);
+  const modelAttributes = model.getAttributes();
+  const modelColumnNames = Object.keys(modelAttributes);
+
+  const columnsToAdd = modelColumnNames.filter(col => !dbColumnNames.includes(col));
+
+  if (columnsToAdd.length > 0) {
+    log.info(`表 ${tableName} 检测到 ${columnsToAdd.length} 个新列`);
+    for (const columnName of columnsToAdd) {
+      try {
+        const attribute = modelAttributes[columnName];
+        await queryInterface.addColumn(tableName, columnName, attribute);
+        log.info(`  ✓ ${tableName}.${columnName}`);
+      } catch (error) {
+        log.warn(`  ✗ ${tableName}.${columnName}:`, error);
+      }
+    }
+  }
+};
+
+/**
+ * 同步数据库表结构 - 只新增列，不删除已有列
+ * 支持强制重建模式（需同时设置两个环境变量）
+ */
+const syncDatabase = async () => {
   const forceRequested = process.env.DB_SYNC_FORCE === 'true';
   const allowDestructive = process.env.ALLOW_DESTRUCTIVE_DB_SYNC === 'true';
   const forceSync = forceRequested && allowDestructive;
+
   if (forceRequested && !allowDestructive) {
     log.warn('检测到 DB_SYNC_FORCE=true，但未开启 ALLOW_DESTRUCTIVE_DB_SYNC，已忽略危险重建操作');
   }
-  const syncOptions = {
-    alter: process.env.DB_SYNC_ALTER ? process.env.DB_SYNC_ALTER === 'true' : process.env.NODE_ENV !== 'production',
-    force: forceSync,
-  };
+
   const models = [ConfigModel, UserModel, RoleModel, File115Model, FileModel, TaskModel];
+
   try {
-    for (const model of models) {
-      await model.sync(syncOptions);
+    // 强制重建模式
+    if (forceSync) {
+      for (const model of models) {
+        await model.sync({ force: true });
+      }
+      log.info('数据库表结构强制重建完成');
+      return;
     }
-    log.info(`数据库模型同步完成: alter=${syncOptions.alter}, force=${syncOptions.force}`);
+
+    // 安全模式：只新增列，保留旧列
+    for (const model of models) {
+      await syncModelSchema(model);
+    }
+
+    log.info('数据库表结构同步完成 (安全模式)');
   } catch (error) {
-    log.error('数据库模型同步失败:', error);
+    log.error('数据库表结构同步失败:', error);
     throw error;
   }
 };
 
-const ensureRoleTableAndSeed = async () => {
+/**
+ * 同步数据库数据 - 初始化和迁移数据
+ * 包括初始化角色数据和时区转换
+ */
+const syncDatabaseData = async () => {
   try {
+    // 初始化默认角色和用户
     const now = new Date();
     await sequelize.query(
       `
@@ -88,37 +145,31 @@ const ensureRoleTableAndSeed = async () => {
         },
       }
     );
-  } catch (error) {
-    log.warn('角色默认数据初始化时跳过:', error);
-  }
-};
 
-const normalizeSqliteTimestampsToBeijing = async () => {
-  const queryInterface = sequelize.getQueryInterface();
-
-  try {
+    // 时区数据迁移：UTC 转换为北京时间
+    const queryInterface = sequelize.getQueryInterface();
     const tables = await queryInterface.showAllTables();
     const queryGenerator = (
       queryInterface as unknown as {
         queryGenerator: { quoteTable: (value: string) => string; quoteIdentifier: (value: string) => string };
       }
     ).queryGenerator;
+
     const tableNames = tables
       .map(item => {
-        if (typeof item === 'string') {
-          return item;
-        }
+        if (typeof item === 'string') return item;
         return (item as { tableName?: string; name?: string }).tableName || (item as { name?: string }).name || '';
       })
       .filter(Boolean)
       .filter(name => name !== 'sqlite_sequence');
 
-    let updatedCount = 0;
+    let convertedCount = 0;
 
     for (const tableName of tableNames) {
       const quotedTable = queryGenerator.quoteTable(tableName);
       const columns = await queryInterface.describeTable(tableName);
-      const timestampColumns = Object.keys(columns).filter(columnName => columnName.endsWith('_at'));
+      const timestampColumns = Object.keys(columns).filter(col => col.endsWith('_at'));
+
       for (const columnName of timestampColumns) {
         const quotedColumn = queryGenerator.quoteIdentifier(columnName);
         const [, result] = await sequelize.query(
@@ -132,44 +183,35 @@ const normalizeSqliteTimestampsToBeijing = async () => {
           typeof result === 'object' && result && 'changes' in result
             ? Number((result as { changes?: number }).changes)
             : 0;
-        updatedCount += Number.isFinite(changes) ? changes : 0;
+        convertedCount += Number.isFinite(changes) ? changes : 0;
       }
     }
 
-    if (updatedCount > 0) {
-      log.info(`数据库时区统一完成：共转换 ${updatedCount} 条 UTC 时间为北京时间`);
+    if (convertedCount > 0) {
+      log.info(`数据迁移完成: 转换 ${convertedCount} 条 UTC 时间为北京时间`);
     }
   } catch (error) {
-    log.warn('数据库时区统一跳过:', error);
+    log.warn('数据库数据同步出现问题:', error);
   }
 };
 
 const initApp = async () => {
-  // // 生成必要的文件夹
+  // 创建必要的目录
   const pathList = [
-    {
-      filePath: PATH.log,
-      type: 'dir',
-    },
-    {
-      filePath: PATH.upload,
-      type: 'dir',
-    },
+    { filePath: PATH.log, type: 'dir' },
+    { filePath: PATH.upload, type: 'dir' },
   ];
 
-  for (const pathItem of pathList) {
-    const { filePath, type } = pathItem;
-    if (type === 'dir') {
-      if (!fs.existsSync(filePath)) {
-        log.info(`生成文件夹 ${filePath}`);
-        fs.mkdirSync(filePath, { recursive: true });
-      }
+  for (const { filePath, type } of pathList) {
+    if (type === 'dir' && !fs.existsSync(filePath)) {
+      log.info(`生成文件夹 ${filePath}`);
+      fs.mkdirSync(filePath, { recursive: true });
     }
   }
 
-  await syncModels();
-  await ensureRoleTableAndSeed();
-  await normalizeSqliteTimestampsToBeijing();
+  // 同步数据库结构和数据
+  await syncDatabase();
+  await syncDatabaseData();
 };
 
 export default initApp;
