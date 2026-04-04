@@ -2,7 +2,6 @@ import { createBrowserRouter } from 'react-router';
 import HomeApp from '@/apps/home';
 import My115App from '@/apps/115';
 import PicApp from '@/apps/pic';
-import AnimeSyncApp from '@/apps/anime-sync';
 import AuthApp from '@/apps/auth';
 import SettingApp from '@/apps/setting';
 import SettingInfoApp from '@/apps/setting/pages/info';
@@ -19,8 +18,11 @@ import SettingConfigSmtpApp from '@/apps/setting/pages/config/config-smtp';
 import SettingSystemApp from '@/apps/setting/pages/system';
 import RequireAuth from './require-auth';
 import GuestOnly from './guest-only';
+import GuestAllowed from './guest-allowed';
 import RedirectToSetting from './redirect-to-setting';
 import AppErrorBoundary from './error-boundary';
+import { AppFeature } from '@volix/types';
+import withFeatureRequired from './with-feature-required';
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +32,12 @@ export const router = createBrowserRouter([
     children: [{ index: true, Component: AuthApp }],
   },
   {
+    path: '/pic',
+    Component: GuestAllowed,
+    ErrorBoundary: AppErrorBoundary,
+    children: [{ index: true, Component: PicApp }],
+  },
+  {
     path: '/',
     Component: RequireAuth,
     ErrorBoundary: AppErrorBoundary,
@@ -37,19 +45,11 @@ export const router = createBrowserRouter([
       { index: true, Component: HomeApp },
       {
         path: '115',
-        Component: My115App,
-      },
-      {
-        path: 'pic',
-        Component: PicApp,
-      },
-      {
-        path: 'anime-sync',
-        Component: AnimeSyncApp,
+        Component: withFeatureRequired(My115App, [AppFeature.ACCOUNT_115]),
       },
       {
         path: 'setting',
-        Component: SettingApp,
+        Component: withFeatureRequired(SettingApp, [AppFeature.ACCOUNT_115, AppFeature.RANDOM_PIC]),
         children: [
           { index: true, Component: RedirectToSetting },
           { path: 'info', Component: SettingInfoApp },

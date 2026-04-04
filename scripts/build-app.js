@@ -191,6 +191,14 @@ function cleanupApiPackageJson() {
     dependencies: pkg.dependencies,
   };
 
+  // 修正 main 字段：如果指向 .ts 文件，转换为 .js
+  // 同时解析路径，因为编译后的目录结构会被扁平化
+  if (cleanedPkg.main && cleanedPkg.main.endsWith('.ts')) {
+    // 提取文件名（去掉扩展名），如 "app/app.ts" -> "app"
+    const baseName = path.basename(cleanedPkg.main, '.ts');
+    cleanedPkg.main = baseName + '.js';
+  }
+
   // 删除 devDependencies
   delete cleanedPkg.devDependencies;
 
@@ -223,15 +231,69 @@ function copyApiDistToRoot() {
     return;
   }
 
-  console.log('> 复制 apps/api/dist 到 根目录 dist...');
+  console.log('> 清理并复制 apps/api/dist 到 根目录 dist...');
 
   // 清空根目录 dist
   if (fs.existsSync(rootDistPath)) {
     fs.rmSync(rootDistPath, { recursive: true, force: true });
   }
 
-  // 递归复制
-  copyDir(apiDistPath, rootDistPath);
+  // 创建根 dist 目录
+  fs.mkdirSync(rootDistPath, { recursive: true });
+
+  // 把 api/dist/apps/api/* 移到 dist 根目录
+  const apiCompiledPath = path.join(apiDistPath, 'apps', 'api');
+  if (fs.existsSync(apiCompiledPath)) {
+    const files = fs.readdirSync(apiCompiledPath);
+    files.forEach(file => {
+      const src = path.join(apiCompiledPath, file);
+      const dest = path.join(rootDistPath, file);
+      if (fs.lstatSync(src).isDirectory()) {
+        copyDir(src, dest);
+      } else {
+        // 确保目标目录存在
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.copyFileSync(src, dest);
+      }
+    });
+    console.log('  ✓ API 编译代码已复制');
+  }
+
+  // 复制 node_modules
+  const nodeModulesSrc = path.join(apiDistPath, 'node_modules');
+  const nodeModulesDest = path.join(rootDistPath, 'node_modules');
+  if (fs.existsSync(nodeModulesSrc)) {
+    if (!fs.existsSync(nodeModulesDest)) {
+      fs.mkdirSync(nodeModulesDest, { recursive: true });
+    }
+    const files = fs.readdirSync(nodeModulesSrc);
+    files.forEach(file => {
+      const src = path.join(nodeModulesSrc, file);
+      const dest = path.join(nodeModulesDest, file);
+      if (fs.lstatSync(src).isDirectory()) {
+        copyDir(src, dest);
+      } else {
+        fs.copyFileSync(src, dest);
+      }
+    });
+    console.log('  ✓ node_modules 依赖已复制');
+  }
+
+  // 复制 public
+  const publicSrc = path.join(apiDistPath, 'public');
+  const publicDest = path.join(rootDistPath, 'public');
+  if (fs.existsSync(publicSrc)) {
+    copyDir(publicSrc, publicDest);
+    console.log('  ✓ public 前端产物已复制');
+  }
+
+  // 复制 package.json
+  const pkgSrc = path.join(apiDistPath, 'package.json');
+  const pkgDest = path.join(rootDistPath, 'package.json');
+  if (fs.existsSync(pkgSrc)) {
+    fs.copyFileSync(pkgSrc, pkgDest);
+    console.log('  ✓ package.json 已复制');
+  }
 
   console.log('✓ 复制到根目录 dist 完成');
 }

@@ -6,7 +6,7 @@ interface LoadingProps {
   rows?: number;
 }
 
-export function Loading({ type = 'block', text = '加载中...', rows = 6 }: LoadingProps) {
+export function Loading({ type = 'block', text = '', rows = 6 }: LoadingProps) {
   if (type === 'page') {
     return (
       <div

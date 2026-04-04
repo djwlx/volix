@@ -9,14 +9,12 @@ import staticMiddleware from './src/middleware/static';
 import initApp from './src/utils/dependencies';
 import { log } from './src/utils/logger';
 import { formatTime } from '@volix/utils';
-import { startAnimeSyncScheduler } from './src/modules/anime-sync';
 
 console.log(formatTime());
 
 async function startApp() {
   // 启动前操作
   await initApp();
-  startAnimeSyncScheduler();
 
   const app = new Koa();
   // 跨域
@@ -32,13 +30,8 @@ async function startApp() {
   // 路由
   app.use(router.routes());
 
-  app.callback();
-
   app.listen(config.port, () => {
     log.info('应用启动在端口：', config.port);
-    // 建议在 Server 启动后再启动调度，确保 API 已经可以处理请求
-    startAnimeSyncScheduler();
-    log.info('Anime Sync 调度器已就绪');
   });
 }
 

@@ -6,7 +6,6 @@ export enum UserRole {
 export enum AppFeature {
   ACCOUNT_115 = 'account115',
   RANDOM_PIC = 'randomPic',
-  ANIME_SYNC = 'animeSync',
 }
 
 export enum AccountConfigPlatform {

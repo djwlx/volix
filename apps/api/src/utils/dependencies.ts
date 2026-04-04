@@ -8,7 +8,6 @@ import { File115Model } from '../modules/115';
 import { FileModel } from '../modules/file';
 import { RoleModel, UserModel } from '../modules/user';
 import { TaskModel } from '../modules/task';
-import { AnimeSyncEpisodeJobModel, AnimeSyncRunLogModel, AnimeSyncSubscriptionModel } from '../modules/anime-sync';
 
 const DEFAULT_USER_FEATURES: AppFeature[] = [AppFeature.RANDOM_PIC];
 
@@ -23,17 +22,7 @@ const syncModels = async () => {
     alter: process.env.DB_SYNC_ALTER ? process.env.DB_SYNC_ALTER === 'true' : process.env.NODE_ENV !== 'production',
     force: forceSync,
   };
-  const models = [
-    ConfigModel,
-    UserModel,
-    RoleModel,
-    File115Model,
-    FileModel,
-    TaskModel,
-    AnimeSyncSubscriptionModel,
-    AnimeSyncEpisodeJobModel,
-    AnimeSyncRunLogModel,
-  ];
+  const models = [ConfigModel, UserModel, RoleModel, File115Model, FileModel, TaskModel];
   try {
     for (const model of models) {
       await model.sync(syncOptions);
@@ -109,9 +98,11 @@ const normalizeSqliteTimestampsToBeijing = async () => {
 
   try {
     const tables = await queryInterface.showAllTables();
-    const queryGenerator = (queryInterface as unknown as {
-      queryGenerator: { quoteTable: (value: string) => string; quoteIdentifier: (value: string) => string };
-    }).queryGenerator;
+    const queryGenerator = (
+      queryInterface as unknown as {
+        queryGenerator: { quoteTable: (value: string) => string; quoteIdentifier: (value: string) => string };
+      }
+    ).queryGenerator;
     const tableNames = tables
       .map(item => {
         if (typeof item === 'string') {
@@ -137,7 +128,10 @@ const normalizeSqliteTimestampsToBeijing = async () => {
           WHERE ${quotedColumn} LIKE '% +00:00'
           `
         );
-        const changes = typeof result === 'object' && result && 'changes' in result ? Number((result as { changes?: number }).changes) : 0;
+        const changes =
+          typeof result === 'object' && result && 'changes' in result
+            ? Number((result as { changes?: number }).changes)
+            : 0;
         updatedCount += Number.isFinite(changes) ? changes : 0;
       }
     }

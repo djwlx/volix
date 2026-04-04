@@ -1,36 +1,20 @@
-import { Avatar, Dropdown, Nav, Toast, Typography } from '@douyinfe/semi-ui';
+import { Avatar, Dropdown, Nav, Typography } from '@douyinfe/semi-ui';
 import { AppCard } from './components';
 import { IconAvatar, IconImage } from '@douyinfe/semi-icons-lab';
-import { IconApps, IconExit, IconSetting, IconVideo } from '@douyinfe/semi-icons';
-import { clearAuthToken, getHttpErrorMessage, isAuthError } from '@/utils';
+import { IconApps, IconExit, IconSetting } from '@douyinfe/semi-icons';
+import { clearAuthToken } from '@/utils';
 import { useNavigate } from 'react-router';
-import { getCurrentUser } from '@/services/user';
-import { useEffect, useState } from 'react';
 import { AppFeature } from '@volix/types';
-import type { UserInfoResponse } from '@volix/types';
+import { useUser } from '@/hooks';
 
 function HomeApp() {
   const navigate = useNavigate();
-  const [user, setUser] = useState<UserInfoResponse>();
+  const { user } = useUser();
 
   const onLogout = () => {
     clearAuthToken();
     navigate('/auth', { replace: true });
   };
-
-  useEffect(() => {
-    getCurrentUser()
-      .then(res => {
-        setUser(res.data);
-      })
-      .catch(error => {
-        if (isAuthError(error)) {
-          onLogout();
-          return;
-        }
-        Toast.error(getHttpErrorMessage(error, '获取用户信息失败，请稍后重试'));
-      });
-  }, []);
 
   return (
     <div style={{ width: '100%' }}>
@@ -86,9 +70,6 @@ function HomeApp() {
         ) : null}
         {user?.featurePermissions?.includes(AppFeature.RANDOM_PIC) ? (
           <AppCard title="随机图片" icon={<IconImage size="extra-large" />} link="/pic" />
-        ) : null}
-        {user?.featurePermissions?.includes(AppFeature.ANIME_SYNC) ? (
-          <AppCard title="番剧同步" icon={<IconVideo size="extra-large" />} link="/anime-sync" />
         ) : null}
       </div>
     </div>
