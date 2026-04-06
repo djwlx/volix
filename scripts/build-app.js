@@ -212,9 +212,14 @@ function cleanupApiPackageJson() {
     });
   }
 
-  // 保留 start 脚本（如果存在）
-  if (pkg.scripts && pkg.scripts.start) {
-    cleanedPkg.scripts = { start: pkg.scripts.start };
+  // 保留运行时需要的脚本（确保 dist 中也能先 migrate 再启动）
+  if (pkg.scripts) {
+    cleanedPkg.scripts = {};
+    ['start', 'db:migrate', 'db:migrate:undo'].forEach(scriptName => {
+      if (pkg.scripts[scriptName]) {
+        cleanedPkg.scripts[scriptName] = pkg.scripts[scriptName];
+      }
+    });
   }
 
   // 写入到 dist 目录
@@ -293,6 +298,23 @@ function copyApiDistToRoot() {
   if (fs.existsSync(pkgSrc)) {
     fs.copyFileSync(pkgSrc, pkgDest);
     console.log('  ✓ package.json 已复制');
+  }
+
+  // 复制数据库迁移运行时文件
+  const apiProjectPath = path.resolve(__dirname, '..', 'apps/api');
+  const migrationsSrc = path.join(apiProjectPath, 'migrations');
+  const migrationsDest = path.join(rootDistPath, 'migrations');
+  if (fs.existsSync(migrationsSrc)) {
+    copyDir(migrationsSrc, migrationsDest);
+    console.log('  ✓ migrations 已复制');
+  }
+
+  const sequelizeCliConfigSrc = path.join(apiProjectPath, 'config', 'sequelize-cli.cjs');
+  const sequelizeCliConfigDest = path.join(rootDistPath, 'config', 'sequelize-cli.cjs');
+  if (fs.existsSync(sequelizeCliConfigSrc)) {
+    fs.mkdirSync(path.dirname(sequelizeCliConfigDest), { recursive: true });
+    fs.copyFileSync(sequelizeCliConfigSrc, sequelizeCliConfigDest);
+    console.log('  ✓ sequelize-cli 配置已复制');
   }
 
   console.log('✓ 复制到根目录 dist 完成');
