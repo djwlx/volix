@@ -7,6 +7,22 @@ import { FileEntity } from '../model/file.model';
 import { getFile, saveFile } from '../service/file.service';
 import { UploadedFileFormData } from '../types/file.types';
 
+const moveUploadedFile = async (sourcePath: string, targetPath: string): Promise<void> => {
+  try {
+    await fs.promises.rename(sourcePath, targetPath);
+  } catch (error) {
+    const err = error as NodeJS.ErrnoException;
+    // Docker/container environments often store temp files on a different
+    // mount point than the upload directory; rename fails with EXDEV then.
+    if (err.code === 'EXDEV') {
+      await fs.promises.copyFile(sourcePath, targetPath);
+      await fs.promises.unlink(sourcePath);
+      return;
+    }
+    throw error;
+  }
+};
+
 export const uploadFile: MyMiddleware = async ctx => {
   const file = ctx.request.files?.file as UploadedFileFormData | undefined;
   if (!file) {
@@ -20,7 +36,8 @@ export const uploadFile: MyMiddleware = async ctx => {
   const newPath = `${PATH.upload}/${newName}`;
   const publicPath = `/file/${encodeURIComponent(newName)}`;
 
-  fs.renameSync(filepath, newPath);
+  await fs.promises.mkdir(PATH.upload, { recursive: true });
+  await moveUploadedFile(filepath, newPath);
 
   return saveFile({
     extension: path.extname(safeOriginalName),
