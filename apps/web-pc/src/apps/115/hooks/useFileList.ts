@@ -105,17 +105,28 @@ export function useFileList(dir?: string) {
   };
 
   const loadMore = async (dir: string) => {
-    const find = findNode(fileTree, dir);
-    if (!find) {
-      return;
-    }
-    const before = find?.children || [];
-    const offset = before.length;
     setMoreLoading(true);
-    const res = await getListInfo(dir, offset);
-    const newTree = setNode(fileTree, dir, before.concat(res.list));
-    setMoreLoading(false);
-    setFileTree(newTree);
+    try {
+      if (dir === '0') {
+        const offset = fileTree.length;
+        const res = await getListInfo(dir, offset);
+        setFileTree(prev => prev.concat(res.list));
+        return;
+      }
+
+      const find = findNode(fileTree, dir);
+      if (!find) {
+        return;
+      }
+
+      const before = find.children || [];
+      const offset = before.length;
+      const res = await getListInfo(dir, offset);
+      const newTree = setNode(fileTree, dir, before.concat(res.list));
+      setFileTree(newTree);
+    } finally {
+      setMoreLoading(false);
+    }
   };
 
   useEffect(() => {
