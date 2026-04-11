@@ -1,3 +1,9 @@
+html,
+body,
+#root {
+  min-width: 360px;
+}
+
 .semi-avatar,
 .semi-avatar-circle,
 .semi-avatar-large,
