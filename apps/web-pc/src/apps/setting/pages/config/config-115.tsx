@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { UserRole } from '@volix/types';
 import { Login } from '@/apps/115/login';
 import { UserInfo } from '@/apps/115/user-info';
+import { PicSetting } from '@/apps/115/pic-setting';
+import { FileTree } from '@/apps/115/file-tree';
 import { useUserInfo } from '@/apps/115/hooks/useUserInfo';
 import type { SettingOutletContext } from '@/apps/setting/types';
 
@@ -37,6 +39,8 @@ function SettingConfig115App() {
           <Space vertical spacing={12} style={{ width: '100%' }}>
             <Typography.Text type="secondary">当前已绑定 115 账号</Typography.Text>
             <UserInfo info={data} />
+            <PicSetting />
+            <FileTree />
           </Space>
         ) : (
           <Space vertical spacing={12} style={{ width: '100%' }}>

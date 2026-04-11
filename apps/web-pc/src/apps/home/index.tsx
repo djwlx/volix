@@ -1,15 +1,15 @@
 import { Avatar, Dropdown, Nav, Typography } from '@douyinfe/semi-ui';
 import { AppCard } from './components';
-import { IconAvatar, IconImage } from '@douyinfe/semi-icons-lab';
+import { IconImage } from '@douyinfe/semi-icons-lab';
 import { IconApps, IconExit, IconSetting } from '@douyinfe/semi-icons';
-import { clearAuthToken } from '@/utils';
+import { clearAuthToken, isAuthenticated } from '@/utils';
 import { useNavigate } from 'react-router';
-import { AppFeature } from '@volix/types';
 import { useUser } from '@/hooks';
 
 function HomeApp() {
   const navigate = useNavigate();
   const { user } = useUser();
+  const authed = isAuthenticated();
 
   const onLogout = () => {
     clearAuthToken();
@@ -45,12 +45,20 @@ function HomeApp() {
             position="bottomRight"
             render={
               <Dropdown.Menu>
-                <Dropdown.Item icon={<IconSetting />} onClick={() => navigate('/setting/info')}>
-                  系统管理
-                </Dropdown.Item>
-                <Dropdown.Item icon={<IconExit />} type="danger" onClick={onLogout}>
-                  退出登录
-                </Dropdown.Item>
+                {authed ? (
+                  <>
+                    <Dropdown.Item icon={<IconSetting />} onClick={() => navigate('/setting/info')}>
+                      系统管理
+                    </Dropdown.Item>
+                    <Dropdown.Item icon={<IconExit />} type="danger" onClick={onLogout}>
+                      退出登录
+                    </Dropdown.Item>
+                  </>
+                ) : (
+                  <Dropdown.Item icon={<IconSetting />} onClick={() => navigate('/auth')}>
+                    去登录
+                  </Dropdown.Item>
+                )}
               </Dropdown.Menu>
             }
           >
@@ -65,12 +73,8 @@ function HomeApp() {
         mode={'horizontal'}
       />
       <div style={{ padding: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {user?.featurePermissions?.includes(AppFeature.ACCOUNT_115) ? (
-          <AppCard title="我的115" icon={<IconAvatar size="extra-large" />} link="/115" />
-        ) : null}
-        {user?.featurePermissions?.includes(AppFeature.RANDOM_PIC) ? (
-          <AppCard title="随机图片" icon={<IconImage size="extra-large" />} link="/pic" />
-        ) : null}
+        <AppCard title="随机图片" icon={<IconImage size="extra-large" />} link="/pic" />
+        {authed ? <AppCard title="后台管理" icon={<IconSetting size="extra-large" />} link="/setting/info" /> : null}
       </div>
     </div>
   );

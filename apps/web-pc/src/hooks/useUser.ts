@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useUserStore } from '@/stores/user-store';
 import { getCurrentUser } from '@/services/user';
+import { isAuthenticated } from '@/utils';
 
 /**
  * 自定义钩子：获取和初始化用户信息
@@ -15,22 +16,31 @@ export function useUser(fetchIfEmpty = true) {
   const setUser = useUserStore(state => state.setUser);
   const setLoading = useUserStore(state => state.setLoading);
   const setError = useUserStore(state => state.setError);
+  const clearUser = useUserStore(state => state.clearUser);
 
   const [unauthorized, setUnauthorized] = useState(false);
+  const authed = isAuthenticated();
 
   useEffect(() => {
     const handleUnauthorized = () => {
       setUnauthorized(true);
+      clearUser();
       setError('未授权，请重新登录');
     };
 
     window.addEventListener('auth:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
-  }, [setError]);
+  }, [clearUser, setError]);
+
+  useEffect(() => {
+    if (!authed) {
+      clearUser();
+    }
+  }, [authed, clearUser]);
 
   useEffect(() => {
     // 如果已有用户信息或不需要自动获取，则跳过
-    if (user || !fetchIfEmpty || unauthorized) return;
+    if (user || !fetchIfEmpty || unauthorized || !authed) return;
 
     const fetchUserData = async () => {
       try {
@@ -46,7 +56,7 @@ export function useUser(fetchIfEmpty = true) {
     };
 
     void fetchUserData();
-  }, [fetchIfEmpty, user, unauthorized, setUser, setLoading, setError]);
+  }, [authed, fetchIfEmpty, user, unauthorized, setUser, setLoading, setError]);
 
   return { user, loading, error };
 }
