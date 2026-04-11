@@ -151,7 +151,12 @@ function AuthApp() {
                 placeholder="请输入邮箱验证码"
                 rules={[{ required: true, message: '请输入邮箱验证码' }]}
               />
-              <Button onClick={onSendCode} loading={sendingCode} disabled={countdown > 0} style={{ width: '100%' }}>
+              <Button
+                onClick={onSendCode}
+                loading={sendingCode}
+                disabled={countdown > 0}
+                style={{ width: '100%', marginBottom: 12 }}
+              >
                 {countdown > 0 ? `${countdown}s 后重发` : '发送验证码'}
               </Button>
             </>
