@@ -4,11 +4,12 @@ import { IconImage } from '@douyinfe/semi-icons-lab';
 import { IconApps, IconExit, IconSetting } from '@douyinfe/semi-icons';
 import { clearAuthToken, isAuthenticated } from '@/utils';
 import { useNavigate } from 'react-router';
-import { useUser } from '@/hooks';
+import { useIsMobile, useUser } from '@/hooks';
 
 function HomeApp() {
   const navigate = useNavigate();
   const { user } = useUser();
+  const isMobile = useIsMobile();
   const authed = isAuthenticated();
 
   const onLogout = () => {
@@ -62,17 +63,37 @@ function HomeApp() {
               </Dropdown.Menu>
             }
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <Avatar size="small" color="blue" src={user?.avatar}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 0 }}>
+              <Avatar
+                size="32px"
+                shape="circle"
+                color="blue"
+                src={user?.avatar}
+                imgAttr={{ style: { objectFit: 'cover' } }}
+                style={{ flex: '0 0 32px' }}
+              >
                 {user?.nickname?.slice(0, 1) || user?.email?.slice(0, 1)?.toUpperCase() || 'U'}
               </Avatar>
-              <Typography.Text>{user?.nickname || user?.email}</Typography.Text>
+              <Typography.Text ellipsis style={{ minWidth: 0 }}>
+                {user?.nickname || user?.email}
+              </Typography.Text>
             </div>
           </Dropdown>
         }
         mode={'horizontal'}
       />
-      <div style={{ padding: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div
+        style={{
+          padding: 16,
+          display: 'grid',
+          gap: 12,
+          gridTemplateColumns: isMobile
+            ? 'repeat(2, minmax(0, 1fr))'
+            : 'repeat(auto-fill, minmax(min(220px, 100%), 280px))',
+          justifyContent: isMobile ? 'stretch' : 'start',
+          alignItems: 'stretch',
+        }}
+      >
         <AppCard title="随机图片" icon={<IconImage size="extra-large" />} link="/pic" />
         {authed ? <AppCard title="后台管理" icon={<IconSetting size="extra-large" />} link="/setting/info" /> : null}
       </div>

@@ -19,8 +19,8 @@ export function AppCard(props: AppCardProps) {
     navigate(link);
   };
   return (
-    <div onClick={onClick}>
-      <Card style={{ width: 220 }} shadows="hover">
+    <div onClick={onClick} style={{ width: '100%', cursor: link ? 'pointer' : 'default' }}>
+      <Card style={{ width: '100%' }} shadows="hover">
         <Meta
           title={title}
           avatar={typeof icon === 'string' ? <Avatar alt={title} size="default" src={icon} /> : icon}

@@ -1,0 +1,6 @@
+.semi-avatar,
+.semi-avatar-circle,
+.semi-avatar-large,
+.semi-avatar-img {
+  flex-shrink: 0;
+}

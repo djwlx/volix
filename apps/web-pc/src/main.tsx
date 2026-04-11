@@ -1,4 +1,5 @@
 import 'reset-css/reset.css';
+import '@/styles/global.css';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
 import { router } from '@/layouts/router';
