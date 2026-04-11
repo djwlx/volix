@@ -106,7 +106,7 @@ export function PicSetting() {
         </Popconfirm>
       }
     >
-      <Space vertical spacing={16} style={{ width: '100%' }}>
+      <Space vertical align="start" spacing={16} style={{ width: '100%' }}>
         <Descriptions data={data} />
         <Table<PicCacheFolderItem>
           rowKey="cid"
@@ -117,6 +117,7 @@ export function PicSetting() {
             {
               title: '目录',
               dataIndex: 'cid',
+              width: 300,
               key: 'cid',
               render: (cid: string) => <FilePath dir={cid} />,
             },
