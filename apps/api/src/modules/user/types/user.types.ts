@@ -4,6 +4,7 @@ export type { LoginUserPayload, RegisterUserPayload } from '@volix/types';
 export interface UserEntity {
   id?: string;
   email: string;
+  email_verified?: boolean;
   nickname?: string;
   avatar?: string;
   password: string;
@@ -14,6 +15,7 @@ export interface UserEntity {
 export interface UserQueryParams {
   id?: string;
   email?: string;
+  email_verified?: boolean;
   password?: string;
   nickname?: string;
   avatar?: string;
@@ -23,6 +25,7 @@ export interface UserQueryParams {
 
 export interface CreateUserParams {
   email: string;
+  email_verified?: boolean;
   password: string;
   nickname?: string;
   avatar?: string;

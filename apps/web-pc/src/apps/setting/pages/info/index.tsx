@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Avatar, Button, Card, Space, Toast, Typography } from '@douyinfe/semi-ui';
-import { updateCurrentUserProfile } from '@/services/user';
+import { Avatar, Button, Card, Input, Space, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { sendCurrentUserEmailVerifyCode, updateCurrentUserProfile, verifyCurrentUserEmail } from '@/services/user';
 import { uploadLocalFile } from '@/services/file';
 import { AppForm } from '@/components';
 import { useOutletContext } from 'react-router';
@@ -20,6 +20,10 @@ function SettingInfoApp() {
   const [formApi, setFormApi] = useState<FormApi<Record<string, unknown>>>();
   const [formInitValues, setFormInitValues] = useState<InfoFormValues>();
   const [preview, setPreview] = useState<{ nickname: string; avatar: string }>({ nickname: '', avatar: '' });
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingEmail, setVerifyingEmail] = useState(false);
+  const [verifyCode, setVerifyCode] = useState('');
+  const [countdown, setCountdown] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -34,6 +38,14 @@ function SettingInfoApp() {
     setFormInitValues(nextValues);
     setPreview({ nickname: nextValues.nickname, avatar: nextValues.avatar });
   }, [user]);
+
+  useEffect(() => {
+    if (countdown <= 0) {
+      return;
+    }
+    const timer = window.setTimeout(() => setCountdown(prev => prev - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [countdown]);
 
   const onSave = async (values: unknown) => {
     const payload = values as InfoFormValues;
@@ -73,6 +85,42 @@ function SettingInfoApp() {
     }
   };
 
+  const onSendVerifyCode = async () => {
+    try {
+      setSendingCode(true);
+      await sendCurrentUserEmailVerifyCode();
+      setCountdown(60);
+      Toast.success('验证码已发送，请检查邮箱');
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      Toast.error(message || '发送验证码失败');
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const onVerifyEmail = async () => {
+    if (!verifyCode.trim()) {
+      Toast.warning('请输入邮箱验证码');
+      return;
+    }
+
+    try {
+      setVerifyingEmail(true);
+      await verifyCurrentUserEmail({
+        verifyCode: verifyCode.trim(),
+      });
+      setVerifyCode('');
+      await refreshUser();
+      Toast.success('邮箱验证成功');
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      Toast.error(message || '邮箱验证失败');
+    } finally {
+      setVerifyingEmail(false);
+    }
+  };
+
   return (
     <Card title="个人信息" shadows="hover" style={{ width: '100%' }}>
       <div style={{ display: 'grid', gap: 16 }}>
@@ -99,8 +147,37 @@ function SettingInfoApp() {
             onSubmit={onSave}
           >
             <AppForm.Input field="email" label="邮箱" disabled />
+            <div style={{ marginBottom: 16 }}>
+              <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                邮箱验证状态
+              </Typography.Text>
+              <Space align="center" wrap>
+                {user.emailVerified ? <Tag color="green">已验证</Tag> : <Tag color="orange">未验证</Tag>}
+                {!user.emailVerified ? (
+                  <>
+                    <Input
+                      value={verifyCode}
+                      onChange={value => setVerifyCode(value)}
+                      placeholder="请输入邮箱验证码"
+                      style={{ width: 220 }}
+                    />
+                    <Button loading={sendingCode} disabled={countdown > 0} onClick={onSendVerifyCode}>
+                      {countdown > 0 ? `${countdown}s 后重发` : '发送验证码'}
+                    </Button>
+                    <Button type="primary" loading={verifyingEmail} onClick={onVerifyEmail}>
+                      验证邮箱
+                    </Button>
+                  </>
+                ) : null}
+              </Space>
+            </div>
             <AppForm.Input field="nickname" label="昵称" maxLength={32} placeholder="请输入昵称" showClear />
-            <AppForm.Input field="avatar" label="头像 URL" placeholder="请输入头像链接（http/https 或 /file/）" showClear />
+            <AppForm.Input
+              field="avatar"
+              label="头像 URL"
+              placeholder="请输入头像链接（http/https 或 /file/）"
+              showClear
+            />
           </AppForm>
         ) : null}
         <Space>

@@ -10,6 +10,7 @@ import { featureLabelMap } from './constants';
 function SettingRoleApp() {
   const { isAdmin, requestNavigate } = useOutletContext<SettingOutletContext>();
   const [roleList, setRoleList] = useState<RoleInfoResponse[]>([]);
+  const tableMinWidth = 'max(100%, 1060px)';
 
   const loadRoleList = async () => {
     if (!isAdmin) {
@@ -38,7 +39,7 @@ function SettingRoleApp() {
 
   if (!isAdmin) {
     return (
-      <Card title="角色管理" shadows="hover">
+      <Card title="角色管理" shadows="hover" style={{ width: '100%' }} bodyStyle={{ width: '100%' }}>
         <Empty title="暂无权限" description="仅管理员可查看角色管理" />
       </Card>
     );
@@ -48,6 +49,8 @@ function SettingRoleApp() {
     <Card
       title="角色管理"
       shadows="hover"
+      style={{ width: '100%' }}
+      bodyStyle={{ width: '100%' }}
       headerExtraContent={
         <Button type="primary" onClick={() => requestNavigate('/setting/role/add')}>
           添加角色
@@ -58,11 +61,21 @@ function SettingRoleApp() {
         <Table<RoleInfoResponse>
           rowKey="roleKey"
           pagination={false}
-          scroll={{ x: 980 }}
+          style={{ width: '100%' }}
+          tableLayout="fixed"
+          scroll={{ x: tableMinWidth }}
           size="small"
           dataSource={roleList}
           columns={[
-            { title: '角色名称', dataIndex: 'roleName', key: 'roleName', width: 180 },
+            {
+              title: '角色名称',
+              dataIndex: 'roleName',
+              key: 'roleName',
+              width: 220,
+              ellipsis: {
+                showTitle: true,
+              },
+            },
             {
               title: '功能权限',
               dataIndex: 'features',
@@ -89,7 +102,11 @@ function SettingRoleApp() {
                   <Tag color="grey">内置</Tag>
                 ) : (
                   <Space>
-                    <Button theme="borderless" type="primary" onClick={() => requestNavigate(`/setting/role/edit/${record.roleKey}`)}>
+                    <Button
+                      theme="borderless"
+                      type="primary"
+                      onClick={() => requestNavigate(`/setting/role/edit/${record.roleKey}`)}
+                    >
                       编辑
                     </Button>
                     <Popconfirm

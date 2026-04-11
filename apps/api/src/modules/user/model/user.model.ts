@@ -5,6 +5,7 @@ import { DataTypes, Model } from 'sequelize';
 export type UserType = Model<{
   id?: string | number;
   email: string;
+  email_verified?: boolean;
   nickname?: string;
   avatar?: string;
   password: string;
@@ -17,6 +18,11 @@ export const UserModel = sequelize.define<UserType>('app_user', {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
+  },
+  email_verified: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
   },
   nickname: {
     type: DataTypes.STRING,

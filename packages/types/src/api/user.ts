@@ -52,6 +52,10 @@ export interface SendRegisterCodeResponse {
   success: boolean;
 }
 
+export interface VerifyCurrentUserEmailPayload {
+  verifyCode: string;
+}
+
 export interface SystemConfigResponse {
   registerEmailVerifyEnabled: boolean;
 }
@@ -78,6 +82,7 @@ export interface LoginUserResponse {
 export interface UserInfoResponse {
   id: string | number;
   email: string;
+  emailVerified: boolean;
   nickname?: string;
   avatar?: string;
   role: UserRole;

@@ -16,8 +16,10 @@ import {
   registerUser,
   removeRole,
   sendRegisterCode,
+  sendCurrentUserEmailVerifyCode,
   setUserRole,
   updateAccountConfig,
+  verifyCurrentUserEmail,
   updateCurrentUserProfile,
   updateRoleInfo,
   updateSystemConfig,
@@ -35,6 +37,8 @@ router
   .post('/register-code', http(sendRegisterCode))
   .use(authenticate())
   .get('/me', http(getCurrentUser))
+  .post('/me/email-verify-code', http(sendCurrentUserEmailVerifyCode))
+  .post('/me/email-verify', http(verifyCurrentUserEmail))
   .get('/account-configs', http(getAccountConfigs))
   .put('/account-configs', http(updateAccountConfig))
   .get('/system-config', http(getSystemConfig))

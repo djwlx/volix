@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar, Dropdown, Nav, Tag, Toast, Typography } from '@douyinfe/semi-ui';
-import { IconCloud, IconConfigStroked, IconExit, IconKanban, IconSetting, IconUserGroup, IconUserList } from '@douyinfe/semi-icons';
+import {
+  IconCloud,
+  IconConfigStroked,
+  IconExit,
+  IconKanban,
+  IconSetting,
+  IconUserGroup,
+  IconUserList,
+} from '@douyinfe/semi-icons';
 import { IconAvatar } from '@douyinfe/semi-icons-lab';
 import { clearAuthToken, getHttpErrorMessage, isAuthError } from '@/utils';
 import { useLocation, useNavigate, Outlet } from 'react-router';
@@ -33,12 +41,15 @@ function SettingApp() {
     navigate('/auth', { replace: true });
   }, [navigate]);
 
-  const requestNavigate = useCallback((to: string) => {
-    if (leaveGuardRef.current && !leaveGuardRef.current()) {
-      return;
-    }
-    navigate(to);
-  }, [navigate]);
+  const requestNavigate = useCallback(
+    (to: string) => {
+      if (leaveGuardRef.current && !leaveGuardRef.current()) {
+        return;
+      }
+      navigate(to);
+    },
+    [navigate]
+  );
 
   const registerLeaveGuard = useCallback((guard: (() => boolean) | null) => {
     leaveGuardRef.current = guard;
@@ -46,15 +57,17 @@ function SettingApp() {
 
   useEffect(() => {
     setUserLoading(true);
-    refreshUser().catch(error => {
-      if (isAuthError(error)) {
-        onLogout();
-        return;
-      }
-      Toast.error(getHttpErrorMessage(error, '获取用户信息失败，请稍后重试'));
-    }).finally(() => {
-      setUserLoading(false);
-    });
+    refreshUser()
+      .catch(error => {
+        if (isAuthError(error)) {
+          onLogout();
+          return;
+        }
+        Toast.error(getHttpErrorMessage(error, '获取用户信息失败，请稍后重试'));
+      })
+      .finally(() => {
+        setUserLoading(false);
+      });
   }, []);
 
   const activeKey = useMemo(() => {
@@ -153,7 +166,7 @@ function SettingApp() {
   }
 
   return (
-    <div style={{ width: '100%', overflowX: 'hidden' }}>
+    <div style={{ width: '100%' }}>
       <Nav
         mode="horizontal"
         header={{
@@ -230,7 +243,9 @@ function SettingApp() {
           }}
         />
         <div style={{ flex: 1, minWidth: 0, padding: 16, boxSizing: 'border-box' }}>
-          <Outlet context={{ user, isAdmin, refreshUser, requestNavigate, registerLeaveGuard } satisfies SettingOutletContext} />
+          <Outlet
+            context={{ user, isAdmin, refreshUser, requestNavigate, registerLeaveGuard } satisfies SettingOutletContext}
+          />
         </div>
       </div>
     </div>

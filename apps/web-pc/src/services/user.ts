@@ -20,6 +20,7 @@ import type {
   UpdateRolePayload,
   UpdateUserProfilePayload,
   UserInfoResponse,
+  VerifyCurrentUserEmailPayload,
 } from '@volix/types';
 
 export const loginUser = (data: LoginUserPayload) => {
@@ -42,12 +43,23 @@ export const getCurrentUser = () => {
   return http.get<UserInfoResponse>('/user/me');
 };
 
+export const sendCurrentUserEmailVerifyCode = () => {
+  return http.post<SendRegisterCodeResponse>('/user/me/email-verify-code');
+};
+
+export const verifyCurrentUserEmail = (data: VerifyCurrentUserEmailPayload) => {
+  return http.post<UserInfoResponse>('/user/me/email-verify', data);
+};
+
 export const getAccountConfigs = () => {
   return http.get<AccountConfigMap>('/user/account-configs');
 };
 
 export const updateAccountConfig = (data: UpdateAccountConfigPayload) => {
-  return http.put<{ platform: AccountConfigPlatform; config: UpdateAccountConfigPayload['config'] }>('/user/account-configs', data);
+  return http.put<{ platform: AccountConfigPlatform; config: UpdateAccountConfigPayload['config'] }>(
+    '/user/account-configs',
+    data
+  );
 };
 
 export const getSystemConfig = () => {

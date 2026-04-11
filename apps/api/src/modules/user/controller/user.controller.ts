@@ -9,6 +9,7 @@ import type {
   LoginUserPayload,
   RegisterUserPayload,
   SendRegisterCodePayload,
+  SendRegisterCodeResponse,
   SetUserRolePayload,
   SmtpAccountConfigItem,
   ServiceAccountConfigItem,
@@ -16,6 +17,7 @@ import type {
   UpdateRolePayload,
   UpdateSystemConfigPayload,
   UpdateUserProfilePayload,
+  VerifyCurrentUserEmailPayload,
 } from '@volix/types';
 import jwt from '../../../utils/jwt';
 import { badRequest, unauthorized } from '../../shared/http-handler';
@@ -205,6 +207,7 @@ const getSystemConfigData = async () => {
 const toUserResponse = async (data: {
   id?: string | number;
   email?: string;
+  email_verified?: boolean;
   nickname?: string;
   avatar?: string;
   role?: UserRole;
@@ -215,6 +218,7 @@ const toUserResponse = async (data: {
   return {
     id: data.id,
     email: data.email,
+    emailVerified: Boolean(data.email_verified),
     nickname: data.nickname,
     avatar: data.avatar,
     role,
@@ -289,6 +293,7 @@ export const registerUser: MyMiddleware = async ctx => {
 
   const user = await addUser({
     email,
+    email_verified: shouldVerifyEmail,
     password,
     role,
     role_key: DEFAULT_ROLE_KEY,
@@ -304,6 +309,7 @@ export const registerUser: MyMiddleware = async ctx => {
   return {
     id: user.dataValues.id,
     email: user.dataValues.email,
+    emailVerified: Boolean(user.dataValues.email_verified),
     nickname: user.dataValues.nickname,
     avatar: user.dataValues.avatar,
     role: (user.dataValues.role || role) as UserRole,
@@ -371,6 +377,93 @@ export const sendRegisterCode: MyMiddleware = async ctx => {
   };
 };
 
+export const sendCurrentUserEmailVerifyCode: MyMiddleware = async ctx => {
+  const userId = ctx.state.userInfo?.id;
+  if (!userId) {
+    unauthorized('未登录');
+    return;
+  }
+
+  const userRecord = await queryUser({ id: userId as string | number });
+  if (!userRecord) {
+    unauthorized('用户不存在');
+    return;
+  }
+  const user = userRecord.dataValues;
+  if (user.email_verified) {
+    badRequest('当前邮箱已完成验证');
+  }
+
+  const smtpConfigData = await getConfig(AppConfigEnum.account_smtp);
+  const smtpConfig = parseSmtpAccountConfig(smtpConfigData?.[AppConfigEnum.account_smtp]);
+  if (!smtpConfig) {
+    badRequest('请先在系统中配置 SMTP');
+  }
+
+  const email = user.email;
+  assertRegisterCodeCanSend(email);
+  const code = generateRegisterVerifyCode();
+
+  const smtp = smtpConfig as SmtpAccountConfigItem;
+  await sendRegisterCodeMail({
+    smtpHost: smtp.host,
+    smtpPort: smtp.port,
+    smtpSecure: smtp.secure,
+    smtpUsername: smtp.username,
+    smtpPassword: smtp.password,
+    fromEmail: smtp.fromEmail,
+    toEmail: email,
+    code,
+  });
+  saveRegisterVerifyCode(email, code);
+
+  const result: SendRegisterCodeResponse = {
+    success: true,
+  };
+  return result;
+};
+
+export const verifyCurrentUserEmail: MyMiddleware = async ctx => {
+  const userId = ctx.state.userInfo?.id;
+  if (!userId) {
+    unauthorized('未登录');
+    return;
+  }
+
+  const userRecord = await queryUser({ id: userId as string | number });
+  if (!userRecord) {
+    unauthorized('用户不存在');
+    return;
+  }
+  const user = userRecord.dataValues;
+  if (user.email_verified) {
+    badRequest('当前邮箱已完成验证');
+  }
+
+  const param = (ctx.request.body || {}) as VerifyCurrentUserEmailPayload;
+  const verifyCode = (param.verifyCode || '').trim();
+  if (!verifyCode) {
+    badRequest('请输入邮箱验证码');
+  }
+
+  const isValid = verifyRegisterCode(user.email, verifyCode);
+  if (!isValid) {
+    badRequest('验证码错误或已过期');
+  }
+
+  await updateUser(userId as string | number, {
+    email_verified: true,
+  });
+
+  const updatedRecord = await queryUser({ id: userId as string | number });
+  if (!updatedRecord) {
+    badRequest('用户不存在');
+    return;
+  }
+
+  return toUserResponse(updatedRecord.dataValues);
+};
+
 export const getCurrentUser: MyMiddleware = async ctx => {
   const userId = ctx.state.userInfo?.id;
   if (!userId) {
@@ -392,6 +485,7 @@ export const getCurrentUser: MyMiddleware = async ctx => {
   return {
     id: user.dataValues.id,
     email: user.dataValues.email,
+    emailVerified: Boolean(user.dataValues.email_verified),
     nickname: user.dataValues.nickname,
     avatar: user.dataValues.avatar,
     role: (user.dataValues.role || UserRole.USER) as UserRole,
@@ -486,6 +580,7 @@ export const getUserList: MyMiddleware = async ctx => {
   return list.map(item => ({
     id: item.dataValues.id,
     email: item.dataValues.email,
+    emailVerified: Boolean(item.dataValues.email_verified),
     nickname: item.dataValues.nickname,
     avatar: item.dataValues.avatar,
     role: (item.dataValues.role || UserRole.USER) as UserRole,
@@ -493,7 +588,7 @@ export const getUserList: MyMiddleware = async ctx => {
     featurePermissions:
       item.dataValues.role === UserRole.ADMIN
         ? Object.values(AppFeature)
-        : (featureMap.get(item.dataValues.role_key || DEFAULT_ROLE_KEY) || []),
+        : featureMap.get(item.dataValues.role_key || DEFAULT_ROLE_KEY) || [],
   }));
 };
 
@@ -524,6 +619,7 @@ export const setUserRole: MyMiddleware = async ctx => {
   return {
     id: targetUser.dataValues.id,
     email: targetUser.dataValues.email,
+    emailVerified: Boolean(targetUser.dataValues.email_verified),
     nickname: targetUser.dataValues.nickname,
     avatar: targetUser.dataValues.avatar,
     role,
@@ -572,6 +668,7 @@ export const updateCurrentUserProfile: MyMiddleware = async ctx => {
   return {
     id: updated.dataValues.id,
     email: updated.dataValues.email,
+    emailVerified: Boolean(updated.dataValues.email_verified),
     nickname: updated.dataValues.nickname,
     avatar: updated.dataValues.avatar,
     role: (updated.dataValues.role || UserRole.USER) as UserRole,
@@ -819,6 +916,7 @@ export const adminCreateUser: MyMiddleware = async ctx => {
 
   const user = await addUser({
     email,
+    email_verified: false,
     password,
     nickname,
     avatar,
