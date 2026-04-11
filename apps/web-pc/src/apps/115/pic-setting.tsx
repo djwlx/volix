@@ -44,6 +44,14 @@ export function PicSetting() {
     Toast.success('清理成功');
   };
 
+  const onDeleteByPath = async (path: string) => {
+    await clear115Pic({
+      paths: [path],
+    });
+    fetch();
+    Toast.success('删除成功');
+  };
+
   const data: Data[] = useMemo(() => {
     const base = [
       { key: '缓存数量', value: count },
@@ -70,7 +78,18 @@ export function PicSetting() {
         ...paths.map((item, index) => {
           return {
             key: index === 0 ? '文件夹' : '',
-            value: <FilePath dir={item} />,
+            value: (
+              <Space>
+                <FilePath dir={item} />
+                <Popconfirm
+                  title="确定删除该路径缓存？"
+                  content="此修改将不可逆"
+                  onConfirm={() => onDeleteByPath(item)}
+                >
+                  <Button type="danger" theme="borderless" icon={<IconDelete />} aria-label={`删除路径 ${item}`} />
+                </Popconfirm>
+              </Space>
+            ),
           };
         })
       );
@@ -92,7 +111,13 @@ export function PicSetting() {
       <Modal onCancel={closeModal} onOk={onSubmit} title="开始缓存" visible={visible} centered>
         <AppForm getFormApi={setForm} allowEmpty labelPosition="left">
           <AppForm.ArrayField field="paths" initValue={[{ path: '' }]}>
-            {({ add, arrayFields }: { add: () => void; arrayFields: Array<{ field: string; key: string; remove: () => void }> }) => {
+            {({
+              add,
+              arrayFields,
+            }: {
+              add: () => void;
+              arrayFields: Array<{ field: string; key: string; remove: () => void }>;
+            }) => {
               return (
                 <>
                   {arrayFields.map(({ field, key, remove }, index: number) => {

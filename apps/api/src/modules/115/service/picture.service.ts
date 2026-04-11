@@ -1,4 +1,4 @@
-import type { FileListDataItem, PicInfoParams } from '@volix/types';
+import type { ClearPicInfoParams, FileListDataItem, PicInfoParams } from '@volix/types';
 import { AppConfigEnum } from '../../config/model/config.model';
 import { clearConfig, getConfig, setConfig } from '../../config/service/config.service';
 import { badRequest } from '../../shared/http-handler';
@@ -8,18 +8,25 @@ import { log } from '../../../utils/logger';
 import { generateRandomNumber } from '../../../utils/number';
 import { Cloud115DbFileItem, RandomPicMeta } from '../types/115.types';
 import { get115FileData } from './file.service';
-import { clearAllFile115, getFile115ByIndex, getFile115Len, setFile115List } from './file-db.service';
+import {
+  clearAllFile115,
+  clearFile115ByCidList,
+  getFile115ByIndex,
+  getFile115Len,
+  setFile115List,
+} from './file-db.service';
 import { getCloud115Sdk } from './sdk.service';
 
 type Cloud115FileListItem = FileListDataItem & {
   class?: string;
 };
 
-const saveFile115List = async (dataList: Cloud115FileListItem[]) => {
+const saveFile115List = async (dataList: Cloud115FileListItem[], cid: string) => {
   const list: Cloud115DbFileItem[] = dataList.map(item => ({
     name: item.n,
     class: item.class || '',
     pc: item.pc,
+    cid,
   }));
 
   await setFile115List(list);
@@ -34,7 +41,7 @@ export const cache115Pic = async (paths?: string[]) => {
   log.info('开始缓存图片');
   try {
     const sdk = await getCloud115Sdk();
-    const getPicFileList = async (cid: string) => {
+    const getPicFileList = async (cid: string, rootCid: string) => {
       const result = await sdk.getFileList(0, 1, cid);
       const count = result.count;
       const nextCidList: string[] = [];
@@ -55,19 +62,19 @@ export const cache115Pic = async (paths?: string[]) => {
         });
 
         if (dataList.length > 0) {
-          await saveFile115List(dataList);
+          await saveFile115List(dataList, rootCid);
         }
 
         await waitTime(timer);
       }
 
       for (let i = 0; i < nextCidList.length; i++) {
-        await getPicFileList(nextCidList[i]);
+        await getPicFileList(nextCidList[i], rootCid);
       }
     };
 
     for (let i = 0; i < cidList.length; i++) {
-      await getPicFileList(cidList[i]);
+      await getPicFileList(cidList[i], cidList[i]);
     }
 
     const end = Date.now();
@@ -150,8 +157,37 @@ export async function set115PicInfoData(params: PicInfoParams) {
   };
 }
 
-export async function clear115PicData() {
-  await clearAllFile115();
-  await clearConfig([AppConfigEnum.is_115_picture_caching, AppConfigEnum.picture_115_cids]);
-  return 'success';
+export async function clear115PicData(params?: ClearPicInfoParams) {
+  if (lightLocks.is115PictureCaching) {
+    badRequest('正在缓存中，请稍后再试');
+  }
+
+  const picConfig = await getConfig([AppConfigEnum.is_115_picture_caching, AppConfigEnum.picture_115_cids]);
+  if (picConfig?.is_115_picture_caching === 'true') {
+    badRequest('正在缓存中，请稍后再试');
+  }
+
+  const normalizedPaths = (params?.paths || []).map(path => path.trim()).filter(Boolean);
+  if (normalizedPaths.length === 0) {
+    await clearAllFile115();
+    await clearConfig([AppConfigEnum.is_115_picture_caching, AppConfigEnum.picture_115_cids]);
+    return 'success';
+  }
+
+  const beforePaths = (picConfig?.picture_115_cids?.split(',') ?? []).map(path => path.trim()).filter(Boolean);
+  const remainPaths = beforePaths.filter(path => !normalizedPaths.includes(path));
+
+  await clearFile115ByCidList(normalizedPaths);
+
+  if (remainPaths.length === 0) {
+    await clearConfig([AppConfigEnum.is_115_picture_caching, AppConfigEnum.picture_115_cids]);
+  } else {
+    await setConfig(AppConfigEnum.picture_115_cids, remainPaths.join(','));
+    await clearConfig(AppConfigEnum.is_115_picture_caching);
+  }
+
+  return {
+    paths: remainPaths,
+    loading: false,
+  };
 }

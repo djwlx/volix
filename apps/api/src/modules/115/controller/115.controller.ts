@@ -1,6 +1,6 @@
 import ejs from 'ejs';
 import mime from 'mime-types';
-import type { PicInfoParams, QrCodeStatusParams } from '@volix/types';
+import type { ClearPicInfoParams, PicInfoParams, QrCodeStatusParams } from '@volix/types';
 import { PATH } from '../../../utils/path';
 import request from '../../../utils/request';
 import { resSuccess } from '../../../utils/response';
@@ -55,8 +55,8 @@ export const set115PicInfo: MyMiddleware = async ctx => {
   return set115PicInfoData(ctx.request.body as PicInfoParams);
 };
 
-export const clear115Pic: MyMiddleware = async () => {
-  return clear115PicData();
+export const clear115Pic: MyMiddleware = async ctx => {
+  return clear115PicData(ctx.request.body as ClearPicInfoParams);
 };
 
 export const get115UserInfo: MyMiddleware = async ctx => {

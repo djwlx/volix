@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import { File115Model } from '../model/file115.model';
 import type { Cloud115DbFileItem } from '../types/115.types';
 
@@ -21,5 +22,15 @@ export const setFile115List = async (list: Cloud115DbFileItem[]) => {
 export const clearAllFile115 = async () => {
   return File115Model.destroy({
     where: {},
+  });
+};
+
+export const clearFile115ByCidList = async (cidList: string[]) => {
+  return File115Model.destroy({
+    where: {
+      cid: {
+        [Op.in]: cidList,
+      },
+    },
   });
 };

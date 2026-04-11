@@ -1,6 +1,7 @@
 import { http } from '@/utils';
 import type {
   Account115UserInfo,
+  ClearPicInfoParams,
   FileListData,
   FileListParams,
   PicInfo115,
@@ -47,8 +48,10 @@ export function get115PicInfo() {
 export function set115PicInfo(data: PicInfoParams) {
   return http.put('/115/pic/info', data);
 }
-export function clear115Pic() {
-  return http.delete('/115/pic/info');
+export function clear115Pic(data?: ClearPicInfoParams) {
+  return http.delete('/115/pic/info', {
+    data,
+  });
 }
 
 export function get115Pic(mode: 'json' | 'direct' = 'json') {

@@ -36,6 +36,10 @@ export interface PicInfoParams {
   paths: string[];
 }
 
+export interface ClearPicInfoParams {
+  paths?: string[];
+}
+
 // 完整的类型定义
 export interface QrCodeResponse {
   qrCode: string;
