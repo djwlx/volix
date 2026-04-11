@@ -341,7 +341,7 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
   ]);
 
   const availableFolders = folders
-    .filter(item => item.status === 'cached')
+    .filter(item => item.status === 'cached' || item.status === 'caching')
     .map(item => ({
       cid: item.cid,
       count: cidCountMap[item.cid] || 0,
