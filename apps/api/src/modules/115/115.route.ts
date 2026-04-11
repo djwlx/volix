@@ -11,6 +11,8 @@ import {
   get115UserInfo,
   getRandom115Pic,
   login115ByApp,
+  like115Pic,
+  retry115Pic,
   set115PicInfo,
 } from './index';
 
@@ -21,7 +23,9 @@ const router = new Router({
 router
   .get('/pic', http(getRandom115Pic))
   .get('/pic/info', http(get115PicInfo))
+  .post('/pic/like', http(like115Pic))
   .put('/pic/info', http(set115PicInfo))
+  .post('/pic/info/retry', http(retry115Pic))
   .get('/user', http(get115UserInfo))
   .post('/exit', http(exitCloud115))
   .get('/qrcode', http(get115QrCode))

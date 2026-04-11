@@ -3,7 +3,7 @@ import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse 
 import { getAuthToken, getTokenHeaderKey, clearAuthToken } from './auth';
 
 const instance: AxiosInstance = axios.create({
-  baseURL: `http://nas.djwl.top:3000/api`,
+  baseURL: `/api`,
 });
 
 instance.interceptors.request.use(config => {

@@ -1,32 +1,94 @@
-import { Card, Tree, Typography } from '@douyinfe/semi-ui';
+import { Card, Dropdown, Toast, Tree } from '@douyinfe/semi-ui';
+import { IconMore } from '@douyinfe/semi-icons';
 import { useFileList, type FileItem, type UndoneMapItem } from './hooks/useFileList';
 import { useEffect, useState } from 'react';
 import type { TreeNodeData } from '@douyinfe/semi-ui/lib/es/tree';
-import { IconMore } from '@douyinfe/semi-icons';
-const { Paragraph } = Typography;
+import type { PicCacheFolderItem } from '@volix/types';
+import { get115PicInfo, set115PicInfo } from '@/services/115';
+import { getHttpErrorMessage } from '@/utils/error';
+import { renderPicCacheStatusTag } from './pic-cache-status';
 
 export function FileTree() {
   const [fileTree, setFileTree] = useState<TreeNodeData[]>([]);
   const { fileTree: treeData, loadMore, moreLoading, unDoneMap } = useFileList();
-  const [activeDir, setActiveDir] = useState('');
   const [loadingMoreDir, setLoadingMoreDir] = useState('');
+  const [folderStatusMap, setFolderStatusMap] = useState<Record<string, PicCacheFolderItem>>({});
+
+  const fetchPicInfo = async () => {
+    const result = await get115PicInfo();
+    if (result.code === 0) {
+      setFolderStatusMap(
+        result.data.folders.reduce((acc, item) => {
+          acc[item.cid] = item;
+          return acc;
+        }, {} as Record<string, PicCacheFolderItem>)
+      );
+    }
+  };
+
+  const onCopyCid = async (cid: string) => {
+    try {
+      await navigator.clipboard.writeText(cid);
+      Toast.success('CID 已复制');
+    } catch {
+      Toast.error('复制失败');
+    }
+  };
+
+  const onAddCache = async (cid: string) => {
+    try {
+      await set115PicInfo({ paths: [cid] });
+      await fetchPicInfo();
+      Toast.success('已加入缓存队列');
+    } catch (error) {
+      Toast.error(getHttpErrorMessage(error, '加入缓存失败'));
+    }
+  };
 
   const formatTreeData = (data: FileItem[], unComplete: Record<string, UndoneMapItem>, dir: string): TreeNodeData[] => {
     const treeData = data.map(item => {
       const isDir = !item.fid;
+      const folderInfo = folderStatusMap[item.dir];
       const fileItem: TreeNodeData = {
         ...item,
         label: (
-          <div
-            onClick={() => {
-              if (isDir) {
-                setActiveDir(activeDir === item.dir ? '' : item.dir);
-              }
-            }}
-            style={{ display: 'flex', alignItems: 'center', gap: 16 }}
-          >
-            <span> {item.name}</span>
-            {isDir && activeDir === item.dir && <Paragraph copyable={{ content: item.dir }}></Paragraph>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ flex: 1, minWidth: 0 }}>{item.name}</span>
+            {isDir && folderInfo ? renderPicCacheStatusTag(folderInfo) : null}
+            {isDir ? (
+              <Dropdown
+                trigger="click"
+                position="bottomRight"
+                render={
+                  <Dropdown.Menu>
+                    <Dropdown.Item
+                      onClick={event => {
+                        event.stopPropagation();
+                        void onCopyCid(item.dir);
+                      }}
+                    >
+                      复制 CID
+                    </Dropdown.Item>
+                    <Dropdown.Item
+                      disabled={Boolean(folderInfo)}
+                      onClick={event => {
+                        event.stopPropagation();
+                        void onAddCache(item.dir);
+                      }}
+                    >
+                      {folderInfo ? '已加入缓存' : '加入缓存'}
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                }
+              >
+                <span
+                  onClick={event => event.stopPropagation()}
+                  style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', color: '#666' }}
+                >
+                  <IconMore />
+                </span>
+              </Dropdown>
+            ) : null}
           </div>
         ),
         value: item.id,
@@ -76,13 +138,22 @@ export function FileTree() {
   useEffect(() => {
     const data = formatTreeData(treeData, unDoneMap, '0');
     setFileTree(data);
-  }, [treeData, unDoneMap, activeDir, loadingMoreDir]);
+  }, [treeData, unDoneMap, loadingMoreDir, folderStatusMap]);
 
   useEffect(() => {
     if (!moreLoading) {
       setLoadingMoreDir('');
     }
   }, [moreLoading]);
+
+  useEffect(() => {
+    fetchPicInfo().catch(() => undefined);
+    const timer = window.setInterval(() => {
+      fetchPicInfo().catch(() => undefined);
+    }, 3000);
+
+    return () => window.clearInterval(timer);
+  }, []);
 
   return (
     <Card style={{ width: '100%' }} shadows="hover">

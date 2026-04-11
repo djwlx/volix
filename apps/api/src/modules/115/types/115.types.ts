@@ -5,6 +5,8 @@ export type RandomPicMode = 'direct' | 'json' | undefined;
 export interface RandomPicMeta {
   url: string;
   fileName: string;
+  cid: string;
+  pc: string;
 }
 
 export interface Cloud115DbFileItem {

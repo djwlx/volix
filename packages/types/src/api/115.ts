@@ -40,6 +40,32 @@ export interface ClearPicInfoParams {
   paths?: string[];
 }
 
+export interface RetryPicInfoParams {
+  paths: string[];
+}
+
+export interface Like115PicParams {
+  cid?: string;
+  pc?: string;
+}
+
+export interface Random115PicResponse {
+  url: string;
+  fileName: string;
+  cid: string;
+  pc: string;
+}
+
+export type PicCacheFolderStatus = 'pending' | 'caching' | 'cached' | 'failed';
+
+export interface PicCacheFolderItem {
+  cid: string;
+  status: PicCacheFolderStatus;
+  errorMessage?: string;
+  updatedAt?: string;
+  count?: number;
+}
+
 // 完整的类型定义
 export interface QrCodeResponse {
   qrCode: string;
@@ -62,6 +88,6 @@ export interface QrCodeStatus {
 
 export interface PicInfo115 {
   loading: boolean;
-  paths: string[];
   count: number;
+  folders: PicCacheFolderItem[];
 }

@@ -5,7 +5,8 @@
     "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
-      "@volix/types": ["../../packages/types/src/index.ts"]
+      "@volix/types": ["../../packages/types/src/index.ts"],
+      "@volix/utils": ["../../packages/utils/src/index.ts"]
     },
     "strict": true,
     "esModuleInterop": true,

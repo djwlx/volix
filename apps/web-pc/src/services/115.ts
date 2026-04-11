@@ -4,12 +4,15 @@ import type {
   ClearPicInfoParams,
   FileListData,
   FileListParams,
+  Like115PicParams,
   PicInfo115,
   PicInfoParams,
   QrCodeResponse,
   QrCodeStatus,
   QrCodeStatusParams,
   QrLoginParams,
+  Random115PicResponse,
+  RetryPicInfoParams,
 } from '@volix/types';
 
 export function get115QrCode() {
@@ -54,7 +57,15 @@ export function clear115Pic(data?: ClearPicInfoParams) {
   });
 }
 
+export function retry115Pic(data: RetryPicInfoParams) {
+  return http.post('/115/pic/info/retry', data);
+}
+
+export function like115Pic(data: Like115PicParams) {
+  return http.post('/115/pic/like', data);
+}
+
 export function get115Pic(mode: 'json' | 'direct' = 'json') {
   const url = mode === 'json' ? '/115/pic?mode=json' : '/115/pic?mode=direct';
-  return http.get<{ url: string; fileName: string }>(url, { responseType: mode === 'json' ? 'json' : 'blob' });
+  return http.get<Random115PicResponse>(url, { responseType: mode === 'json' ? 'json' : 'blob' });
 }

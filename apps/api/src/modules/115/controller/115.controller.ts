@@ -1,12 +1,25 @@
 import ejs from 'ejs';
 import mime from 'mime-types';
-import type { ClearPicInfoParams, PicInfoParams, QrCodeStatusParams } from '@volix/types';
+import type {
+  ClearPicInfoParams,
+  Like115PicParams,
+  PicInfoParams,
+  QrCodeStatusParams,
+  RetryPicInfoParams,
+} from '@volix/types';
 import { PATH } from '../../../utils/path';
 import request from '../../../utils/request';
 import { resSuccess } from '../../../utils/response';
 import { badRequest } from '../../shared/http-handler';
 import { get115FileData, get115FileListData } from '../service/file.service';
-import { clear115PicData, get115PicInfoData, getRandom115PicMeta, set115PicInfoData } from '../service/picture.service';
+import {
+  clear115PicData,
+  get115PicInfoData,
+  getRandom115PicMeta,
+  like115PicData,
+  retry115PicData,
+  set115PicInfoData,
+} from '../service/picture.service';
 import { get115QrCodeData, get115QrCodeStatusData } from '../service/qrcode.service';
 import { exit115AndClearCookie, login115WithAppAndSaveCookie } from '../service/session.service';
 import { get115UserInfoData } from '../service/user.service';
@@ -16,7 +29,7 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
   const { mode } = ctx.query || {};
   const isDirect = mode === 'direct';
   const isJson = mode === 'json';
-  const { url, fileName } = await getRandom115PicMeta(ua as string);
+  const { url, fileName, cid, pc } = await getRandom115PicMeta(ua as string);
 
   if (isDirect) {
     const streamResult = await request.get(url, {
@@ -34,6 +47,8 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
     return {
       url,
       fileName,
+      cid,
+      pc,
     };
   }
 
@@ -57,6 +72,14 @@ export const set115PicInfo: MyMiddleware = async ctx => {
 
 export const clear115Pic: MyMiddleware = async ctx => {
   return clear115PicData(ctx.request.body as ClearPicInfoParams);
+};
+
+export const retry115Pic: MyMiddleware = async ctx => {
+  return retry115PicData(ctx.request.body as RetryPicInfoParams);
+};
+
+export const like115Pic: MyMiddleware = async ctx => {
+  return like115PicData(ctx.request.body as Like115PicParams);
 };
 
 export const get115UserInfo: MyMiddleware = async ctx => {
