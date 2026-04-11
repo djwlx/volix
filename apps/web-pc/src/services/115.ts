@@ -54,6 +54,11 @@ export function set115PicInfo(data: PicInfoParams) {
 export function clear115Pic(data?: ClearPicInfoParams) {
   return http.delete('/115/pic/info', {
     data,
+    params: data?.paths?.length
+      ? {
+          paths: data.paths.join(','),
+        }
+      : undefined,
   });
 }
 

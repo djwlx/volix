@@ -71,7 +71,11 @@ export const set115PicInfo: MyMiddleware = async ctx => {
 };
 
 export const clear115Pic: MyMiddleware = async ctx => {
-  return clear115PicData(ctx.request.body as ClearPicInfoParams);
+  const body = (ctx.request.body || {}) as ClearPicInfoParams;
+  const queryPaths = typeof ctx.query?.paths === 'string' ? ctx.query.paths.split(',') : [];
+  return clear115PicData({
+    paths: body.paths?.length ? body.paths : queryPaths,
+  });
 };
 
 export const retry115Pic: MyMiddleware = async ctx => {
