@@ -1,5 +1,7 @@
 import { createBrowserRouter } from 'react-router';
 import HomeApp from '@/apps/home';
+import ColorPickerApp from '@/apps/color-picker';
+import FormatterApp from '@/apps/formatter';
 import PicApp from '@/apps/pic';
 import AuthApp from '@/apps/auth';
 import SettingApp from '@/apps/setting';
@@ -25,6 +27,16 @@ export const router = createBrowserRouter([
     Component: GuestOnlyRoute,
     ErrorBoundary: AppErrorBoundary,
     children: [{ index: true, Component: AuthApp }],
+  },
+  {
+    path: '/formatter',
+    ErrorBoundary: AppErrorBoundary,
+    children: [{ index: true, Component: FormatterApp }],
+  },
+  {
+    path: '/color-picker',
+    ErrorBoundary: AppErrorBoundary,
+    children: [{ index: true, Component: ColorPickerApp }],
   },
   {
     path: '/pic',

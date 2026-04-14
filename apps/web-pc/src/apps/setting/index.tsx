@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Avatar, Button, Dropdown, Nav, SideSheet, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Nav, SideSheet, Toast } from '@douyinfe/semi-ui';
 import {
-  IconCloud,
+  IconBolt,
+  IconCloudStroked,
   IconConfigStroked,
+  IconDesktop,
   IconExit,
-  IconKanban,
+  IconLayers,
+  IconMailStroked,
   IconMenu,
-  IconSetting,
-  IconUserGroup,
+  IconShield,
   IconUserList,
 } from '@douyinfe/semi-icons';
 import { IconAvatar } from '@douyinfe/semi-icons-lab';
@@ -16,9 +18,36 @@ import { useLocation, useNavigate, Outlet } from 'react-router';
 import { getCurrentUser } from '@/services/user';
 import { UserRole } from '@volix/types';
 import type { UserInfoResponse } from '@volix/types';
-import { Loading } from '@/components';
+import { AppHeader, Loading } from '@/components';
 import { useIsMobile } from '@/hooks';
 import type { SettingOutletContext } from './types';
+import type { ReactNode } from 'react';
+import styles from './index.module.scss';
+import adminIcon from '@/assets/icons/admin.svg';
+
+function MenuIcon(props: { icon: ReactNode; bg: string; color: string }) {
+  const { icon, bg, color } = props;
+
+  return (
+    <span
+      style={{
+        width: 30,
+        height: 30,
+        borderRadius: 11,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: bg,
+        color,
+        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.15)',
+        verticalAlign: 'middle',
+        flexShrink: 0,
+      }}
+    >
+      {icon}
+    </span>
+  );
+}
 
 function SettingApp() {
   const navigate = useNavigate();
@@ -26,7 +55,6 @@ function SettingApp() {
   const isMobile = useIsMobile();
   const [user, setUser] = useState<UserInfoResponse>();
   const [userLoading, setUserLoading] = useState(true);
-  const [isNavCollapsed, setIsNavCollapsed] = useState(false);
   const [mobileNavVisible, setMobileNavVisible] = useState(false);
   const leaveGuardRef = useRef<(() => boolean) | null>(null);
 
@@ -117,12 +145,18 @@ function SettingApp() {
   const navItems = [
     {
       itemKey: 'common-settings',
-      text: '普通设置',
+      text: '基础设置',
       items: [
         {
           itemKey: 'info',
           text: '个人信息',
-          icon: <IconAvatar />,
+          icon: (
+            <MenuIcon
+              icon={<IconAvatar />}
+              bg="linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(59, 130, 246, 0.22) 100%)"
+              color="#2563eb"
+            />
+          ),
         },
       ],
     },
@@ -135,42 +169,90 @@ function SettingApp() {
               {
                 itemKey: 'user',
                 text: '用户管理',
-                icon: <IconUserList />,
+                icon: (
+                  <MenuIcon
+                    icon={<IconUserList />}
+                    bg="linear-gradient(135deg, rgba(45, 212, 191, 0.18) 0%, rgba(20, 184, 166, 0.22) 100%)"
+                    color="#0f766e"
+                  />
+                ),
               },
               {
                 itemKey: 'role',
                 text: '角色管理',
-                icon: <IconUserGroup />,
+                icon: (
+                  <MenuIcon
+                    icon={<IconShield />}
+                    bg="linear-gradient(135deg, rgba(251, 191, 36, 0.18) 0%, rgba(249, 115, 22, 0.22) 100%)"
+                    color="#c2410c"
+                  />
+                ),
               },
               {
                 itemKey: 'system',
                 text: '系统配置',
-                icon: <IconSetting />,
+                icon: (
+                  <MenuIcon
+                    icon={<IconDesktop />}
+                    bg="linear-gradient(135deg, rgba(129, 140, 248, 0.18) 0%, rgba(99, 102, 241, 0.22) 100%)"
+                    color="#4f46e5"
+                  />
+                ),
               },
               {
                 itemKey: 'config',
                 text: '账号配置',
-                icon: <IconConfigStroked />,
+                icon: (
+                  <MenuIcon
+                    icon={<IconConfigStroked />}
+                    bg="linear-gradient(135deg, rgba(244, 114, 182, 0.16) 0%, rgba(236, 72, 153, 0.2) 100%)"
+                    color="#db2777"
+                  />
+                ),
                 items: [
                   {
                     itemKey: 'config/115',
                     text: '115',
-                    icon: <IconCloud />,
+                    icon: (
+                      <MenuIcon
+                        icon={<IconCloudStroked />}
+                        bg="linear-gradient(135deg, rgba(34, 197, 94, 0.16) 0%, rgba(22, 163, 74, 0.22) 100%)"
+                        color="#15803d"
+                      />
+                    ),
                   },
                   {
                     itemKey: 'config/qbittorrent',
                     text: 'qBittorrent',
-                    icon: <IconCloud />,
+                    icon: (
+                      <MenuIcon
+                        icon={<IconBolt />}
+                        bg="linear-gradient(135deg, rgba(59, 130, 246, 0.18) 0%, rgba(37, 99, 235, 0.22) 100%)"
+                        color="#1d4ed8"
+                      />
+                    ),
                   },
                   {
                     itemKey: 'config/openlist',
                     text: 'OpenList',
-                    icon: <IconCloud />,
+                    icon: (
+                      <MenuIcon
+                        icon={<IconLayers />}
+                        bg="linear-gradient(135deg, rgba(168, 85, 247, 0.18) 0%, rgba(147, 51, 234, 0.22) 100%)"
+                        color="#7e22ce"
+                      />
+                    ),
                   },
                   {
                     itemKey: 'config/smtp',
                     text: 'SMTP',
-                    icon: <IconCloud />,
+                    icon: (
+                      <MenuIcon
+                        icon={<IconMailStroked />}
+                        bg="linear-gradient(135deg, rgba(251, 146, 60, 0.18) 0%, rgba(249, 115, 22, 0.22) 100%)"
+                        color="#c2410c"
+                      />
+                    ),
                   },
                 ],
               },
@@ -185,75 +267,25 @@ function SettingApp() {
   }
 
   return (
-    <div style={{ width: '100%' }}>
-      <Nav
-        mode="horizontal"
-        header={{
-          logo: (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {isMobile ? (
-                <Button
-                  icon={<IconMenu />}
-                  theme="borderless"
-                  aria-label="打开菜单"
-                  onClick={() => setMobileNavVisible(true)}
-                />
-              ) : null}
-              <div
-                onClick={() => requestNavigate('/')}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: 'linear-gradient(135deg, #3B82F6 0%, #6366F1 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                }}
-              >
-                <IconKanban style={{ fontSize: 20, color: '#fff' }} />
-              </div>
-            </div>
-          ),
-          text: '后台管理',
-        }}
-        footer={
-          <Dropdown
-            trigger="click"
-            position="bottomRight"
-            render={
-              <Dropdown.Menu>
-                <Dropdown.Item icon={<IconSetting />} onClick={() => requestNavigate('/setting/info')}>
-                  系统管理
-                </Dropdown.Item>
-                <Dropdown.Item icon={<IconExit />} type="danger" onClick={onLogout}>
-                  退出登录
-                </Dropdown.Item>
-              </Dropdown.Menu>
-            }
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 0 }}>
-              <Avatar
-                size="32px"
-                shape="circle"
-                src={user?.avatar}
-                imgAttr={{ style: { objectFit: 'cover' } }}
-                style={{ flex: '0 0 32px' }}
-              >
-                {user?.nickname?.slice(0, 1) || user?.email?.slice(0, 1)?.toUpperCase() || 'U'}
-              </Avatar>
-              {!isMobile ? (
-                <Typography.Text ellipsis style={{ minWidth: 0 }}>
-                  {user?.nickname || user?.email}
-                </Typography.Text>
-              ) : null}
-              <Tag color={isAdmin ? 'red' : 'blue'} style={{ flexShrink: 0 }}>
-                {isAdmin ? '管理员' : '普通用户'}
-              </Tag>
-            </div>
-          </Dropdown>
+    <div className={styles.page}>
+      <AppHeader
+        title="后台管理"
+        logo={<img alt="后台管理" src={adminIcon} style={{ display: 'block', width: 44, height: 44 }} />}
+        onLogoClick={() => requestNavigate('/')}
+        beforeLogo={
+          isMobile ? (
+            <Button
+              icon={<IconMenu />}
+              theme="borderless"
+              aria-label="打开菜单"
+              onClick={() => setMobileNavVisible(true)}
+            />
+          ) : null
         }
+        userOverride={user}
+        showUserName={!isMobile}
+        userBadge={isAdmin ? '管理员' : '普通用户'}
+        menuItems={[{ key: 'logout', label: '退出登录', icon: <IconExit />, type: 'danger', onClick: onLogout }]}
       />
 
       {isMobile ? (
@@ -267,6 +299,7 @@ function SettingApp() {
         >
           <Nav
             mode="vertical"
+            className={styles.settingNav}
             style={{ width: '100%' }}
             bodyStyle={{ paddingTop: 8 }}
             items={navItems}
@@ -279,28 +312,24 @@ function SettingApp() {
         </SideSheet>
       ) : null}
 
-      <div style={{ display: 'flex', minHeight: 'calc(100vh - 60px)' }}>
+      <div className={styles.shell}>
         {!isMobile ? (
           <Nav
             mode="vertical"
+            className={`${styles.settingNav} ${styles.sidebar}`}
             style={{
-              width: isNavCollapsed ? 64 : 240,
-              flexShrink: 0,
-              borderRight: '1px solid var(--semi-color-border)',
+              width: 280,
             }}
             bodyStyle={{ paddingTop: 8 }}
             items={navItems}
             selectedKeys={[activeKey]}
             defaultOpenKeys={isAdmin ? ['common-settings', 'admin-settings', 'config'] : ['common-settings']}
-            isCollapsed={isNavCollapsed}
-            onCollapseChange={setIsNavCollapsed}
-            footer={{ collapseButton: true }}
             onSelect={data => {
               handleNavSelect(data.itemKey as string);
             }}
           />
         ) : null}
-        <div style={{ flex: 1, minWidth: 0, padding: isMobile ? 12 : 16, boxSizing: 'border-box' }}>
+        <div className={`${styles.content} ${isMobile ? styles.contentMobile : ''}`}>
           <Outlet
             context={{ user, isAdmin, refreshUser, requestNavigate, registerLeaveGuard } satisfies SettingOutletContext}
           />

@@ -4,7 +4,9 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
 import { router } from '@/layouts/router';
 import { formatTime } from '@volix/utils';
+import { initializeTheme } from '@/utils/theme';
 
 formatTime();
+initializeTheme();
 
 createRoot(document.getElementById('root')!).render(<RouterProvider router={router} />);
