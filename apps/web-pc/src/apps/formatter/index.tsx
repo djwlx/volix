@@ -10,9 +10,8 @@ function FormatterApp() {
     <div
       style={{
         width: '100%',
-        height: '100dvh',
+        minHeight: '100dvh',
         background: 'var(--app-page-bg)',
-        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
       }}
@@ -26,8 +25,6 @@ function FormatterApp() {
       <div
         style={{
           flex: 1,
-          minHeight: 0,
-          overflow: 'auto',
           padding: 16,
           maxWidth: 1200,
           margin: '0 auto',

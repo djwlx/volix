@@ -50,6 +50,47 @@ export function AppHeader(props: AppHeaderProps) {
   const theme = useGlobalConfigStore(state => state.config.theme);
 
   const currentUser = userOverride || user;
+  const dropdownContent = (
+    <div
+      style={{
+        minWidth: 240,
+        borderRadius: 14,
+        overflow: 'hidden',
+        background: 'var(--semi-color-bg-2)',
+        border: '1px solid var(--semi-color-border)',
+        boxShadow: '0 12px 28px rgba(15, 23, 42, 0.16)',
+      }}
+    >
+      <div
+        onClick={event => event.stopPropagation()}
+        style={{
+          padding: 12,
+          borderBottom: '1px solid var(--semi-color-border)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <IconSun size="small" style={{ color: 'var(--app-text-muted)' }} />
+          <Switch checked={theme === 'dark'} onChange={checked => setAppTheme(checked ? 'dark' : 'light')} />
+          <IconMoon size="small" style={{ color: 'var(--app-text-muted)' }} />
+        </div>
+      </div>
+      <Dropdown.Menu>
+        {menuItems.map(item => (
+          <Dropdown.Item key={item.key} icon={item.icon} type={item.type} onClick={item.onClick}>
+            {item.label}
+          </Dropdown.Item>
+        ))}
+        {!authed ? (
+          <Dropdown.Item icon={<IconSetting />} onClick={() => navigate('/auth')}>
+            去登录
+          </Dropdown.Item>
+        ) : null}
+      </Dropdown.Menu>
+    </div>
+  );
 
   return (
     <Nav
@@ -76,76 +117,34 @@ export function AppHeader(props: AppHeaderProps) {
         ),
       }}
       footer={
-        <Dropdown
-          trigger="click"
-          position="bottomRight"
-          render={
-            <div
-              style={{
-                minWidth: 240,
-                borderRadius: 14,
-                overflow: 'hidden',
-                background: 'var(--semi-color-bg-2)',
-                border: '1px solid var(--semi-color-border)',
-                boxShadow: '0 12px 28px rgba(15, 23, 42, 0.16)',
-              }}
-            >
-              <div
-                onClick={event => event.stopPropagation()}
-                style={{
-                  padding: 12,
-                  borderBottom: '1px solid var(--semi-color-border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                }}
+        <Dropdown trigger="click" position="bottomRight" render={dropdownContent}>
+          {authed ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 0 }}>
+              <Avatar
+                size="32px"
+                shape="circle"
+                color="blue"
+                src={currentUser?.avatar}
+                imgAttr={{ style: { objectFit: 'cover' } }}
+                style={{ flex: '0 0 32px' }}
               >
-                <div style={{ display: 'grid', gap: 2 }}>
-                  <Typography.Text strong>夜间模式</Typography.Text>
-                  <Typography.Text type="tertiary" size="small">
-                    切换 Semi 组件与页面主题
-                  </Typography.Text>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <IconSun size="small" style={{ color: 'var(--app-text-muted)' }} />
-                  <Switch checked={theme === 'dark'} onChange={checked => setAppTheme(checked ? 'dark' : 'light')} />
-                  <IconMoon size="small" style={{ color: 'var(--app-text-muted)' }} />
-                </div>
-              </div>
-              <Dropdown.Menu>
-                {menuItems.map(item => (
-                  <Dropdown.Item key={item.key} icon={item.icon} type={item.type} onClick={item.onClick}>
-                    {item.label}
-                  </Dropdown.Item>
-                ))}
-                {!authed ? (
-                  <Dropdown.Item icon={<IconSetting />} onClick={() => navigate('/auth')}>
-                    去登录
-                  </Dropdown.Item>
-                ) : null}
-              </Dropdown.Menu>
+                {currentUser?.nickname?.slice(0, 1) || currentUser?.email?.slice(0, 1)?.toUpperCase() || 'U'}
+              </Avatar>
+              {showUserName ? (
+                <Typography.Text ellipsis style={{ minWidth: 0 }}>
+                  {currentUser?.nickname || currentUser?.email || '未登录'}
+                </Typography.Text>
+              ) : null}
+              {userBadge ? <Tag style={{ flexShrink: 0 }}>{userBadge}</Tag> : null}
             </div>
-          }
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 0 }}>
-            <Avatar
-              size="32px"
-              shape="circle"
-              color="blue"
-              src={currentUser?.avatar}
-              imgAttr={{ style: { objectFit: 'cover' } }}
-              style={{ flex: '0 0 32px' }}
-            >
-              {currentUser?.nickname?.slice(0, 1) || currentUser?.email?.slice(0, 1)?.toUpperCase() || 'U'}
-            </Avatar>
-            {showUserName ? (
-              <Typography.Text ellipsis style={{ minWidth: 0 }}>
-                {currentUser?.nickname || currentUser?.email || '未登录'}
-              </Typography.Text>
-            ) : null}
-            {userBadge ? <Tag style={{ flexShrink: 0 }}>{userBadge}</Tag> : null}
-          </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 0 }}>
+              <Avatar size="32px" shape="circle" color="grey" style={{ flex: '0 0 32px' }}>
+                U
+              </Avatar>
+              {showUserName ? <Typography.Text style={{ minWidth: 0 }}>未登录</Typography.Text> : null}
+            </div>
+          )}
         </Dropdown>
       }
     />
