@@ -8,6 +8,7 @@ export interface AnimeSubscriptionEntity {
   series_root_path: string;
   qbit_save_path: string;
   openlist_download_path: string;
+  enable_email_notification?: boolean;
   current_stage?: string | null;
   enabled: boolean;
   use_ai: boolean;
@@ -24,6 +25,7 @@ export interface AnimeSubscriptionEntity {
 export interface AnimeSubscriptionItemEntity {
   id?: string | number;
   subscription_id: string | number;
+  notify_email?: string;
   rss_guid?: string;
   rss_title: string;
   detail_url?: string;

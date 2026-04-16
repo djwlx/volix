@@ -21,6 +21,7 @@ interface AnimeSubscriptionFormValues {
   seriesRootPath: string;
   qbitSavePath: string;
   openlistDownloadPath: string;
+  enableEmailNotification: boolean;
   matchKeywordsText: string;
   checkIntervalMinutes: number;
   renamePattern: string;
@@ -35,6 +36,7 @@ const DEFAULT_VALUES: AnimeSubscriptionFormValues = {
   seriesRootPath: '',
   qbitSavePath: '',
   openlistDownloadPath: '',
+  enableEmailNotification: false,
   matchKeywordsText: '',
   checkIntervalMinutes: 10,
   renamePattern: '{{series}}/S{{season}}/E{{episode}}',
@@ -61,6 +63,7 @@ const toFormValues = (data: AnimeSubscriptionResponse): AnimeSubscriptionFormVal
     seriesRootPath: data.seriesRootPath || '',
     qbitSavePath: data.qbitSavePath || '',
     openlistDownloadPath: data.openlistDownloadPath || '',
+    enableEmailNotification: Boolean(data.enableEmailNotification),
     matchKeywordsText: (data.matchKeywords || []).join('\n'),
     checkIntervalMinutes: data.checkIntervalMinutes || 10,
     renamePattern: data.renamePattern || '{{series}}/S{{season}}/E{{episode}}',
@@ -79,6 +82,7 @@ const buildPayload = (
     seriesRootPath: values.seriesRootPath.trim(),
     qbitSavePath: values.qbitSavePath.trim(),
     openlistDownloadPath: values.openlistDownloadPath.trim(),
+    enableEmailNotification: Boolean(values.enableEmailNotification),
     matchKeywords: parseTextList(values.matchKeywordsText || ''),
     checkIntervalMinutes: Number(values.checkIntervalMinutes) || 10,
     renamePattern: values.renamePattern.trim() || '{{series}}/S{{season}}/E{{episode}}',
@@ -219,6 +223,12 @@ function AnimeSubscriptionForm({ mode }: { mode: 'create' | 'edit' }) {
           </Typography.Text>
           <AppForm.Input field="qbitSavePath" label="qBittorrent 下载目录" placeholder="例如 /downloads/anime" />
           <AppForm.Input field="openlistDownloadPath" label="OpenList 下载目录" placeholder="例如 /Downloads/anime" />
+          <AppForm.Checkbox field="enableEmailNotification" noLabel>
+            开启邮件通知
+          </AppForm.Checkbox>
+          <Typography.Text type="tertiary" size="small">
+            开启后，仅在 SMTP 已配置且当前登录管理员邮箱已验证时，才会在下载完成并整理成功后发送邮件通知。
+          </Typography.Text>
           <AppForm.TextArea
             field="matchKeywordsText"
             label="匹配关键词"

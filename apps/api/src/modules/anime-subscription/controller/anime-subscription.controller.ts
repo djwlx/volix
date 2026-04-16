@@ -8,6 +8,8 @@ import {
 } from '@volix/types';
 import { badRequest, unauthorized } from '../../shared/http-handler';
 import { UserRole } from '@volix/types';
+import { AppConfigEnum } from '../../config/model/config.model';
+import { getConfig } from '../../config/service/config.service';
 import {
   createAnimeSubscription,
   queryAnimeSubscriptionById,
@@ -18,6 +20,7 @@ import {
 } from '../service/anime-subscription.service';
 import type { AnimeSubscriptionEntity, AnimeSubscriptionItemEntity } from '../types/anime-subscription.types';
 import { getRecentAnimeLogs } from '../service/anime-log.service';
+import { queryUser } from '../../user/service/user.service';
 
 const DEFAULT_RENAME_PATTERN = '{{series}}/S{{season}}/E{{episode}}';
 
@@ -56,6 +59,24 @@ const parseCheckInterval = (value: unknown, defaultValue: number) => {
     badRequest('checkIntervalMinutes 必须是正整数');
   }
   return parsed;
+};
+
+const parseSmtpAccountConfig = (raw?: string) => {
+  if (!raw) {
+    return null;
+  }
+  try {
+    const data = JSON.parse(raw) as {
+      host?: string;
+      port?: number;
+      fromEmail?: string;
+      username?: string;
+      password?: string;
+    };
+    return data?.host && data?.port && data?.fromEmail && data?.username && data?.password ? data : null;
+  } catch {
+    return null;
+  }
 };
 
 const normalizePath = (value: unknown, field: string) => {
@@ -204,6 +225,7 @@ const toSubscriptionResponse = async (entity: AnimeSubscriptionEntity): Promise<
     seriesRootPath: entity.series_root_path,
     qbitSavePath: entity.qbit_save_path,
     openlistDownloadPath: entity.openlist_download_path,
+    enableEmailNotification: Boolean(entity.enable_email_notification),
     latestEpisode: meta.latestEpisode,
     errorReason: meta.errorReason,
     currentStage: meta.currentStage,
@@ -292,6 +314,10 @@ const buildSubscriptionPayload = (
     nextPayload.enabled = parseBoolean(payload.enabled, true);
   }
 
+  if (!partial || payload.enableEmailNotification !== undefined) {
+    nextPayload.enable_email_notification = parseBoolean(payload.enableEmailNotification, false);
+  }
+
   if (!partial || payload.useAi !== undefined) {
     nextPayload.use_ai = parseBoolean(payload.useAi, true);
   }
@@ -335,6 +361,18 @@ export const createAnimeSubscriptionAction: MyMiddleware = async ctx => {
   const payload = buildSubscriptionPayload(
     ctx.request.body as CreateAnimeSubscriptionPayload
   ) as AnimeSubscriptionEntity;
+  if (payload.enable_email_notification) {
+    const [smtpConfigData, currentUser] = await Promise.all([
+      getConfig(AppConfigEnum.account_smtp),
+      ctx.state.userInfo?.id ? queryUser({ id: ctx.state.userInfo.id as string | number }) : Promise.resolve(null),
+    ]);
+    if (!parseSmtpAccountConfig(smtpConfigData?.[AppConfigEnum.account_smtp])) {
+      badRequest('开启邮件通知前，请先配置 SMTP');
+    }
+    if (!currentUser?.dataValues?.email_verified) {
+      badRequest('开启邮件通知前，请先验证当前登录邮箱');
+    }
+  }
   const result = await createAnimeSubscription(payload);
   return toSubscriptionResponse(result.dataValues as AnimeSubscriptionEntity);
 };
@@ -344,6 +382,18 @@ export const updateAnimeSubscriptionAction: MyMiddleware = async ctx => {
   const { id } = ctx.params;
   await getRequiredSubscription(id);
   const payload = buildSubscriptionPayload(ctx.request.body as UpdateAnimeSubscriptionPayload, { partial: true });
+  if (payload.enable_email_notification) {
+    const [smtpConfigData, currentUser] = await Promise.all([
+      getConfig(AppConfigEnum.account_smtp),
+      ctx.state.userInfo?.id ? queryUser({ id: ctx.state.userInfo.id as string | number }) : Promise.resolve(null),
+    ]);
+    if (!parseSmtpAccountConfig(smtpConfigData?.[AppConfigEnum.account_smtp])) {
+      badRequest('开启邮件通知前，请先配置 SMTP');
+    }
+    if (!currentUser?.dataValues?.email_verified) {
+      badRequest('开启邮件通知前，请先验证当前登录邮箱');
+    }
+  }
   if (payload.enabled !== undefined) {
     payload.status = payload.enabled ? AnimeSubscriptionStatus.ACTIVE : AnimeSubscriptionStatus.PAUSED;
   }
@@ -368,8 +418,24 @@ export const toggleAnimeSubscriptionAction: MyMiddleware = async ctx => {
 export const triggerAnimeSubscriptionCheck: MyMiddleware = async ctx => {
   ensureAdmin(ctx);
   const { id } = ctx.params;
-  await getRequiredSubscription(id);
-  const result = await triggerAnimeSubscriptionCheckInBackground(id);
+  const subscription = await getRequiredSubscription(id);
+  const currentUserId = ctx.state.userInfo?.id;
+  const currentUser = currentUserId ? await queryUser({ id: currentUserId as string | number }) : null;
+  let notifyEmail: string | undefined;
+  if (subscription.enable_email_notification) {
+    const smtpConfigData = await getConfig(AppConfigEnum.account_smtp);
+    if (!parseSmtpAccountConfig(smtpConfigData?.[AppConfigEnum.account_smtp])) {
+      badRequest('当前任务已开启邮件通知，但系统尚未配置 SMTP');
+    }
+    const currentUserEmail = currentUser?.dataValues?.email;
+    if (!currentUser?.dataValues?.email_verified || !currentUserEmail) {
+      badRequest('当前任务已开启邮件通知，请先验证当前登录邮箱');
+    }
+    notifyEmail = currentUserEmail;
+  }
+  const result = await triggerAnimeSubscriptionCheckInBackground(id, {
+    notifyEmail,
+  });
   return {
     success: true,
     message: result.message,

@@ -10,6 +10,7 @@ module.exports = {
       series_root_path: { type: Sequelize.STRING, allowNull: false },
       qbit_save_path: { type: Sequelize.STRING, allowNull: false },
       openlist_download_path: { type: Sequelize.STRING, allowNull: false },
+      enable_email_notification: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false },
       enabled: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: true },
       use_ai: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: true },
       match_keywords: { type: Sequelize.TEXT, allowNull: false, defaultValue: '[]' },

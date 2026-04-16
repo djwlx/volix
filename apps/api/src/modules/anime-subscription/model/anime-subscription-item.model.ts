@@ -10,6 +10,9 @@ export const AnimeSubscriptionItemModel = sequelize.define<AnimeSubscriptionItem
     type: DataTypes.INTEGER,
     allowNull: false,
   },
+  notify_email: {
+    type: DataTypes.STRING,
+  },
   rss_guid: {
     type: DataTypes.STRING,
   },

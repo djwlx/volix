@@ -47,6 +47,7 @@ import {
   generateRegisterVerifyCode,
   saveRegisterVerifyCode,
   sendRegisterCodeMail,
+  verifySmtpConnection,
   verifyRegisterCode,
 } from '../service/email.service';
 
@@ -691,6 +692,23 @@ export const testAccountConfig: MyMiddleware = async ctx => {
       return {
         success: true,
         message: `OpenList 联通成功，当前账号：${me.username}`,
+      };
+    }
+
+    if (platform === AccountConfigPlatform.SMTP) {
+      const config = normalizeSmtpAccountConfig(param.config);
+
+      await verifySmtpConnection({
+        smtpHost: config.host,
+        smtpPort: config.port,
+        smtpSecure: config.secure,
+        smtpUsername: config.username,
+        smtpPassword: config.password,
+      });
+
+      return {
+        success: true,
+        message: `SMTP 联通成功，发件邮箱：${config.fromEmail}`,
       };
     }
 

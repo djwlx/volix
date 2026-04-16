@@ -328,6 +328,13 @@ function SettingAnimeSubscriptionApp() {
               render: (value: boolean) => (value ? <Tag color="blue">开启</Tag> : <Tag>关闭</Tag>),
             },
             {
+              title: '邮件通知',
+              dataIndex: 'enableEmailNotification',
+              key: 'enableEmailNotification',
+              width: 110,
+              render: (value: boolean) => (value ? <Tag color="green">开启</Tag> : <Tag>关闭</Tag>),
+            },
+            {
               title: '状态',
               dataIndex: 'status',
               key: 'status',

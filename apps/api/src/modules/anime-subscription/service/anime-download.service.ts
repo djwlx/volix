@@ -2,6 +2,8 @@ import { Op } from 'sequelize';
 import { createQbittorrentSdk } from '../../../sdk';
 import type { QbittorrentTorrentInfo } from '../../../sdk/qbittorrent/create-qbittorrent.sdk';
 import { AnimeSubscriptionItemStatus } from '@volix/types';
+import { AppConfigEnum } from '../../config/model/config.model';
+import { getConfig } from '../../config/service/config.service';
 import { getQbittorrentAccountConfig } from './anime-config.service';
 import request from '../../../utils/request';
 import {
@@ -13,8 +15,11 @@ import { getResolutionScore } from './anime-matcher.service';
 import type { AnimeSubscriptionEntity, AnimeSubscriptionItemEntity } from '../types/anime-subscription.types';
 import { logAnimeError, logAnimeEvent } from './anime-log.service';
 import { organizeDownloadedAnime } from './anime-organizer.service';
+import { sendSmtpMail } from '../../user/service/email.service';
+import type { SmtpAccountConfigItem } from '@volix/types';
 
 interface DownloadCandidate {
+  notify_email?: string;
   rss_guid: string;
   rss_title: string;
   detail_url?: string;
@@ -30,6 +35,101 @@ interface DownloadCandidate {
   target_path?: string;
   reason: string;
 }
+
+const parseSmtpAccountConfig = (raw?: string): SmtpAccountConfigItem | null => {
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const data = JSON.parse(raw) as Partial<SmtpAccountConfigItem>;
+    const host = String(data.host || '').trim();
+    const username = String(data.username || '').trim();
+    const password = String(data.password || '').trim();
+    const fromEmail = String(data.fromEmail || '').trim();
+    const port = Number(data.port || 0);
+
+    if (!host || !username || !password || !fromEmail || !Number.isInteger(port) || port <= 0) {
+      return null;
+    }
+
+    return {
+      host,
+      port,
+      secure: Boolean(data.secure),
+      username,
+      password,
+      fromEmail,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const sendOrganizedNotificationMail = async (
+  subscription: AnimeSubscriptionEntity,
+  item: AnimeSubscriptionItemEntity,
+  targetPath: string
+) => {
+  const notifyEmail = String(item.notify_email || '').trim();
+  if (!notifyEmail) {
+    return false;
+  }
+
+  const config = await getConfig(AppConfigEnum.account_smtp);
+  const smtp = parseSmtpAccountConfig(config?.[AppConfigEnum.account_smtp]);
+  if (!smtp) {
+    return false;
+  }
+
+  logAnimeEvent(subscription.id as string | number, 'mail_notify_start', {
+    itemId: item.id,
+    notifyEmail,
+    targetPath,
+  });
+
+  await sendSmtpMail({
+    smtpHost: smtp.host,
+    smtpPort: smtp.port,
+    smtpSecure: smtp.secure,
+    smtpUsername: smtp.username,
+    smtpPassword: smtp.password,
+    fromEmail: smtp.fromEmail,
+    toEmail: notifyEmail,
+    subject: `Volix 自动追番已整理完成：${subscription.name}`,
+    text: [
+      `番剧：${subscription.name}`,
+      `标题：${item.rss_title}`,
+      item.season && item.episode
+        ? `季集：S${String(item.season).padStart(2, '0')}E${String(item.episode).padStart(2, '0')}`
+        : '',
+      `目标路径：${targetPath}`,
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    html: `
+      <div>
+        <p>自动追番已整理完成。</p>
+        <p><b>番剧：</b>${subscription.name}</p>
+        <p><b>标题：</b>${item.rss_title}</p>
+        ${
+          item.season && item.episode
+            ? `<p><b>季集：</b>S${String(item.season).padStart(2, '0')}E${String(item.episode).padStart(2, '0')}</p>`
+            : ''
+        }
+        <p><b>目标路径：</b>${targetPath}</p>
+      </div>
+    `,
+  });
+
+  logAnimeEvent(subscription.id as string | number, 'mail_notify_success', {
+    itemId: item.id,
+    notifyEmail,
+    targetPath,
+  });
+
+  return true;
+};
 
 const getSubscriptionTag = (subscriptionId: string | number) => `subscription-${subscriptionId}`;
 const getItemTag = (itemId: string | number) => `anime-item-${itemId}`;
@@ -165,6 +265,7 @@ export const enqueueAnimeDownload = async (subscription: AnimeSubscriptionEntity
   if (!candidate.torrent_url) {
     const item = await createAnimeSubscriptionItem({
       subscription_id: subscription.id as string | number,
+      notify_email: candidate.notify_email,
       rss_guid: candidate.rss_guid,
       rss_title: candidate.rss_title,
       detail_url: candidate.detail_url,
@@ -230,6 +331,7 @@ export const enqueueAnimeDownload = async (subscription: AnimeSubscriptionEntity
 
   const item = await createAnimeSubscriptionItem({
     subscription_id: subscription.id as string | number,
+    notify_email: candidate.notify_email,
     rss_guid: candidate.rss_guid,
     rss_title: candidate.rss_title,
     detail_url: candidate.detail_url,
@@ -427,17 +529,27 @@ export const syncAnimeDownloadStatus = async (subscription?: AnimeSubscriptionEn
           });
           const organized = await organizeDownloadedAnime(subscription, item, torrent);
           if (organized.organized) {
+            const targetPath = String(organized.targetPath || '').trim();
             organizedCount += 1;
             await updateAnimeSubscriptionItem(item.id as string | number, {
               decision_status: AnimeSubscriptionItemStatus.ORGANIZED,
-              target_path: organized.targetPath,
+              target_path: targetPath,
               reason: 'organized',
             });
             logAnimeEvent(subscription.id as string | number, 'organize_success', {
               itemId: item.id,
               qbitHash: item.qbit_hash,
-              targetPath: organized.targetPath,
+              targetPath,
             });
+            try {
+              await sendOrganizedNotificationMail(subscription, item, targetPath);
+            } catch (error) {
+              logAnimeError(subscription.id as string | number, 'mail_notify_error', error, {
+                itemId: item.id,
+                notifyEmail: item.notify_email,
+                targetPath,
+              });
+            }
           } else {
             await updateAnimeSubscriptionItem(item.id as string | number, {
               reason: organized.reason,

@@ -31,6 +31,11 @@ export const AnimeSubscriptionModel = sequelize.define<AnimeSubscriptionType>('a
     type: DataTypes.STRING,
     allowNull: false,
   },
+  enable_email_notification: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
   current_stage: {
     type: DataTypes.STRING,
     allowNull: true,

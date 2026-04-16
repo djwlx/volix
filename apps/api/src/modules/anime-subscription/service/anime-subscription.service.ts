@@ -50,6 +50,7 @@ const isExistingEpisode = (
 };
 
 interface ProcessedCandidate {
+  notify_email?: string;
   rss_guid: string;
   rss_title: string;
   detail_url?: string;
@@ -180,7 +181,12 @@ export const queryActiveAnimeSubscriptions = async () => {
   });
 };
 
-export const runAnimeSubscriptionCheck = async (subscriptionId: string | number) => {
+export const runAnimeSubscriptionCheck = async (
+  subscriptionId: string | number,
+  options?: {
+    notifyEmail?: string;
+  }
+) => {
   const current = await queryAnimeSubscriptionById(subscriptionId);
   if (!current) {
     throw new Error('subscription_not_found');
@@ -326,6 +332,7 @@ export const runAnimeSubscriptionCheck = async (subscriptionId: string | number)
           }
 
           processedCandidates.push({
+            notify_email: options?.notifyEmail,
             rss_guid: source.rss_guid,
             rss_title: source.rss_title,
             detail_url: source.detail_url,
@@ -364,6 +371,7 @@ export const runAnimeSubscriptionCheck = async (subscriptionId: string | number)
         }
 
         processedCandidates.push({
+          notify_email: options?.notifyEmail,
           rss_guid: matched.rss_guid,
           rss_title: matched.rss_title,
           detail_url: matched.detail_url,
@@ -407,6 +415,7 @@ export const runAnimeSubscriptionCheck = async (subscriptionId: string | number)
         skippedCount += 1;
         await createAnimeSubscriptionItem({
           subscription_id: subscriptionId,
+          notify_email: candidate.notify_email,
           rss_guid: candidate.rss_guid,
           rss_title: candidate.rss_title,
           detail_url: candidate.detail_url,
@@ -464,7 +473,12 @@ export const runAnimeSubscriptionCheck = async (subscriptionId: string | number)
   }
 };
 
-export const triggerAnimeSubscriptionCheckInBackground = async (subscriptionId: string | number) => {
+export const triggerAnimeSubscriptionCheckInBackground = async (
+  subscriptionId: string | number,
+  options?: {
+    notifyEmail?: string;
+  }
+) => {
   const key = String(subscriptionId);
   if (runningSubscriptionChecks.has(key)) {
     return {
@@ -479,7 +493,7 @@ export const triggerAnimeSubscriptionCheckInBackground = async (subscriptionId: 
     current_stage: '已加入检查队列',
   });
 
-  const runner = runAnimeSubscriptionCheck(subscriptionId).finally(() => {
+  const runner = runAnimeSubscriptionCheck(subscriptionId, options).finally(() => {
     runningSubscriptionChecks.delete(key);
   });
   runningSubscriptionChecks.set(key, runner);

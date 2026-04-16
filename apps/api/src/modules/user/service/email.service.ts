@@ -11,6 +11,27 @@ interface SendRegisterCodeMailParams {
   code: string;
 }
 
+interface SendSmtpMailParams {
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUsername: string;
+  smtpPassword: string;
+  fromEmail: string;
+  toEmail: string;
+  subject: string;
+  text: string;
+  html?: string;
+}
+
+interface VerifySmtpConnectionParams {
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUsername: string;
+  smtpPassword: string;
+}
+
 type RegisterCodeCacheValue = {
   code: string;
   expiresAt: number;
@@ -93,6 +114,50 @@ export const sendRegisterCodeMail = async (params: SendRegisterCodeMailParams) =
     text: `你的注册验证码是 ${params.code}，5 分钟内有效。`,
     html: `<p>你的注册验证码是 <b>${params.code}</b>，5 分钟内有效。</p>`,
   });
+};
+
+export const sendSmtpMail = async (params: SendSmtpMailParams) => {
+  const nodemailer = require('nodemailer') as {
+    createTransport: (options: unknown) => {
+      sendMail: (mailOptions: unknown) => Promise<unknown>;
+    };
+  };
+  const transporter = nodemailer.createTransport({
+    host: params.smtpHost,
+    port: params.smtpPort,
+    secure: params.smtpSecure,
+    auth: {
+      user: params.smtpUsername,
+      pass: params.smtpPassword,
+    },
+  });
+
+  await transporter.sendMail({
+    from: params.fromEmail,
+    to: params.toEmail,
+    subject: params.subject,
+    text: params.text,
+    html: params.html || `<p>${params.text}</p>`,
+  });
+};
+
+export const verifySmtpConnection = async (params: VerifySmtpConnectionParams) => {
+  const nodemailer = require('nodemailer') as {
+    createTransport: (options: unknown) => {
+      verify: () => Promise<unknown>;
+    };
+  };
+  const transporter = nodemailer.createTransport({
+    host: params.smtpHost,
+    port: params.smtpPort,
+    secure: params.smtpSecure,
+    auth: {
+      user: params.smtpUsername,
+      pass: params.smtpPassword,
+    },
+  });
+
+  await transporter.verify();
 };
 
 export const assertRegisterCodeCanSend = (email: string) => {

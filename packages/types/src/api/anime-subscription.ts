@@ -22,6 +22,7 @@ export interface AnimeSubscriptionResponse {
   seriesRootPath: string;
   qbitSavePath: string;
   openlistDownloadPath: string;
+  enableEmailNotification: boolean;
   latestEpisode?: string | null;
   errorReason?: string | null;
   currentStage?: string | null;
@@ -71,6 +72,7 @@ export interface CreateAnimeSubscriptionPayload {
   seriesRootPath: string;
   qbitSavePath: string;
   openlistDownloadPath: string;
+  enableEmailNotification?: boolean;
   enabled?: boolean;
   useAi?: boolean;
   matchKeywords?: string[];

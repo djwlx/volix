@@ -21,6 +21,9 @@ const ANIME_STAGE_LABEL_MAP: Record<string, string> = {
   organize_start: '开始整理已下载文件',
   organize_success: '文件整理完成',
   organize_error: '文件整理失败',
+  mail_notify_start: '开始发送邮件通知',
+  mail_notify_success: '邮件通知发送成功',
+  mail_notify_error: '邮件通知发送失败',
   library_normalize_ai_error: '目录命名校正 AI 调用失败',
   ai_plan_error: 'AI 下载决策失败',
 };
