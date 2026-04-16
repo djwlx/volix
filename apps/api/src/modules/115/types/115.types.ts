@@ -14,4 +14,5 @@ export interface Cloud115DbFileItem {
   name: string;
   class: string;
   cid: string;
+  parentCid: string;
 }

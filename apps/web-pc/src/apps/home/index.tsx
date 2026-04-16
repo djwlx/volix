@@ -17,7 +17,7 @@ function HomeApp() {
 
   const onLogout = () => {
     clearAuthToken();
-    navigate('/auth', { replace: true });
+    navigate('/', { replace: true });
   };
 
   return (

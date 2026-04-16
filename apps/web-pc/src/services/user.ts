@@ -8,6 +8,8 @@ import type {
   CreateRolePayload,
   LoginUserPayload,
   LoginUserResponse,
+  ListAiModelsPayload,
+  ListAiModelsResponse,
   RoleInfoResponse,
   RegisterUserPayload,
   RegisterConfigResponse,
@@ -15,6 +17,8 @@ import type {
   SendRegisterCodeResponse,
   SetUserRolePayload,
   SystemConfigResponse,
+  TestAccountConfigPayload,
+  TestAccountConfigResponse,
   UpdateSystemConfigPayload,
   UpdateAccountConfigPayload,
   UpdateRolePayload,
@@ -55,11 +59,19 @@ export const getAccountConfigs = () => {
   return http.get<AccountConfigMap>('/user/account-configs');
 };
 
+export const getAiModelList = (data: ListAiModelsPayload) => {
+  return http.post<ListAiModelsResponse>('/user/account-configs/ai-models', data);
+};
+
 export const updateAccountConfig = (data: UpdateAccountConfigPayload) => {
   return http.put<{ platform: AccountConfigPlatform; config: UpdateAccountConfigPayload['config'] }>(
     '/user/account-configs',
     data
   );
+};
+
+export const testAccountConfig = (data: TestAccountConfigPayload) => {
+  return http.post<TestAccountConfigResponse>('/user/account-configs/test', data);
 };
 
 export const getSystemConfig = () => {

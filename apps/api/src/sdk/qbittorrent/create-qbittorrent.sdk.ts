@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import type { AxiosError, AxiosRequestConfig } from 'axios';
 import request, { getCookieValue } from '../../utils/request';
 
@@ -14,7 +15,11 @@ export interface QbittorrentDeleteOptions {
 }
 
 export interface QbittorrentAddTorrentParams {
-  urls: string[];
+  urls?: string[];
+  torrentFiles?: Array<{
+    filename: string;
+    content: Buffer;
+  }>;
   category?: string;
   tags?: string[];
   paused?: boolean;
@@ -136,7 +141,10 @@ export function createQbittorrentSdk(options: CreateQbittorrentSdkOptions) {
     }
   };
 
-  const torrentAction = async (action: 'stop' | 'start' | 'delete' | 'recheck' | 'reannounce', payload: Record<string, string>) => {
+  const torrentAction = async (
+    action: 'stop' | 'start' | 'delete' | 'recheck' | 'reannounce',
+    payload: Record<string, string>
+  ) => {
     await qbitRequest({
       url: `/api/v2/torrents/${action}`,
       method: 'POST',
@@ -154,26 +162,43 @@ export function createQbittorrentSdk(options: CreateQbittorrentSdkOptions) {
   };
 
   const addTorrents = async (params: QbittorrentAddTorrentParams) => {
-    if (!Array.isArray(params.urls) || params.urls.length === 0) {
-      throw new Error('urls 不能为空');
-    }
-    const urls = params.urls.map(item => item.trim()).filter(Boolean);
-    if (urls.length === 0) {
-      throw new Error('urls 不能为空');
+    const urls = (params.urls || []).map(item => item.trim()).filter(Boolean);
+    const torrentFiles = (params.torrentFiles || []).filter(item => item.filename && item.content);
+    if (urls.length === 0 && torrentFiles.length === 0) {
+      throw new Error('urls 或 torrentFiles 至少传一个');
     }
     const tags = (params.tags || []).map(item => item.trim()).filter(Boolean);
+    const form = new FormData();
+    if (urls.length > 0) {
+      form.append('urls', urls.join('\n'));
+    }
+    for (const file of torrentFiles) {
+      form.append('torrents', file.content, {
+        filename: file.filename,
+        contentType: 'application/x-bittorrent',
+      });
+    }
+    if (params.category) {
+      form.append('category', params.category);
+    }
+    if (tags.length > 0) {
+      form.append('tags', tags.join(','));
+    }
+    if (params.paused !== undefined) {
+      form.append('paused', String(params.paused));
+    }
+    if (params.skipChecking !== undefined) {
+      form.append('skip_checking', String(params.skipChecking));
+    }
+    if (params.savepath) {
+      form.append('savepath', params.savepath);
+    }
 
     await qbitRequest({
       url: '/api/v2/torrents/add',
       method: 'POST',
-      data: toFormData({
-        urls: urls.join('\n'),
-        ...(params.category ? { category: params.category } : {}),
-        ...(tags.length > 0 ? { tags: tags.join(',') } : {}),
-        ...(params.paused !== undefined ? { paused: params.paused } : {}),
-        ...(params.skipChecking !== undefined ? { skip_checking: params.skipChecking } : {}),
-        ...(params.savepath ? { savepath: params.savepath } : {}),
-      }),
+      data: form,
+      headers: form.getHeaders(),
     });
 
     return 'ok' as const;
@@ -194,7 +219,12 @@ export function createQbittorrentSdk(options: CreateQbittorrentSdkOptions) {
       throw new Error('tag 不能为空');
     }
     const list = await getTorrentList();
-    return list.filter(item => (item.tags || '').split(',').map(it => it.trim()).includes(targetTag));
+    return list.filter(item =>
+      (item.tags || '')
+        .split(',')
+        .map(it => it.trim())
+        .includes(targetTag)
+    );
   };
 
   const pauseTorrents = async (hashes: QbittorrentHashes = 'all') => {

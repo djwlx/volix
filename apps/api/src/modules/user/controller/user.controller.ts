@@ -2,17 +2,20 @@ import { AccountConfigPlatform, UserRole } from '@volix/types';
 import { AppFeature } from '@volix/types';
 import type {
   AccountConfigMap,
+  AiAccountConfigItem,
   AdminCreateUserPayload,
   AdminUpdateUserPayload,
   AssignUserRolePayload,
   CreateRolePayload,
   LoginUserPayload,
+  ListAiModelsPayload,
   RegisterUserPayload,
   SendRegisterCodePayload,
   SendRegisterCodeResponse,
   SetUserRolePayload,
   SmtpAccountConfigItem,
   ServiceAccountConfigItem,
+  TestAccountConfigPayload,
   UpdateAccountConfigPayload,
   UpdateRolePayload,
   UpdateSystemConfigPayload,
@@ -20,8 +23,10 @@ import type {
   VerifyCurrentUserEmailPayload,
 } from '@volix/types';
 import jwt from '../../../utils/jwt';
+import request from '../../../utils/request';
 import { badRequest, unauthorized } from '../../shared/http-handler';
 import { AppConfigEnum, getConfig, setConfig } from '../../config';
+import { createOpenlistSdk, createQbittorrentSdk } from '../../../sdk';
 import {
   addRole,
   addUser,
@@ -51,6 +56,7 @@ const DEFAULT_ROLE_KEY = 'default';
 const ROLE_KEY_PREFIX = 'role';
 const DEFAULT_USER_FEATURES: AppFeature[] = [AppFeature.RANDOM_PIC];
 const ACCOUNT_CONFIG_KEY_MAP: Record<AccountConfigPlatform, AppConfigEnum> = {
+  [AccountConfigPlatform.AI]: AppConfigEnum.account_ai,
   [AccountConfigPlatform.QBITTORRENT]: AppConfigEnum.account_qbittorrent,
   [AccountConfigPlatform.OPENLIST]: AppConfigEnum.account_openlist,
   [AccountConfigPlatform.SMTP]: AppConfigEnum.account_smtp,
@@ -173,6 +179,55 @@ const normalizeSmtpAccountConfig = (config: unknown): SmtpAccountConfigItem => {
   };
 };
 
+const normalizeAiAccountConfig = (config: unknown): AiAccountConfigItem => {
+  if (!config || typeof config !== 'object') {
+    badRequest('AI 配置格式错误');
+  }
+
+  const raw = config as Partial<AiAccountConfigItem>;
+  const baseUrl = typeof raw.baseUrl === 'string' ? raw.baseUrl.trim() : '';
+  const apiKey = typeof raw.apiKey === 'string' ? raw.apiKey.trim() : '';
+  const model = typeof raw.model === 'string' ? raw.model.trim() : '';
+
+  if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
+    badRequest('AI baseUrl 必须是 http/https 地址');
+  }
+  if (!apiKey) {
+    badRequest('AI apiKey 不能为空');
+  }
+  if (!model) {
+    badRequest('AI model 不能为空');
+  }
+
+  return {
+    baseUrl,
+    apiKey,
+    model,
+  };
+};
+
+const normalizeAiModelListConfig = (config: unknown): Pick<AiAccountConfigItem, 'baseUrl' | 'apiKey'> => {
+  if (!config || typeof config !== 'object') {
+    badRequest('AI 配置格式错误');
+  }
+
+  const raw = config as Partial<AiAccountConfigItem>;
+  const baseUrl = typeof raw.baseUrl === 'string' ? raw.baseUrl.trim() : '';
+  const apiKey = typeof raw.apiKey === 'string' ? raw.apiKey.trim() : '';
+
+  if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
+    badRequest('AI baseUrl 必须是 http/https 地址');
+  }
+  if (!apiKey) {
+    badRequest('AI apiKey 不能为空');
+  }
+
+  return {
+    baseUrl,
+    apiKey,
+  };
+};
+
 const parseServiceAccountConfig = (raw?: string): ServiceAccountConfigItem | null => {
   if (!raw) {
     return null;
@@ -195,7 +250,28 @@ const parseSmtpAccountConfig = (raw?: string): SmtpAccountConfigItem | null => {
   }
 };
 
+const parseAiAccountConfig = (raw?: string): AiAccountConfigItem | null => {
+  if (!raw) {
+    return null;
+  }
+  try {
+    return normalizeAiAccountConfig(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+};
+
 const parseBooleanConfig = (raw?: string) => raw === 'true';
+
+const buildAiModelsUrl = (baseUrl: string) => {
+  const normalized = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  return normalized.endsWith('/models') ? normalized : `${normalized}/models`;
+};
+
+const buildAiChatCompletionsUrl = (baseUrl: string) => {
+  const normalized = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+  return normalized.endsWith('/chat/completions') ? normalized : `${normalized}/chat/completions`;
+};
 
 const getSystemConfigData = async () => {
   const config = await getConfig(REGISTER_EMAIL_VERIFY_CONFIG_KEY);
@@ -502,6 +578,9 @@ export const getAccountConfigs: MyMiddleware = async ctx => {
   const configData = await getConfig(Object.values(ACCOUNT_CONFIG_KEY_MAP));
   const result: AccountConfigMap = {};
 
+  if (configData?.[AppConfigEnum.account_ai]) {
+    result[AccountConfigPlatform.AI] = parseAiAccountConfig(configData[AppConfigEnum.account_ai]) || undefined;
+  }
   if (configData?.[AppConfigEnum.account_qbittorrent]) {
     result[AccountConfigPlatform.QBITTORRENT] =
       parseServiceAccountConfig(configData[AppConfigEnum.account_qbittorrent]) || undefined;
@@ -532,6 +611,8 @@ export const updateAccountConfig: MyMiddleware = async ctx => {
   const config =
     platform === AccountConfigPlatform.SMTP
       ? normalizeSmtpAccountConfig(param.config)
+      : platform === AccountConfigPlatform.AI
+      ? normalizeAiAccountConfig(param.config)
       : normalizeServiceAccountConfig(param.config);
   const configKey = ACCOUNT_CONFIG_KEY_MAP[platform];
   await setConfig(configKey, JSON.stringify(config));
@@ -540,6 +621,135 @@ export const updateAccountConfig: MyMiddleware = async ctx => {
     platform,
     config,
   };
+};
+
+export const testAccountConfig: MyMiddleware = async ctx => {
+  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
+    unauthorized('仅管理员可操作');
+  }
+
+  const param = (ctx.request.body || {}) as TestAccountConfigPayload;
+  const { platform } = param;
+
+  try {
+    if (platform === AccountConfigPlatform.AI) {
+      const config = normalizeAiAccountConfig(param.config);
+
+      await request.post(
+        buildAiChatCompletionsUrl(config.baseUrl),
+        {
+          model: config.model,
+          temperature: 0,
+          max_tokens: 1,
+          messages: [
+            {
+              role: 'user',
+              content: 'ping',
+            },
+          ],
+        },
+        {
+          timeout: 10000,
+          headers: {
+            Authorization: `Bearer ${config.apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      return {
+        success: true,
+        message: `联通成功，模型 ${config.model} 可用`,
+      };
+    }
+
+    if (platform === AccountConfigPlatform.QBITTORRENT) {
+      const config = normalizeServiceAccountConfig(param.config);
+      const sdk = createQbittorrentSdk({
+        apiHost: config.baseUrl,
+        username: config.username,
+        password: config.password,
+      });
+
+      await sdk.getTorrentList();
+
+      return {
+        success: true,
+        message: 'qBittorrent 联通成功',
+      };
+    }
+
+    if (platform === AccountConfigPlatform.OPENLIST) {
+      const config = normalizeServiceAccountConfig(param.config);
+      const sdk = createOpenlistSdk({
+        apiHost: config.baseUrl,
+      });
+
+      await sdk.loginWithHashedPassword(config.username, config.password);
+      const me = await sdk.getMe();
+
+      return {
+        success: true,
+        message: `OpenList 联通成功，当前账号：${me.username}`,
+      };
+    }
+
+    badRequest('当前平台暂不支持联通性测试');
+  } catch (error) {
+    const message =
+      (error as { response?: { data?: { error?: { message?: string }; message?: string } }; message?: string })
+        ?.response?.data?.error?.message ||
+      (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+      (error as Error)?.message ||
+      '联通失败';
+
+    const platformLabelMap: Record<AccountConfigPlatform, string> = {
+      [AccountConfigPlatform.AI]: 'AI 服务',
+      [AccountConfigPlatform.QBITTORRENT]: 'qBittorrent',
+      [AccountConfigPlatform.OPENLIST]: 'OpenList',
+      [AccountConfigPlatform.SMTP]: 'SMTP',
+    };
+
+    badRequest(`${platformLabelMap[platform] || '服务'}联通失败: ${message}`);
+  }
+};
+
+export const getAiModelList: MyMiddleware = async ctx => {
+  if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
+    unauthorized('仅管理员可操作');
+  }
+
+  const param = (ctx.request.body || {}) as ListAiModelsPayload;
+  const config = normalizeAiModelListConfig(param);
+
+  try {
+    const response = await request.get(buildAiModelsUrl(config.baseUrl), {
+      timeout: 10000,
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+    });
+
+    const models = Array.isArray(response.data?.data)
+      ? response.data.data
+          .map((item: { id?: string }) => String(item?.id || '').trim())
+          .filter(Boolean)
+          .sort((a: string, b: string) => a.localeCompare(b))
+      : [];
+
+    return {
+      models,
+    };
+  } catch (error) {
+    const message =
+      (error as { response?: { data?: { error?: { message?: string }; message?: string } } })?.response?.data?.error
+        ?.message ||
+      (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+      (error as Error)?.message ||
+      '获取模型列表失败';
+
+    badRequest(`获取模型列表失败: ${message}`);
+  }
 };
 
 export const getSystemConfig: MyMiddleware = async ctx => {

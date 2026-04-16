@@ -32,9 +32,26 @@ export const getFile115ByPc = async (pc: string) => {
   return result?.dataValues;
 };
 
+export const getFile115ByCidParentCidIndex = async (cid: string, parentCid: string, index: number) => {
+  const result = await File115Model.findOne({
+    where: {
+      cid,
+      ...(parentCid === cid
+        ? {
+            [Op.or]: [{ parentCid }, { parentCid: null }],
+          }
+        : {
+            parentCid,
+          }),
+    },
+    offset: index,
+  });
+  return result?.dataValues;
+};
+
 export const setFile115List = async (list: Cloud115DbFileItem[]) => {
   return File115Model.bulkCreate(list, {
-    ignoreDuplicates: true,
+    updateOnDuplicate: ['name', 'class', 'cid', 'parentCid'],
   });
 };
 
@@ -70,4 +87,31 @@ export const getFile115CountByCid = async () => {
     acc[cid] = Number(item.count || 0);
     return acc;
   }, {} as Record<string, number>);
+};
+
+export const getFile115ParentGroupByCidList = async (cidList: string[]) => {
+  if (cidList.length === 0) {
+    return [] as Array<{ cid: string; parentCid: string; count: number }>;
+  }
+
+  const result = (await File115Model.findAll({
+    attributes: ['cid', 'parentCid', [fn('COUNT', col('pc')), 'count']],
+    where: {
+      cid: {
+        [Op.in]: cidList,
+      },
+    },
+    group: ['cid', 'parent_cid'],
+    raw: true,
+  })) as unknown as Array<{
+    cid: string | null;
+    parentCid: string | null;
+    count: number | string;
+  }>;
+
+  return result.map(item => ({
+    cid: String(item.cid || '').trim(),
+    parentCid: String(item.parentCid || item.cid || '').trim(),
+    count: Number(item.count || 0),
+  }));
 };

@@ -1,7 +1,10 @@
 import { ArrayField, Form } from '@douyinfe/semi-ui';
 import type { ComponentProps, JSX } from 'react';
 
-type AppFormStatics = Pick<typeof Form, 'Input' | 'Select' | 'Slot' | 'Radio' | 'RadioGroup' | 'Checkbox' | 'CheckboxGroup'> & {
+type AppFormStatics = Pick<
+  typeof Form,
+  'Input' | 'Select' | 'Slot' | 'Radio' | 'RadioGroup' | 'Checkbox' | 'CheckboxGroup' | 'TextArea'
+> & {
   ArrayField: typeof ArrayField;
 };
 
@@ -23,5 +26,6 @@ export const AppForm = Object.assign(AppFormImpl, {
   RadioGroup: Form.RadioGroup,
   Checkbox: Form.Checkbox,
   CheckboxGroup: Form.CheckboxGroup,
+  TextArea: Form.TextArea,
   ArrayField,
 }) as AppFormType;

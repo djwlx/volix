@@ -19,9 +19,11 @@ import {
   clearAllFile115,
   clearFile115ByCidList,
   getFile115ByCidIndex,
+  getFile115ByCidParentCidIndex,
   getFile115ByPc,
   getFile115CountByCid,
   getFile115Len,
+  getFile115ParentGroupByCidList,
   setFile115List,
 } from './file-db.service';
 import { getCloud115Sdk } from './sdk.service';
@@ -36,6 +38,7 @@ const saveFile115List = async (dataList: Cloud115FileListItem[], cid: string) =>
     class: item.class || '',
     pc: item.pc,
     cid,
+    parentCid: item.cid,
   }));
 
   await setFile115List(list);
@@ -90,7 +93,7 @@ const getPicCacheFolders = async (): Promise<PicCacheFolderItem[]> => {
 
 const savePicCacheFolders = async (folders: PicCacheFolderItem[]) => {
   if (folders.length === 0) {
-    await clearConfig([AppConfigEnum.picture_115_folders, AppConfigEnum.picture_115_cids]);
+    await clearConfig([AppConfigEnum.picture_115_folders, 'picture_115_cids' as AppConfigEnum]);
     return;
   }
 
@@ -105,7 +108,6 @@ const savePicCacheFolders = async (folders: PicCacheFolderItem[]) => {
       }))
     )
   );
-  await setConfig(AppConfigEnum.picture_115_cids, folders.map(item => item.cid).join(','));
 };
 
 const getPicRandomWeightMap = async () => {
@@ -334,34 +336,49 @@ const ensure115PicQueueRunning = async () => {
 };
 
 export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicMeta> {
-  const [folders, cidCountMap, weightMap] = await Promise.all([
-    getPicCacheFolders(),
-    getFile115CountByCid(),
-    getPicRandomWeightMap(),
-  ]);
-
-  const availableFolders = folders
+  const [folders, weightMap] = await Promise.all([getPicCacheFolders(), getPicRandomWeightMap()]);
+  const availableRootCids = folders
     .filter(item => item.status === 'cached' || item.status === 'caching')
-    .map(item => ({
-      cid: item.cid,
-      count: cidCountMap[item.cid] || 0,
-      score: weightMap[item.cid] ?? 1,
-    }))
-    .filter(item => item.count > 0);
+    .map(item => item.cid);
+
+  const parentGroups = await getFile115ParentGroupByCidList(availableRootCids);
+
+  const availableFolders = Array.from(
+    parentGroups
+      .filter(item => item.cid && item.parentCid && item.count > 0)
+      .reduce((acc, item) => {
+        const key = `${item.cid}:${item.parentCid}`;
+        const current = acc.get(key) || {
+          cid: item.cid,
+          parentCid: item.parentCid,
+          count: 0,
+          score: 0,
+        };
+
+        current.count += item.count;
+        current.score = current.count * (weightMap[item.parentCid] ?? 1);
+        acc.set(key, current);
+        return acc;
+      }, new Map<string, { cid: string; parentCid: string; count: number; score: number }>())
+      .values()
+  );
 
   if (availableFolders.length === 0) {
     badRequest('暂无缓存图片，请先缓存');
   }
 
-  const targetCid = pickWeightedCid(
+  const targetKey = pickWeightedCid(
     availableFolders.map(item => ({
-      cid: item.cid,
+      cid: `${item.cid}:${item.parentCid}`,
       score: item.score,
     }))
   );
-  const targetFolder = availableFolders.find(item => item.cid === targetCid) || availableFolders[0];
+  const targetFolder =
+    availableFolders.find(item => `${item.cid}:${item.parentCid}` === targetKey) || availableFolders[0];
   const index = generateRandomNumber(0, targetFolder.count - 1);
-  const fileInfo = await getFile115ByCidIndex(targetFolder.cid, index);
+  const fileInfo =
+    (await getFile115ByCidParentCidIndex(targetFolder.cid, targetFolder.parentCid, index)) ||
+    (await getFile115ByCidIndex(targetFolder.cid, index));
   const pc = fileInfo?.pc;
   const safePc = pc || badRequest('暂无可用缓存图片，请稍后重试');
   const result = await get115FileData(safePc, userAgent);
@@ -439,17 +456,20 @@ export async function clear115PicData(params?: ClearPicInfoParams) {
     await clearAllFile115();
     await clearConfig([
       AppConfigEnum.is_115_picture_caching,
-      AppConfigEnum.picture_115_cids,
       AppConfigEnum.picture_115_folders,
       AppConfigEnum.picture_115_random_weights,
+      'picture_115_cids' as AppConfigEnum,
     ]);
     lightLocks.is115PictureCaching = false;
     return 'success';
   }
 
   await withFolderConfigLock(async () => {
-    const folders = await getPicCacheFolders();
-    const weightMap = await getPicRandomWeightMap();
+    const [folders, weightMap, parentGroups] = await Promise.all([
+      getPicCacheFolders(),
+      getPicRandomWeightMap(),
+      getFile115ParentGroupByCidList(normalizedPaths),
+    ]);
     const activeFolders = folders.filter(
       item => normalizedPaths.includes(item.cid) && (item.status === 'pending' || item.status === 'caching')
     );
@@ -458,7 +478,15 @@ export async function clear115PicData(params?: ClearPicInfoParams) {
     }
 
     const remainFolders = folders.filter(item => !normalizedPaths.includes(item.cid));
-    normalizedPaths.forEach(cid => {
+    const relatedParentCidList = Array.from(
+      new Set(
+        parentGroups
+          .map(item => item.parentCid || item.cid)
+          .filter(Boolean)
+          .concat(normalizedPaths)
+      )
+    );
+    relatedParentCidList.forEach(cid => {
       delete weightMap[cid];
     });
     await clearFile115ByCidList(normalizedPaths);
@@ -504,13 +532,19 @@ export async function like115PicData(params: Like115PicParams) {
   const pc = params.pc?.trim() || '';
 
   let targetCid = cid;
-  if (!targetCid && pc) {
+  let targetParentCid = cid;
+  if (pc) {
     const file = await getFile115ByPc(pc);
-    targetCid = file?.cid || '';
+    targetCid = file?.cid || targetCid;
+    targetParentCid = file?.parentCid || file?.cid || targetParentCid;
   }
 
   if (!targetCid) {
     badRequest('未找到图片所属目录');
+  }
+
+  if (!targetParentCid) {
+    targetParentCid = targetCid;
   }
 
   return withFolderConfigLock(async () => {
@@ -520,12 +554,13 @@ export async function like115PicData(params: Like115PicParams) {
       badRequest('当前目录未处于可喜欢状态');
     }
 
-    weightMap[targetCid] = Number(((weightMap[targetCid] ?? 1) + PIC_RANDOM_WEIGHT_INCREMENT).toFixed(4));
+    weightMap[targetParentCid] = Number(((weightMap[targetParentCid] ?? 1) + PIC_RANDOM_WEIGHT_INCREMENT).toFixed(4));
     await savePicRandomWeightMap(weightMap);
 
     return {
       cid: targetCid,
-      weight: weightMap[targetCid],
+      parentCid: targetParentCid,
+      weight: weightMap[targetParentCid],
     };
   });
 }

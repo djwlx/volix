@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Nav, SideSheet, Toast } from '@douyinfe/semi-ui';
 import {
+  IconActivity,
   IconBolt,
   IconCloudStroked,
   IconConfigStroked,
@@ -70,7 +71,7 @@ function SettingApp() {
       return;
     }
     clearAuthToken();
-    navigate('/auth', { replace: true });
+    navigate('/', { replace: true });
   }, [navigate]);
 
   const requestNavigate = useCallback(
@@ -127,11 +128,17 @@ function SettingApp() {
     if (location.pathname.startsWith('/setting/config/openlist')) {
       return 'config/openlist';
     }
+    if (location.pathname.startsWith('/setting/config/ai')) {
+      return 'config/ai';
+    }
     if (location.pathname.startsWith('/setting/config/smtp')) {
       return 'config/smtp';
     }
     if (location.pathname.startsWith('/setting/system')) {
       return 'system';
+    }
+    if (location.pathname.startsWith('/setting/anime-subscription')) {
+      return 'anime-subscription';
     }
     if (location.pathname.startsWith('/setting/role')) {
       return 'role';
@@ -200,6 +207,17 @@ function SettingApp() {
                 ),
               },
               {
+                itemKey: 'anime-subscription',
+                text: '自动追番',
+                icon: (
+                  <MenuIcon
+                    icon={<IconActivity />}
+                    bg="linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(5, 150, 105, 0.22) 100%)"
+                    color="#047857"
+                  />
+                ),
+              },
+              {
                 itemKey: 'config',
                 text: '账号配置',
                 icon: (
@@ -218,6 +236,17 @@ function SettingApp() {
                         icon={<IconCloudStroked />}
                         bg="linear-gradient(135deg, rgba(34, 197, 94, 0.16) 0%, rgba(22, 163, 74, 0.22) 100%)"
                         color="#15803d"
+                      />
+                    ),
+                  },
+                  {
+                    itemKey: 'config/ai',
+                    text: 'AI',
+                    icon: (
+                      <MenuIcon
+                        icon={<IconBolt />}
+                        bg="linear-gradient(135deg, rgba(14, 165, 233, 0.18) 0%, rgba(2, 132, 199, 0.22) 100%)"
+                        color="#0369a1"
                       />
                     ),
                   },

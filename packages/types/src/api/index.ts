@@ -5,5 +5,6 @@ export interface ResponseData<T = any> {
 }
 
 export * from './115';
+export * from './anime-subscription';
 export * from './user';
 export * from './file';

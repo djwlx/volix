@@ -6,6 +6,7 @@ export type File115Type = Model<{
   name: string;
   class: string;
   cid: string | null;
+  parentCid: string | null;
 }>;
 
 export const File115Model = sequelize.define<File115Type>('115_file', {
@@ -23,5 +24,9 @@ export const File115Model = sequelize.define<File115Type>('115_file', {
   },
   cid: {
     type: DataTypes.STRING,
+  },
+  parentCid: {
+    type: DataTypes.STRING,
+    field: 'parent_cid',
   },
 });

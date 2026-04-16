@@ -16,6 +16,10 @@ import SettingConfig115App from '@/apps/setting/pages/config/config-115';
 import SettingConfigQbittorrentApp from '@/apps/setting/pages/config/config-qbittorrent';
 import SettingConfigOpenlistApp from '@/apps/setting/pages/config/config-openlist';
 import SettingConfigSmtpApp from '@/apps/setting/pages/config/config-smtp';
+import SettingConfigAiApp from '@/apps/setting/pages/config/config-ai';
+import SettingAnimeSubscriptionApp from '@/apps/setting/pages/anime-subscription';
+import SettingAnimeSubscriptionAddApp from '@/apps/setting/pages/anime-subscription/add';
+import SettingAnimeSubscriptionEditApp from '@/apps/setting/pages/anime-subscription/edit';
 import SettingSystemApp from '@/apps/setting/pages/system';
 import RedirectToSetting from './redirect-to-setting';
 import AppErrorBoundary from './error-boundary';
@@ -64,7 +68,11 @@ export const router = createBrowserRouter([
               { path: 'role/add', Component: SettingRoleAddApp },
               { path: 'role/edit/:roleKey', Component: SettingRoleEditApp },
               { path: 'system', Component: SettingSystemApp },
+              { path: 'anime-subscription', Component: SettingAnimeSubscriptionApp },
+              { path: 'anime-subscription/add', Component: SettingAnimeSubscriptionAddApp },
+              { path: 'anime-subscription/edit/:id', Component: SettingAnimeSubscriptionEditApp },
               { path: 'config/115', Component: SettingConfig115App },
+              { path: 'config/ai', Component: SettingConfigAiApp },
               { path: 'config/qbittorrent', Component: SettingConfigQbittorrentApp },
               { path: 'config/openlist', Component: SettingConfigOpenlistApp },
               { path: 'config/smtp', Component: SettingConfigSmtpApp },

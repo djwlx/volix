@@ -1,6 +1,7 @@
 import { PATH } from './path';
 import fs from 'fs';
 import { log } from './logger';
+import { startAnimeSubscriptionSchedulers } from '../modules/anime-subscription';
 
 const initApp = async () => {
   // 创建必要的目录
@@ -15,6 +16,8 @@ const initApp = async () => {
       fs.mkdirSync(filePath, { recursive: true });
     }
   }
+
+  startAnimeSubscriptionSchedulers();
 };
 
 export default initApp;

@@ -1,9 +1,9 @@
 import { Avatar, Dropdown, Nav, Switch, Tag, Typography } from '@douyinfe/semi-ui';
-import { IconMoon, IconSetting, IconSun } from '@douyinfe/semi-icons';
+import { IconExit, IconMoon, IconSetting, IconSun } from '@douyinfe/semi-icons';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { useUser } from '@/hooks';
-import { isAuthenticated } from '@/utils';
+import { clearAuthToken, isAuthenticated } from '@/utils';
 import { useGlobalConfigStore } from '@/stores';
 import { setAppTheme } from '@/utils/theme';
 import styles from './index.module.scss';
@@ -50,6 +50,27 @@ export function AppHeader(props: AppHeaderProps) {
   const theme = useGlobalConfigStore(state => state.config.theme);
 
   const currentUser = userOverride || user;
+  const defaultMenuItems: HeaderMenuItem[] = authed
+    ? [
+        {
+          key: 'setting',
+          label: '系统管理',
+          icon: <IconSetting />,
+          onClick: () => navigate('/setting/info'),
+        },
+        {
+          key: 'logout',
+          label: '退出登录',
+          icon: <IconExit />,
+          type: 'danger',
+          onClick: () => {
+            clearAuthToken();
+            navigate('/', { replace: true });
+          },
+        },
+      ]
+    : [];
+  const resolvedMenuItems = menuItems.length > 0 ? menuItems : defaultMenuItems;
   const dropdownContent = (
     <div
       style={{
@@ -78,7 +99,7 @@ export function AppHeader(props: AppHeaderProps) {
         </div>
       </div>
       <Dropdown.Menu>
-        {menuItems.map(item => (
+        {resolvedMenuItems.map(item => (
           <Dropdown.Item key={item.key} icon={item.icon} type={item.type} onClick={item.onClick}>
             {item.label}
           </Dropdown.Item>
