@@ -15,6 +15,10 @@ export const startAnimeSubscriptionSchedulers = () => {
   }
   started = true;
 
+  void syncAllAnimeSubscriptionDownloads().catch(error => {
+    log.error('自动追番下载同步任务启动时执行失败', error);
+  });
+
   // Run RSS巡检 twice a day to avoid frequent AI calls and token waste.
   schedule.scheduleJob('0 9,21 * * *', async () => {
     try {

@@ -554,6 +554,11 @@ export const syncAnimeDownloadStatus = async (subscription?: AnimeSubscriptionEn
             await updateAnimeSubscriptionItem(item.id as string | number, {
               reason: organized.reason,
             });
+            logAnimeEvent(subscription.id as string | number, 'organize_skip', {
+              itemId: item.id,
+              qbitHash: item.qbit_hash,
+              reason: organized.reason,
+            });
           }
         } catch (error) {
           await updateAnimeSubscriptionItem(item.id as string | number, {

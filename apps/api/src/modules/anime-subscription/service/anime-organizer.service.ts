@@ -2,6 +2,7 @@ import path from 'path';
 import type { QbittorrentTorrentInfo } from '../../../sdk/qbittorrent/create-qbittorrent.sdk';
 import type { AnimeSubscriptionEntity, AnimeSubscriptionItemEntity } from '../types/anime-subscription.types';
 import { ensureOpenlistDirExists, scanExistingAnimeLibrary } from './anime-library.service';
+import { logAnimeEvent } from './anime-log.service';
 
 const MEDIA_EXTENSIONS = new Set(['.mkv', '.mp4', '.avi', '.mov', '.wmv', '.flv', '.ts']);
 
@@ -91,7 +92,14 @@ export const organizeDownloadedAnime = async (
   item: AnimeSubscriptionItemEntity,
   torrent: QbittorrentTorrentInfo
 ) => {
+  const subscriptionId = subscription.id as string | number;
+
   if (!String(subscription.series_root_path || '').trim()) {
+    logAnimeEvent(subscriptionId, 'organize_skip', {
+      itemId: item.id,
+      qbitHash: item.qbit_hash,
+      reason: 'series_root_path_missing',
+    });
     return {
       organized: false,
       reason: '未设置最终番剧目录，暂时无法自动整理',
@@ -103,6 +111,12 @@ export const organizeDownloadedAnime = async (
   try {
     await sdk.listFs({ path: subscription.openlist_download_path, refresh: true });
   } catch {
+    logAnimeEvent(subscriptionId, 'organize_skip', {
+      itemId: item.id,
+      qbitHash: item.qbit_hash,
+      openlistDownloadPath: subscription.openlist_download_path,
+      reason: 'openlist_download_path_inaccessible',
+    });
     return {
       organized: false,
       reason: 'openlist_download_path 无法通过 OpenList 访问，暂时无法自动整理',
@@ -111,25 +125,62 @@ export const organizeDownloadedAnime = async (
 
   const source = await findMediaEntry(sdk, subscription.openlist_download_path, torrent);
   if (!source) {
+    const rootList = await sdk.listFs({ path: subscription.openlist_download_path, refresh: true });
+    logAnimeEvent(subscriptionId, 'organize_skip', {
+      itemId: item.id,
+      qbitHash: item.qbit_hash,
+      openlistDownloadPath: subscription.openlist_download_path,
+      torrentName: torrent.name,
+      rootEntries: (rootList.content || []).slice(0, 30).map(entry => ({
+        name: entry.name,
+        isDir: entry.is_dir,
+      })),
+      reason: 'source_not_found_in_openlist_download_path',
+    });
     return {
       organized: false,
       reason: '未在 OpenList 可见下载目录中找到已完成文件',
     };
   }
 
-  const target = getTargetParts(subscription, item, source.srcName);
-  await ensureOpenlistDirExists(sdk, target.targetDir);
-  await sdk.move({
-    srcDir: source.srcDir,
-    dstDir: target.targetDir,
-    names: [source.srcName],
+  logAnimeEvent(subscriptionId, 'organize_source_resolved', {
+    itemId: item.id,
+    qbitHash: item.qbit_hash,
+    torrentName: torrent.name,
+    source,
   });
 
-  if (source.srcName !== target.targetName) {
-    await sdk.rename({
-      path: path.posix.join(target.targetDir, source.srcName),
-      name: target.targetName,
+  const target = getTargetParts(subscription, item, source.srcName);
+  await ensureOpenlistDirExists(sdk, target.targetDir);
+  logAnimeEvent(subscriptionId, 'organize_move_start', {
+    itemId: item.id,
+    qbitHash: item.qbit_hash,
+    torrentName: torrent.name,
+    srcDir: source.srcDir,
+    srcName: source.srcName,
+    dstDir: target.targetDir,
+    targetPath: target.targetPath,
+    targetName: target.targetName,
+  });
+
+  try {
+    await sdk.copy({
+      srcDir: source.srcDir,
+      dstDir: target.targetDir,
+      names: [source.srcName],
     });
+
+    if (source.srcName !== target.targetName) {
+      await sdk.rename({
+        path: path.posix.join(target.targetDir, source.srcName),
+        name: target.targetName,
+      });
+    }
+  } catch (error) {
+    const message = (error as Error)?.message || 'organize_failed';
+    throw new Error(
+      `organize_copy_failed: ${message}; srcDir=${source.srcDir}; srcName=${source.srcName}; dstDir=${target.targetDir}; targetPath=${target.targetPath}`
+    );
   }
 
   return {
