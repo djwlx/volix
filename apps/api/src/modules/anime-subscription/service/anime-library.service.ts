@@ -56,7 +56,7 @@ export const ensureOpenlistDirExists = async (sdk: OpenlistSdk, targetPath: stri
   for (const segment of segments) {
     currentPath = currentPath === '/' ? `/${segment}` : currentPath ? path.posix.join(currentPath, segment) : segment;
     try {
-      await sdk.listFs({ path: currentPath, refresh: true });
+      await sdk.listFs({ path: currentPath, refresh: false });
     } catch {
       await sdk.mkdir({ path: currentPath });
     }

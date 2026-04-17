@@ -140,6 +140,9 @@ function SettingApp() {
     if (location.pathname.startsWith('/setting/anime-subscription')) {
       return 'anime-subscription';
     }
+    if (location.pathname.startsWith('/setting/openlist-ai-organizer')) {
+      return 'openlist-ai-organizer';
+    }
     if (location.pathname.startsWith('/setting/role')) {
       return 'role';
     }
@@ -214,6 +217,17 @@ function SettingApp() {
                     icon={<IconActivity />}
                     bg="linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(5, 150, 105, 0.22) 100%)"
                     color="#047857"
+                  />
+                ),
+              },
+              {
+                itemKey: 'openlist-ai-organizer',
+                text: 'AI 文件整理',
+                icon: (
+                  <MenuIcon
+                    icon={<IconLayers />}
+                    bg="linear-gradient(135deg, rgba(251, 146, 60, 0.16) 0%, rgba(245, 158, 11, 0.22) 100%)"
+                    color="#b45309"
                   />
                 ),
               },

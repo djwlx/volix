@@ -20,6 +20,7 @@ import SettingConfigAiApp from '@/apps/setting/pages/config/config-ai';
 import SettingAnimeSubscriptionApp from '@/apps/setting/pages/anime-subscription';
 import SettingAnimeSubscriptionAddApp from '@/apps/setting/pages/anime-subscription/add';
 import SettingAnimeSubscriptionEditApp from '@/apps/setting/pages/anime-subscription/edit';
+import SettingOpenlistAiOrganizerApp from '@/apps/setting/pages/openlist-ai-organizer';
 import SettingSystemApp from '@/apps/setting/pages/system';
 import RedirectToSetting from './redirect-to-setting';
 import AppErrorBoundary from './error-boundary';
@@ -71,6 +72,7 @@ export const router = createBrowserRouter([
               { path: 'anime-subscription', Component: SettingAnimeSubscriptionApp },
               { path: 'anime-subscription/add', Component: SettingAnimeSubscriptionAddApp },
               { path: 'anime-subscription/edit/:id', Component: SettingAnimeSubscriptionEditApp },
+              { path: 'openlist-ai-organizer', Component: SettingOpenlistAiOrganizerApp },
               { path: 'config/115', Component: SettingConfig115App },
               { path: 'config/ai', Component: SettingConfigAiApp },
               { path: 'config/qbittorrent', Component: SettingConfigQbittorrentApp },
