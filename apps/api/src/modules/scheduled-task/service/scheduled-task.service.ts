@@ -58,6 +58,14 @@ const parseJsonText = (value?: string | null) => {
 
 const createScheduledTaskId = (prefix = 'st') => `${prefix}_${randomUUID().replace(/-/g, '').slice(0, 24)}`;
 
+const requireScheduledTaskEntity = (entity: ScheduledTaskEntity | undefined) => {
+  if (!entity) {
+    badRequest('任务不存在');
+    throw new Error('unreachable');
+  }
+  return entity;
+};
+
 export const ensureScheduledTaskModelReady = async () => {
   if (synced) {
     return;
@@ -140,10 +148,7 @@ export const getScheduledTaskLogs = async (taskId: string) => ({
 });
 
 export const getScheduledTaskDetail = async (taskId: string) => {
-  const entity = await queryScheduledTaskById(taskId);
-  if (!entity) {
-    badRequest('任务不存在');
-  }
+  const entity = requireScheduledTaskEntity(await queryScheduledTaskById(taskId));
   return {
     ...toScheduledTaskResponse(entity),
     runs: await listScheduledTaskRuns(taskId),
@@ -177,10 +182,7 @@ export const updateScheduledTask = async (
     status: 'idle' | 'running' | 'paused' | 'error';
   }>
 ) => {
-  const current = await queryScheduledTaskById(id);
-  if (!current) {
-    badRequest('任务不存在');
-  }
+  requireScheduledTaskEntity(await queryScheduledTaskById(id));
   await updateScheduledTaskEntity(id, {
     ...(payload.name !== undefined ? { name: String(payload.name).trim() } : {}),
     ...(payload.description !== undefined ? { description: payload.description } : {}),
@@ -202,10 +204,7 @@ export const updateScheduledTask = async (
 };
 
 export const toggleScheduledTask = async (id: string) => {
-  const current = await queryScheduledTaskById(id);
-  if (!current) {
-    badRequest('任务不存在');
-  }
+  const current = requireScheduledTaskEntity(await queryScheduledTaskById(id));
   return updateScheduledTask(id, {
     enabled: !current.enabled,
     status: !current.enabled ? 'idle' : 'paused',

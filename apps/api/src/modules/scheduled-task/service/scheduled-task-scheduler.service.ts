@@ -18,7 +18,7 @@ let started = false;
 
 const toNextRunAt = (job?: schedule.Job | null) => {
   const next = job?.nextInvocation();
-  return next ? next.toDate() : null;
+  return next ? new Date(next) : null;
 };
 
 const buildScriptContext = (task: ScheduledTaskEntity, triggerType: 'schedule' | 'manual' | 'ai', runId: string) => ({
