@@ -5,6 +5,7 @@ import { koaBody } from 'koa-body';
 import logMark from './src/middleware/log';
 import config from './config';
 import getGlobalInfo from './src/middleware/global-info';
+import requestContextMiddleware from './src/middleware/request-context';
 import staticMiddleware from './src/middleware/static';
 import initApp from './src/utils/dependencies';
 import { log } from './src/utils/logger';
@@ -21,6 +22,8 @@ async function startApp() {
   app.use(cors());
   // 解析requestBody
   app.use(koaBody({ multipart: true }));
+  // 请求上下文
+  app.use(requestContextMiddleware());
   // 记录日志
   app.use(logMark());
   //静态文件

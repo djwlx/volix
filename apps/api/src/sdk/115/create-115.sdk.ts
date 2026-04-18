@@ -4,6 +4,8 @@ import request from '../../utils/request';
 import { secret } from './secret';
 import { TokenType } from './types';
 
+const CLOUD115_MIN_REQUEST_INTERVAL_MS = 1000;
+
 type AppType = 'web' | 'android' | 'ios' | 'tv';
 
 export interface Create115SdkOptions {
@@ -20,6 +22,33 @@ const api = {
   userInfo: 'https://my.115.com/?ct=ajax&ac=nav',
 };
 
+let cloud115RequestQueue = Promise.resolve();
+let lastCloud115RequestAt = 0;
+
+const waitTime = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const runCloud115SerialRequest = async <T>(runner: () => Promise<T>) => {
+  const task = async () => {
+    const waitMs = Math.max(0, lastCloud115RequestAt + CLOUD115_MIN_REQUEST_INTERVAL_MS - Date.now());
+    if (waitMs > 0) {
+      await waitTime(waitMs);
+    }
+
+    try {
+      return await runner();
+    } finally {
+      lastCloud115RequestAt = Date.now();
+    }
+  };
+
+  const pending = cloud115RequestQueue.then(task, task);
+  cloud115RequestQueue = pending.then(
+    () => undefined,
+    () => undefined
+  );
+  return pending;
+};
+
 export function create115Sdk(options?: Create115SdkOptions) {
   let cookie = options?.cookie;
 
@@ -32,7 +61,7 @@ export function create115Sdk(options?: Create115SdkOptions) {
   };
 
   const getToken = async () => {
-    const result = await request.get(api.qrCodeToken);
+    const result = await runCloud115SerialRequest(() => request.get(api.qrCodeToken));
     return result.data?.data;
   };
 
@@ -48,18 +77,22 @@ export function create115Sdk(options?: Create115SdkOptions) {
   };
 
   const getQrStatus = async (params: TokenType) => {
-    const result = await request.get(api.qrCodeStatus, {
-      params,
-    });
+    const result = await runCloud115SerialRequest(() =>
+      request.get(api.qrCodeStatus, {
+        params,
+      })
+    );
     return result.data;
   };
 
   const checkLogin = async () => {
-    const result = await request.get(api.loginCheck, {
-      headers: {
-        Cookie: getCookie(),
-      },
-    });
+    const result = await runCloud115SerialRequest(() =>
+      request.get(api.loginCheck, {
+        headers: {
+          Cookie: getCookie(),
+        },
+      })
+    );
     return result.data;
   };
 
@@ -68,14 +101,16 @@ export function create115Sdk(options?: Create115SdkOptions) {
       return null;
     }
 
-    const result = await request.get(api.userInfo, {
-      params: {
-        _: Math.floor(Date.now() / 1000),
-      },
-      headers: {
-        Cookie: getCookie(),
-      },
-    });
+    const result = await runCloud115SerialRequest(() =>
+      request.get(api.userInfo, {
+        params: {
+          _: Math.floor(Date.now() / 1000),
+        },
+        headers: {
+          Cookie: getCookie(),
+        },
+      })
+    );
 
     return result.data?.data;
   };
@@ -86,7 +121,7 @@ export function create115Sdk(options?: Create115SdkOptions) {
     const form = new FormData();
     form.append('account', uid);
     form.append('app', app);
-    const result = await request.post(url, form);
+    const result = await runCloud115SerialRequest(() => request.post(url, form));
 
     const resCookie = result?.data?.data?.cookie;
     const cookieString = Object.entries(resCookie)
@@ -117,12 +152,14 @@ export function create115Sdk(options?: Create115SdkOptions) {
       fc_mix: '0',
     };
 
-    const result = await request.get(api.fileList, {
-      params,
-      headers: {
-        Cookie: getCookie(),
-      },
-    });
+    const result = await runCloud115SerialRequest(() =>
+      request.get(api.fileList, {
+        params,
+        headers: {
+          Cookie: getCookie(),
+        },
+      })
+    );
 
     return result.data;
   };
@@ -133,13 +170,15 @@ export function create115Sdk(options?: Create115SdkOptions) {
     const { data, key } = secret.encode(JSON.stringify({ pickcode: pc }), timestamp);
     const formData = new FormData();
     formData.append('data', data);
-    const result = await request.post(api.downloadUrl, formData, {
-      headers: {
-        'User-Agent': ua,
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Cookie: getCookie(),
-      },
-    });
+    const result = await runCloud115SerialRequest(() =>
+      request.post(api.downloadUrl, formData, {
+        headers: {
+          'User-Agent': ua,
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Cookie: getCookie(),
+        },
+      })
+    );
 
     const str = secret.decode(result.data?.data, key);
     return JSON.parse(str);

@@ -8,6 +8,7 @@ import { badRequest, unauthorized } from '../../shared/http-handler';
 import { browseOpenlistAiOrganizerPath } from '../service/openlist-ai-organizer.service';
 import {
   createAnalyzeOpenlistAiOrganizerTask,
+  deleteOpenlistAiOrganizerDuplicateFolderByTask,
   createExecuteOpenlistAiOrganizerTask,
   createReviseOpenlistAiOrganizerAnalyzeTask,
   createRetryOpenlistAiOrganizerTask,
@@ -25,7 +26,9 @@ const ensureAdmin = (ctx: AppContext) => {
 
 export const browseOpenlistAiOrganizerAction: MyMiddleware = async ctx => {
   ensureAdmin(ctx);
-  return browseOpenlistAiOrganizerPath(String(ctx.query.path || '/'));
+  return browseOpenlistAiOrganizerPath(String(ctx.query.path || '/'), {
+    userAgent: String(ctx.request.headers['user-agent'] || '').trim() || undefined,
+  });
 };
 
 export const analyzeOpenlistAiOrganizerAction: MyMiddleware = async ctx => {
@@ -49,6 +52,11 @@ export const reviseOpenlistAiOrganizerAnalyzeTaskAction: MyMiddleware = async ct
 export const retryOpenlistAiOrganizerTaskAction: MyMiddleware = async ctx => {
   ensureAdmin(ctx);
   return createRetryOpenlistAiOrganizerTask(String(ctx.params.id || ''));
+};
+
+export const deleteOpenlistAiOrganizerDuplicateFolderAction: MyMiddleware = async ctx => {
+  ensureAdmin(ctx);
+  return deleteOpenlistAiOrganizerDuplicateFolderByTask(String(ctx.params.id || ''));
 };
 
 export const getOpenlistAiOrganizerTaskListAction: MyMiddleware = async ctx => {

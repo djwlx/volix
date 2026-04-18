@@ -1,18 +1,29 @@
+import fs from 'fs';
 import path from 'path';
+import { createHash } from 'crypto';
 import {
   type AnalyzeOpenlistAiOrganizerPayload,
   type AnalyzeOpenlistAiOrganizerResponse,
+  type DeleteOpenlistAiOrganizerDuplicateFolderResponse,
   type ExecuteOpenlistAiOrganizerPayload,
   type ExecuteOpenlistAiOrganizerResponse,
   type OpenlistAiOrganizerBrowseResponse,
   type OpenlistAiOrganizerPlanItem,
 } from '@volix/types';
-import type { OpenlistFsObject, OpenlistSdk } from '../../../sdk/openlist/create-openlist.sdk';
+import type { OpenlistFsGetData, OpenlistFsObject, OpenlistSdk } from '../../../sdk/openlist/create-openlist.sdk';
 import { createOpenlistSdk } from '../../../sdk';
 import { badRequest } from '../../shared/http-handler';
 import { getOpenlistAccountConfig } from '../../anime-subscription/service/anime-config.service';
 import { ensureOpenlistDirExists } from '../../anime-subscription/service/anime-library.service';
 import { runAiOpenlistFolderOrganizeTool } from '../../ai/service/openlist-folder-organize.service';
+import { cacheRemoteAiImageAsset } from '../../ai/service/ai-chat-asset-cache.service';
+import { waitTime } from '../../../utils/date';
+import { taskLog } from '../../../utils/logger';
+import { PATH } from '../../../utils/path';
+import {
+  readOpenlistDirectoryCacheEntry,
+  writeOpenlistDirectoryCacheEntry,
+} from './openlist-ai-organizer-cache.service';
 
 const DEFAULT_DUPLICATE_FOLDER_NAME = '__AI_DUPLICATES_PENDING__';
 const SAMPLE_PATH_LIMIT = 12;
@@ -20,6 +31,22 @@ const EXTENSION_LIMIT = 8;
 const CHUNK_SIZE = 12;
 const RETRIEVAL_PER_ITEM = 5;
 const RETRIEVED_ITEM_LIMIT = 20;
+const OPENLIST_SCAN_CACHE_TTL_MS = 10 * 60 * 1000;
+const OPENLIST_SCAN_MIN_REQUEST_INTERVAL_MS = 1000;
+const OPENLIST_SCAN_PAGE_SIZE = 500;
+const OPENLIST_AI_SEARCH_ROOT = '/';
+const OPENLIST_AI_SEARCH_LIMIT = 20;
+const OPENLIST_IMAGE_EXTENSIONS = new Set([
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.gif',
+  '.webp',
+  '.bmp',
+  '.avif',
+  '.heic',
+  '.heif',
+]);
 
 interface OrganizerTreeNode {
   id: string;
@@ -49,10 +76,26 @@ interface DirectoryReader {
   read: (currentPath: string, options?: { forceRefresh?: boolean }) => Promise<OpenlistFsObject[]>;
 }
 
+interface OpenlistRecursiveReader {
+  read: (currentPath: string, options?: { forceRefresh?: boolean }) => Promise<OpenlistFsObject[]>;
+}
+
+interface CreateDirectoryReaderOptions {
+  cacheTaskId?: string;
+  cacheTtlMs?: number;
+  minRequestIntervalMs?: number;
+  pageSize?: number;
+  now?: () => number;
+}
+
 interface PathMapping {
   sourcePrefix: string;
   targetPrefix: string;
 }
+
+let directoryCacheWriteLock = Promise.resolve();
+let openlistRequestQueue = Promise.resolve();
+let lastOpenlistRequestAt = 0;
 
 const normalizeOpenlistPath = (value: string) => {
   const text = String(value || '').trim();
@@ -64,6 +107,39 @@ const normalizeOpenlistPath = (value: string) => {
     return '/';
   }
   return normalized.startsWith('/') ? normalized : `/${normalized}`;
+};
+
+const isImageFileName = (name: string) =>
+  OPENLIST_IMAGE_EXTENSIONS.has(path.posix.extname(String(name || '').toLowerCase()));
+
+const normalizeOpenlistAiInput = (value: string) => {
+  const text = String(value || '')
+    .trim()
+    .replace(/\\/g, '/');
+  if (!text) {
+    return '/';
+  }
+  if (text.startsWith('/')) {
+    return normalizeOpenlistPath(text);
+  }
+  return text.replace(/^\/+|\/+$/g, '');
+};
+
+const isExplicitOpenlistPath = (value: string) =>
+  String(value || '')
+    .trim()
+    .startsWith('/');
+
+const normalizeKeyword = (value: string) =>
+  String(value || '')
+    .trim()
+    .replace(/^\/+|\/+$/g, '')
+    .toLowerCase();
+
+const doesPathSegmentMatch = (candidatePath: string, keyword: string) => {
+  const target = normalizeKeyword(keyword);
+  const segments = candidatePath.split('/').map(segment => normalizeKeyword(segment));
+  return segments.some(segment => segment && (segment === target || segment.includes(target)));
 };
 
 const normalizeDuplicateFolderName = (value?: string) => {
@@ -84,6 +160,86 @@ const chunk = <T>(list: T[], size: number) => {
     result.push(list.slice(index, index + size));
   }
   return result;
+};
+
+const persistDirectoryCacheEntry = async (
+  cacheTaskId: string | undefined,
+  cacheEntry: { path: string; updatedAt: string; entries: OpenlistFsObject[] }
+) => {
+  const task = async () => {
+    await writeOpenlistDirectoryCacheEntry(cacheTaskId, cacheEntry);
+  };
+
+  const pending = directoryCacheWriteLock.then(task, task);
+  directoryCacheWriteLock = pending.then(
+    () => undefined,
+    () => undefined
+  );
+  await pending;
+};
+
+const fetchPagedDirectoryEntries = async (
+  sdk: OpenlistSdk,
+  currentPath: string,
+  options?: {
+    forceRefresh?: boolean;
+    pageSize?: number;
+  }
+) => {
+  const pageSize = Math.max(1, options?.pageSize ?? OPENLIST_SCAN_PAGE_SIZE);
+  const entries: OpenlistFsObject[] = [];
+  let page = 1;
+  let total = Number.POSITIVE_INFINITY;
+
+  while (entries.length < total) {
+    const list = await sdk.listFs({
+      path: currentPath,
+      refresh: Boolean(options?.forceRefresh && page === 1),
+      page,
+      perPage: pageSize,
+    });
+
+    const pageContent = list.content || [];
+    const pageTotal = Number(list.total || 0);
+    if (pageTotal > 0) {
+      total = pageTotal;
+    }
+
+    entries.push(...pageContent);
+
+    if (pageContent.length === 0 || pageContent.length < pageSize) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return entries;
+};
+
+const runThrottledOpenlistRequest = async <T>(
+  runner: () => Promise<T>,
+  options: { minRequestIntervalMs: number; now: () => number }
+) => {
+  const task = async () => {
+    const minInterval = Math.max(0, options.minRequestIntervalMs);
+    const now = options.now();
+    const waitMs = Math.max(0, lastOpenlistRequestAt + minInterval - now);
+    if (waitMs > 0) {
+      await waitTime(waitMs);
+    }
+
+    const result = await runner();
+    lastOpenlistRequestAt = options.now();
+    return result;
+  };
+
+  const pending = openlistRequestQueue.then(task, task);
+  openlistRequestQueue = pending.then(
+    () => undefined,
+    () => undefined
+  );
+  return pending;
 };
 
 const normalizeTokenText = (value: string) =>
@@ -223,20 +379,73 @@ const buildRetrievedContext = (chunkItems: IndexedOrganizerTreeNode[], allItems:
   return Array.from(retrievedMap.values());
 };
 
-const getOpenlistSdk = async () => {
+const getOpenlistSdk = async (options?: { userAgent?: string }) => {
   const account = await getOpenlistAccountConfig();
-  const sdk = createOpenlistSdk({ apiHost: account.baseUrl });
+  const sdk = createOpenlistSdk({
+    apiHost: account.baseUrl,
+    userAgent: options?.userAgent,
+  });
   await sdk.loginWithHashedPassword(account.username, account.password);
   return sdk;
 };
 
-const createDirectoryReader = (sdk: OpenlistSdk): DirectoryReader => {
+export const createThrottledOpenlistSdk = (
+  sdk: OpenlistSdk,
+  options?: { minRequestIntervalMs?: number; now?: () => number }
+): OpenlistSdk => {
+  const minRequestIntervalMs = options?.minRequestIntervalMs ?? OPENLIST_SCAN_MIN_REQUEST_INTERVAL_MS;
+  const now = options?.now || (() => Date.now());
+
+  const wrap = <TArgs extends unknown[], TResult>(method: (...args: TArgs) => Promise<TResult>) => {
+    return (...args: TArgs) =>
+      runThrottledOpenlistRequest(() => method(...args), {
+        minRequestIntervalMs,
+        now,
+      });
+  };
+
+  return {
+    ...sdk,
+    listFs: wrap(sdk.listFs),
+    getFs: wrap(sdk.getFs),
+    mkdir: wrap(sdk.mkdir),
+    rename: wrap(sdk.rename),
+    move: wrap(sdk.move),
+    copy: wrap(sdk.copy),
+    remove: wrap(sdk.remove),
+  };
+};
+
+export const createDirectoryReader = async (
+  sdk: OpenlistSdk,
+  options?: CreateDirectoryReaderOptions
+): Promise<DirectoryReader> => {
+  const cacheTaskId = String(options?.cacheTaskId || '').trim() || undefined;
+  const cacheTtlMs = options?.cacheTtlMs ?? OPENLIST_SCAN_CACHE_TTL_MS;
+  const minRequestIntervalMs = options?.minRequestIntervalMs ?? 0;
+  const pageSize = options?.pageSize ?? OPENLIST_SCAN_PAGE_SIZE;
+  const now = options?.now || (() => Date.now());
   const cache = new Map<string, OpenlistFsObject[]>();
+  const cacheUpdatedAtMap = new Map<string, number>();
   const inflight = new Map<string, Promise<OpenlistFsObject[]>>();
 
   const read = async (currentPath: string, options?: { forceRefresh?: boolean }) => {
     const cacheKey = normalizeOpenlistPath(currentPath);
-    if (!options?.forceRefresh && cache.has(cacheKey)) {
+    let cachedEntries = cache.get(cacheKey);
+    let cachedAt = cacheUpdatedAtMap.get(cacheKey) || 0;
+    if (!cachedEntries && cacheTaskId) {
+      const persisted = await readOpenlistDirectoryCacheEntry<OpenlistFsObject>(cacheTaskId, cacheKey);
+      const persistedAt = persisted ? new Date(persisted.updatedAt).getTime() : 0;
+      if (persisted && Number.isFinite(persistedAt)) {
+        cachedEntries = persisted.entries || [];
+        cachedAt = persistedAt;
+        cache.set(cacheKey, cachedEntries);
+        cacheUpdatedAtMap.set(cacheKey, cachedAt);
+      }
+    }
+    const cacheFresh = cachedEntries && cachedAt > 0 && now() - cachedAt <= cacheTtlMs;
+
+    if (!options?.forceRefresh && cacheFresh) {
       return cache.get(cacheKey) || [];
     }
 
@@ -245,17 +454,42 @@ const createDirectoryReader = (sdk: OpenlistSdk): DirectoryReader => {
       return existingRequest;
     }
 
-    const request = sdk
-      .listFs({
-        path: cacheKey,
-        refresh: Boolean(options?.forceRefresh),
-      })
-      .then(list =>
-        (list.content || []).sort((a, b) => Number(b.is_dir) - Number(a.is_dir) || a.name.localeCompare(b.name))
-      )
-      .then(entries => {
+    const runList = () =>
+      fetchPagedDirectoryEntries(sdk, cacheKey, {
+        forceRefresh: Boolean(options?.forceRefresh),
+        pageSize,
+      });
+
+    const request = (
+      minRequestIntervalMs > 0
+        ? runThrottledOpenlistRequest(runList, {
+            minRequestIntervalMs,
+            now,
+          })
+        : runList()
+    )
+      .then(list => list.sort((a, b) => Number(b.is_dir) - Number(a.is_dir) || a.name.localeCompare(b.name)))
+      .then(async entries => {
+        const updatedAt = now();
         cache.set(cacheKey, entries);
+        cacheUpdatedAtMap.set(cacheKey, updatedAt);
+        await persistDirectoryCacheEntry(cacheTaskId, {
+          path: cacheKey,
+          updatedAt: new Date(updatedAt).toISOString(),
+          entries,
+        });
         return entries;
+      })
+      .catch(error => {
+        if (cachedEntries && cachedEntries.length > 0) {
+          taskLog.warn(
+            `[OPENLIST_AI_ORG][cache-fallback] listFs failed for ${cacheKey}, use stale cache instead: ${
+              (error as Error)?.message || 'unknown_error'
+            }`
+          );
+          return cachedEntries;
+        }
+        throw error;
       })
       .finally(() => {
         inflight.delete(cacheKey);
@@ -471,10 +705,57 @@ const remapPathWithMappings = (rawPath: string, mappings: PathMapping[]) => {
   return normalizeOpenlistPath(`${matched.targetPrefix}${targetPath.slice(matched.sourcePrefix.length)}`);
 };
 
-export const browseOpenlistAiOrganizerPath = async (rawPath?: string): Promise<OpenlistAiOrganizerBrowseResponse> => {
-  const currentPath = normalizeOpenlistPath(rawPath || '/');
+export const deleteOpenlistAiOrganizerDuplicateFolder = async (
+  rootPathInput: string,
+  duplicateFolderNameInput?: string
+): Promise<Omit<DeleteOpenlistAiOrganizerDuplicateFolderResponse, 'taskId'>> => {
+  const rootPath = normalizeOpenlistPath(rootPathInput);
+  const duplicateFolderName = normalizeDuplicateFolderName(duplicateFolderNameInput);
+  const duplicateFolderPath = path.posix.join(rootPath, duplicateFolderName);
   const sdk = await getOpenlistSdk();
-  const reader = createDirectoryReader(sdk);
+  const reader = await createDirectoryReader(sdk);
+
+  let rootEntries: OpenlistFsObject[] = [];
+  try {
+    rootEntries = await reader.read(rootPath, { forceRefresh: true });
+  } catch (error) {
+    badRequest(`OpenList 路径无法访问: ${(error as Error)?.message || 'unknown_error'}`);
+  }
+
+  const duplicateEntry = rootEntries.find(item => item.name === duplicateFolderName);
+  if (!duplicateEntry) {
+    return {
+      duplicateFolderPath,
+      deleted: true,
+      message: '重复复核目录已不存在',
+    };
+  }
+
+  if (!duplicateEntry.is_dir) {
+    badRequest(`重复复核路径不是目录: ${duplicateFolderPath}`);
+  }
+
+  await sdk.remove({
+    dir: rootPath,
+    names: [duplicateFolderName],
+  });
+
+  return {
+    duplicateFolderPath,
+    deleted: true,
+    message: '重复复核目录已删除',
+  };
+};
+
+export const browseOpenlistAiOrganizerPath = async (
+  rawPath?: string,
+  options?: { userAgent?: string }
+): Promise<OpenlistAiOrganizerBrowseResponse> => {
+  const sdk = await getOpenlistSdk({
+    userAgent: options?.userAgent,
+  });
+  const reader = await createDirectoryReader(sdk);
+  const currentPath = await resolveFirstOpenlistAiSearchRoot(reader, String(rawPath || '/'));
   const entries = await reader.read(currentPath);
   const directories = entries.filter(item => item.is_dir);
 
@@ -488,13 +769,240 @@ export const browseOpenlistAiOrganizerPath = async (rawPath?: string): Promise<O
   };
 };
 
+export const resolveOpenlistAiSearchRoots = async (
+  reader: OpenlistRecursiveReader,
+  rawPath: string,
+  options?: {
+    limit?: number;
+  }
+) => {
+  const normalizedInput = normalizeOpenlistAiInput(rawPath);
+  if (!normalizedInput || normalizedInput === '/') {
+    return ['/'];
+  }
+  if (isExplicitOpenlistPath(rawPath)) {
+    return [normalizedInput];
+  }
+
+  const keyword = normalizeKeyword(normalizedInput);
+  const queue = [OPENLIST_AI_SEARCH_ROOT];
+  const visited = new Set<string>();
+  const matches: string[] = [];
+  const limit = Math.max(1, options?.limit ?? OPENLIST_AI_SEARCH_LIMIT);
+
+  while (queue.length > 0 && matches.length < limit) {
+    const currentPath = queue.shift() as string;
+    if (visited.has(currentPath)) {
+      continue;
+    }
+    visited.add(currentPath);
+
+    const entries = await reader.read(currentPath);
+    for (const entry of entries) {
+      if (!entry.is_dir) {
+        continue;
+      }
+      const entryPath = path.posix.join(currentPath, entry.name);
+      queue.push(entryPath);
+      if (matches.some(item => entryPath === item || entryPath.startsWith(`${item}/`))) {
+        continue;
+      }
+      if (doesPathSegmentMatch(entryPath, keyword)) {
+        matches.push(entryPath);
+        if (matches.length >= limit) {
+          break;
+        }
+      }
+    }
+  }
+
+  return Array.from(new Set(matches));
+};
+
+export const resolveFirstOpenlistAiSearchRoot = async (reader: OpenlistRecursiveReader, rawPath: string) => {
+  const matches = await resolveOpenlistAiSearchRoots(reader, rawPath, {
+    limit: 1,
+  });
+  if (!matches.length) {
+    badRequest(`OpenList 中未找到匹配路径: ${String(rawPath || '').trim() || '/'}`);
+  }
+  return matches[0];
+};
+
+export const listOpenlistPathEntries = async (
+  rawPath?: string,
+  options?: {
+    includeFiles?: boolean;
+  },
+  requestOptions?: {
+    userAgent?: string;
+  }
+) => {
+  const sdk = await getOpenlistSdk({
+    userAgent: requestOptions?.userAgent,
+  });
+  const reader = await createDirectoryReader(sdk);
+  const currentPath = await resolveFirstOpenlistAiSearchRoot(reader, String(rawPath || '/'));
+  const entries = await reader.read(currentPath);
+
+  return {
+    path: currentPath,
+    items: entries
+      .filter(item => options?.includeFiles || item.is_dir)
+      .map(item => {
+        const entryPath = path.posix.join(currentPath, item.name);
+        return {
+          name: item.name,
+          path: entryPath,
+          isDir: Boolean(item.is_dir),
+          isImage: !item.is_dir && isImageFileName(item.name),
+          size: item.size,
+          modified: item.modified,
+          thumb: item.thumb,
+        };
+      }),
+  };
+};
+
+const collectOpenlistImagesUnderRoot = async (reader: OpenlistRecursiveReader, rootPath: string) => {
+  const queue = [rootPath];
+  const visited = new Set<string>();
+  const imageCandidates: Array<{
+    rootPath: string;
+    name: string;
+    path: string;
+    size: number;
+    modified: string;
+    thumb?: string;
+  }> = [];
+  let scannedDirectoryCount = 0;
+
+  while (queue.length > 0) {
+    const currentPath = queue.shift() as string;
+    if (visited.has(currentPath)) {
+      continue;
+    }
+    visited.add(currentPath);
+    scannedDirectoryCount += 1;
+
+    const entries = await reader.read(currentPath);
+    for (const entry of entries) {
+      const entryPath = path.posix.join(currentPath, entry.name);
+      if (entry.is_dir) {
+        queue.push(entryPath);
+        continue;
+      }
+      if (!isImageFileName(entry.name)) {
+        continue;
+      }
+      imageCandidates.push({
+        rootPath,
+        name: entry.name,
+        path: entryPath,
+        size: entry.size,
+        modified: entry.modified,
+        thumb: entry.thumb,
+      });
+    }
+  }
+
+  return {
+    scannedDirectoryCount,
+    imageCandidates,
+  };
+};
+
+export const pickRandomOpenlistImageForAi = async (params: {
+  rawPath?: string;
+  reader: OpenlistRecursiveReader;
+  getFs: (targetPath: string) => Promise<OpenlistFsGetData>;
+  random?: () => number;
+}) => {
+  const rootPaths = await resolveOpenlistAiSearchRoots(params.reader, String(params.rawPath || '/'));
+  if (!rootPaths.length) {
+    badRequest(`OpenList 中未找到匹配路径: ${String(params.rawPath || '').trim() || '/'}`);
+  }
+
+  const imageCandidates: Array<{
+    rootPath: string;
+    name: string;
+    path: string;
+    size: number;
+    modified: string;
+    thumb?: string;
+  }> = [];
+  let scannedDirectoryCount = 0;
+
+  for (const rootPath of rootPaths) {
+    const result = await collectOpenlistImagesUnderRoot(params.reader, rootPath);
+    scannedDirectoryCount += result.scannedDirectoryCount;
+    imageCandidates.push(...result.imageCandidates);
+  }
+
+  if (imageCandidates.length === 0) {
+    badRequest(`路径 ${String(params.rawPath || '').trim() || '/'} 下没有找到图片文件`);
+  }
+
+  const randomValue = Math.min(0.999999, Math.max(0, params.random?.() ?? Math.random()));
+  const selected = imageCandidates[Math.floor(randomValue * imageCandidates.length)];
+  const file = await params.getFs(selected.path);
+  const sourceImageUrl = file.raw_url || selected.thumb || '';
+  let cachedImageUrl = sourceImageUrl;
+
+  if (sourceImageUrl) {
+    try {
+      const cachedFile = await cacheRemoteAiImageAsset({
+        sourceUrl: sourceImageUrl,
+        fileName: selected.name,
+        cacheKey: createHash('sha1').update(`${selected.path}|${selected.modified}|${selected.size}`).digest('hex'),
+      });
+      cachedImageUrl = cachedFile.publicPath;
+    } catch (error) {
+      taskLog.warn(
+        `[OPENLIST_AI][image-cache][warn] ${selected.path} -> ${String((error as Error)?.message || 'cache_failed')}`
+      );
+    }
+  }
+
+  return {
+    kind: 'image',
+    rootPath: selected.rootPath,
+    fileName: selected.name,
+    selectedPath: selected.path,
+    imageUrl: cachedImageUrl,
+    previewUrl: cachedImageUrl,
+    sourceImageUrl,
+    totalImageCount: imageCandidates.length,
+    scannedDirectoryCount,
+    size: selected.size,
+    modified: selected.modified,
+  };
+};
+
+export const pickRandomOpenlistImageFromPath = async (rawPath?: string, options?: { userAgent?: string }) => {
+  const sdk = await getOpenlistSdk({
+    userAgent: options?.userAgent,
+  });
+  const reader = await createDirectoryReader(sdk);
+  return pickRandomOpenlistImageForAi({
+    rawPath,
+    reader,
+    getFs: targetPath =>
+      sdk.getFs({
+        path: targetPath,
+      }),
+  });
+};
+
 export const analyzeOpenlistFolderWithAi = async (
   payload: AnalyzeOpenlistAiOrganizerPayload
 ): Promise<AnalyzeOpenlistAiOrganizerResponse> => {
   const rootPath = normalizeOpenlistPath(payload.rootPath);
   const duplicateFolderPath = path.posix.join(rootPath, normalizeDuplicateFolderName(payload.duplicateFolderName));
   const sdk = await getOpenlistSdk();
-  const reader = createDirectoryReader(sdk);
+  const reader = await createDirectoryReader(sdk, {
+    cacheTaskId: payload.taskId,
+  });
 
   try {
     await reader.read(rootPath);
@@ -674,6 +1182,7 @@ export const executeOpenlistAiOrganizerPlan = async (
   return {
     rootPath,
     duplicateFolderPath,
+    duplicateFolderDeleted: false,
     appliedCount,
     skippedCount,
     failedCount,

@@ -4,6 +4,7 @@ import {
   type AnalyzeOpenlistAiOrganizerPayload,
   type CreateOpenlistAiOrganizerReviseTaskResponse,
   type CreateOpenlistAiOrganizerRetryTaskResponse,
+  type DeleteOpenlistAiOrganizerDuplicateFolderResponse,
   type ExecuteOpenlistAiOrganizerPayload,
   type OpenlistAiOrganizerTaskDetail,
   type OpenlistAiOrganizerTaskListResponse,
@@ -15,7 +16,12 @@ import {
 import { badRequest } from '../../shared/http-handler';
 import { PATH } from '../../../utils/path';
 import { taskLog } from '../../../utils/logger';
-import { analyzeOpenlistFolderWithAi, executeOpenlistAiOrganizerPlan } from './openlist-ai-organizer.service';
+import {
+  analyzeOpenlistFolderWithAi,
+  deleteOpenlistAiOrganizerDuplicateFolder,
+  executeOpenlistAiOrganizerPlan,
+} from './openlist-ai-organizer.service';
+import { cleanupOpenlistAiOrganizerTaskCache } from './openlist-ai-organizer-cache.service';
 
 interface OpenlistAiOrganizerTaskStore {
   items: OpenlistAiOrganizerTaskDetail[];
@@ -140,7 +146,10 @@ const runTask = async (task: OpenlistAiOrganizerTaskDetail) => {
   taskLog.info(`[OPENLIST_AI_ORG][task:${task.id}][start] ${task.type} ${task.rootPath}`);
   try {
     if (task.type === 'analyze') {
-      const payload = task.analyzePayload as AnalyzeOpenlistAiOrganizerPayload;
+      const payload = {
+        ...(task.analyzePayload as AnalyzeOpenlistAiOrganizerPayload),
+        taskId: task.id,
+      };
       await patchTask(task.id, current => ({
         ...current,
         currentStage: '正在递归扫描并进行 AI 分析',
@@ -160,7 +169,10 @@ const runTask = async (task: OpenlistAiOrganizerTaskDetail) => {
       return;
     }
 
-    const payload = task.executePayload as ExecuteOpenlistAiOrganizerPayload;
+    const payload = {
+      ...(task.executePayload as ExecuteOpenlistAiOrganizerPayload),
+      taskId: task.id,
+    };
     await patchTask(task.id, current => ({
       ...current,
       currentStage: '正在执行 OpenList 整理动作',
@@ -188,6 +200,8 @@ const runTask = async (task: OpenlistAiOrganizerTaskDetail) => {
       updatedAt: nowIso(),
     }));
     taskLog.error(`[OPENLIST_AI_ORG][task:${task.id}][error] ${message}`);
+  } finally {
+    await cleanupOpenlistAiOrganizerTaskCache(task.id).catch(() => undefined);
   }
 };
 
@@ -352,6 +366,51 @@ export const createRetryOpenlistAiOrganizerTask = async (
     badRequest('原始执行任务缺少请求参数，无法重试');
   }
   return createExecuteOpenlistAiOrganizerTask(payload as ExecuteOpenlistAiOrganizerPayload);
+};
+
+export const deleteOpenlistAiOrganizerDuplicateFolderByTask = async (
+  taskId: string
+): Promise<DeleteOpenlistAiOrganizerDuplicateFolderResponse> => {
+  const sourceTask = await queryOpenlistAiOrganizerTaskDetail(taskId);
+  if (!sourceTask) {
+    badRequest('任务不存在');
+  }
+
+  const task = sourceTask as OpenlistAiOrganizerTaskDetail;
+  if (task.type !== 'execute') {
+    badRequest('只有执行任务才支持删除重复复核目录');
+  }
+  if (task.status !== 'succeeded' || !task.executionResult) {
+    badRequest('请在执行完成后再删除重复复核目录');
+  }
+  const executionResult = task.executionResult!;
+  if (executionResult.duplicateFolderDeleted) {
+    return {
+      taskId: task.id,
+      duplicateFolderPath: executionResult.duplicateFolderPath,
+      deleted: true,
+      message: '重复复核目录已删除',
+    };
+  }
+
+  const result = await deleteOpenlistAiOrganizerDuplicateFolder(task.rootPath, task.duplicateFolderName);
+  await patchTask(task.id, current => ({
+    ...current,
+    updatedAt: nowIso(),
+    executionResult: current.executionResult
+      ? {
+          ...current.executionResult,
+          duplicateFolderDeleted: true,
+        }
+      : current.executionResult,
+  }));
+
+  return {
+    taskId: task.id,
+    duplicateFolderPath: result.duplicateFolderPath,
+    deleted: result.deleted,
+    message: result.message,
+  };
 };
 
 export const queryOpenlistAiOrganizerTaskList = async (): Promise<OpenlistAiOrganizerTaskListResponse> => {

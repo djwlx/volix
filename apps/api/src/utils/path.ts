@@ -1,6 +1,11 @@
 import path from 'path';
 
-const ROOT = process.cwd();
+const resolveAppRoot = () => {
+  const candidate = path.resolve(__dirname, '../..');
+  return path.basename(candidate) === 'dist' ? path.resolve(candidate, '..') : candidate;
+};
+
+const ROOT = resolveAppRoot();
 const DATA = '/data';
 
 export const PATH = {
@@ -9,6 +14,12 @@ export const PATH = {
   },
   get data() {
     return path.join(ROOT, DATA);
+  },
+  get cache() {
+    return path.join(ROOT, DATA, 'cache');
+  },
+  get openlistAiOrganizerCache() {
+    return path.join(ROOT, DATA, 'cache', 'openlist-ai-organizer');
   },
   get log() {
     return path.join(ROOT, DATA, 'log');

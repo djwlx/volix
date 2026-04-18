@@ -30,6 +30,7 @@ import type {
 import {
   analyzeOpenlistAiOrganizer,
   browseOpenlistAiOrganizerPath,
+  deleteOpenlistAiOrganizerDuplicateFolder,
   executeOpenlistAiOrganizer,
   getOpenlistAiOrganizerTaskDetail,
   getOpenlistAiOrganizerTaskList,
@@ -125,6 +126,7 @@ function SettingOpenlistAiOrganizerApp() {
   const [revisionFeedback, setRevisionFeedback] = useState('');
   const [revising, setRevising] = useState(false);
   const [retryingTaskId, setRetryingTaskId] = useState('');
+  const [deletingDuplicateFolderTaskId, setDeletingDuplicateFolderTaskId] = useState('');
 
   const applyTaskDetail = (task: OpenlistAiOrganizerTaskDetail) => {
     setCurrentTaskDetail(task);
@@ -398,6 +400,43 @@ function SettingOpenlistAiOrganizerApp() {
       Toast.error(getHttpErrorMessage(error, '重试任务失败'));
     } finally {
       setRetryingTaskId('');
+    }
+  };
+
+  const handleDeleteDuplicateFolder = async (taskId: string) => {
+    if (!taskId) {
+      return;
+    }
+
+    setDeletingDuplicateFolderTaskId(taskId);
+    try {
+      const res = await deleteOpenlistAiOrganizerDuplicateFolder(taskId);
+      const payload = res.data;
+      setExecution(prev =>
+        prev
+          ? {
+              ...prev,
+              duplicateFolderDeleted: true,
+            }
+          : prev
+      );
+      setCurrentTaskDetail(prev =>
+        prev && prev.id === taskId && prev.executionResult
+          ? {
+              ...prev,
+              executionResult: {
+                ...prev.executionResult,
+                duplicateFolderDeleted: true,
+              },
+            }
+          : prev
+      );
+      Toast.success(payload.message || '重复复核目录已删除');
+      await loadTaskList().catch(() => undefined);
+    } catch (error) {
+      Toast.error(getHttpErrorMessage(error, '删除重复复核目录失败'));
+    } finally {
+      setDeletingDuplicateFolderTaskId('');
     }
   };
 
@@ -815,6 +854,20 @@ function SettingOpenlistAiOrganizerApp() {
               <Descriptions.Item itemKey="失败">{execution.failedCount}</Descriptions.Item>
               <Descriptions.Item itemKey="重复复核目录">{execution.duplicateFolderPath}</Descriptions.Item>
             </Descriptions>
+            <Space wrap>
+              {!execution.duplicateFolderDeleted && currentTaskDetail?.type === 'execute' ? (
+                <Button
+                  theme="solid"
+                  type="danger"
+                  loading={deletingDuplicateFolderTaskId === currentTaskDetail.id}
+                  onClick={() => handleDeleteDuplicateFolder(currentTaskDetail.id).catch(() => undefined)}
+                >
+                  删除重复复核目录
+                </Button>
+              ) : (
+                <Tag color="green">重复复核目录已删除</Tag>
+              )}
+            </Space>
             <Table<ExecuteOpenlistAiOrganizerResponse['items'][number]>
               rowKey="id"
               pagination={false}

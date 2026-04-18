@@ -19,6 +19,7 @@ export interface AnalyzeOpenlistAiOrganizerPayload {
   model?: string;
   userInstruction?: string;
   basedOnTaskId?: string;
+  taskId?: string;
 }
 
 export type OpenlistAiOrganizerTaskType = 'analyze' | 'execute';
@@ -68,6 +69,7 @@ export interface ExecuteOpenlistAiOrganizerPayload {
   rootPath: string;
   duplicateFolderName?: string;
   items: OpenlistAiOrganizerPlanItem[];
+  taskId?: string;
 }
 
 export interface OpenlistAiOrganizerExecuteItemResult {
@@ -81,6 +83,7 @@ export interface OpenlistAiOrganizerExecuteItemResult {
 export interface ExecuteOpenlistAiOrganizerResponse {
   rootPath: string;
   duplicateFolderPath: string;
+  duplicateFolderDeleted?: boolean;
   appliedCount: number;
   skippedCount: number;
   failedCount: number;
@@ -105,6 +108,13 @@ export interface CreateOpenlistAiOrganizerExecuteTaskResponse {
 
 export interface CreateOpenlistAiOrganizerRetryTaskResponse {
   taskId: string;
+}
+
+export interface DeleteOpenlistAiOrganizerDuplicateFolderResponse {
+  taskId: string;
+  duplicateFolderPath: string;
+  deleted: boolean;
+  message: string;
 }
 
 export interface OpenlistAiOrganizerTaskSummary {

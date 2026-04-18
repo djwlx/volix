@@ -2,6 +2,7 @@ import { http } from '@/utils';
 import type {
   AnalyzeOpenlistAiOrganizerPayload,
   CreateOpenlistAiOrganizerAnalyzeTaskResponse,
+  DeleteOpenlistAiOrganizerDuplicateFolderResponse,
   CreateOpenlistAiOrganizerExecuteTaskResponse,
   CreateOpenlistAiOrganizerReviseTaskResponse,
   CreateOpenlistAiOrganizerRetryTaskResponse,
@@ -34,6 +35,12 @@ export const reviseOpenlistAiOrganizerAnalyzeTask = (id: string, data: ReviseOpe
 
 export const retryOpenlistAiOrganizerTask = (id: string) => {
   return http.post<CreateOpenlistAiOrganizerRetryTaskResponse>(`/openlist-ai-organizer/tasks/${id}/retry`);
+};
+
+export const deleteOpenlistAiOrganizerDuplicateFolder = (id: string) => {
+  return http.post<DeleteOpenlistAiOrganizerDuplicateFolderResponse>(
+    `/openlist-ai-organizer/tasks/${id}/delete-duplicate-folder`
+  );
 };
 
 export const getOpenlistAiOrganizerTaskList = () => {

@@ -1,6 +1,7 @@
 import path from 'path';
 import log4js from 'log4js';
 import { PATH } from './path';
+import { LOG_MAX_SIZE_BYTES, startLogMaintenance } from './log-maintenance';
 const { NODE_ENV } = process.env;
 
 const isProd = NODE_ENV === 'production';
@@ -13,7 +14,7 @@ log4js.configure({
     normal: {
       type: 'dateFile',
       alwaysIncludePattern: true,
-      maxLogSize: 10485760,
+      maxLogSize: LOG_MAX_SIZE_BYTES,
       pattern: 'yyyy-MM-dd.log',
       filename: path.join(`${PATH.log}/normal`, 'normal'), //生成文件名
       numBackups: 5,
@@ -21,7 +22,7 @@ log4js.configure({
     database: {
       type: 'dateFile',
       alwaysIncludePattern: true,
-      maxLogSize: 10485760,
+      maxLogSize: LOG_MAX_SIZE_BYTES,
       pattern: 'yyyy-MM-dd.log',
       filename: path.join(`${PATH.log}/databse`, 'database'), //生成文件名
       numBackups: 5,
@@ -29,7 +30,7 @@ log4js.configure({
     task: {
       type: 'dateFile',
       alwaysIncludePattern: true,
-      maxLogSize: 10485760,
+      maxLogSize: LOG_MAX_SIZE_BYTES,
       pattern: 'yyyy-MM-dd.log',
       filename: path.join(`${PATH.log}/task`, 'task'), //生成文件名
       numBackups: 5,
@@ -58,6 +59,8 @@ log4js.configure({
     },
   },
 });
+
+startLogMaintenance();
 // 普通日志
 const log = log4js.getLogger(isProd ? 'prodNormal' : 'devNormal');
 // 数据库日志

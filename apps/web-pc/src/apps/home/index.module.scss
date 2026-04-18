@@ -18,6 +18,118 @@
   width: 100%;
 }
 
+.hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 360px;
+  gap: 18px;
+  margin-bottom: 28px;
+  padding: 28px;
+  border-radius: 30px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at top right, rgba(125, 211, 252, 0.26) 0%, transparent 24%),
+    linear-gradient(145deg, #0f172a 0%, #082f49 42%, #0ea5e9 100%);
+  box-shadow:
+    0 26px 56px rgba(8, 47, 73, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.heroMain {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+}
+
+.heroBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.heroTitle {
+  margin: 18px 0 12px;
+  font-size: clamp(34px, 4vw, 52px);
+  line-height: 1;
+  letter-spacing: -0.05em;
+  font-weight: 800;
+}
+
+.heroDescription {
+  margin: 0;
+  max-width: 720px;
+  font-size: 16px;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.heroActions {
+  margin-top: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.heroStats {
+  display: grid;
+  gap: 12px;
+  align-content: end;
+}
+
+.heroStatCard {
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+.heroStatValue {
+  display: block;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.heroStatLabel {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.sectionTitleRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.sectionEyebrow {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--app-text-muted);
+}
+
+.sectionTitle {
+  margin-top: 4px;
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--app-text);
+}
+
 .cardGrid {
   display: grid;
   gap: 16px;
@@ -27,6 +139,20 @@
 @media (max-width: 767px) {
   .content {
     padding-top: 16px;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+    padding: 22px 18px;
+    border-radius: 24px;
+  }
+
+  .heroTitle {
+    font-size: 34px;
+  }
+
+  .sectionTitle {
+    font-size: 24px;
   }
 
   .cardGrid {

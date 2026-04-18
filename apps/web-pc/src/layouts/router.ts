@@ -1,5 +1,7 @@
 import { createBrowserRouter } from 'react-router';
 import HomeApp from '@/apps/home';
+import AiChatApp from '@/apps/ai-chat';
+import SqliteAdminApp from '@/apps/sqlite-admin';
 import ColorPickerApp from '@/apps/color-picker';
 import FormatterApp from '@/apps/formatter';
 import PicApp from '@/apps/pic';
@@ -21,6 +23,7 @@ import SettingAnimeSubscriptionApp from '@/apps/setting/pages/anime-subscription
 import SettingAnimeSubscriptionAddApp from '@/apps/setting/pages/anime-subscription/add';
 import SettingAnimeSubscriptionEditApp from '@/apps/setting/pages/anime-subscription/edit';
 import SettingOpenlistAiOrganizerApp from '@/apps/setting/pages/openlist-ai-organizer';
+import SettingAiChatApp from '@/apps/setting/pages/ai-chat';
 import SettingSystemApp from '@/apps/setting/pages/system';
 import RedirectToSetting from './redirect-to-setting';
 import AppErrorBoundary from './error-boundary';
@@ -32,6 +35,18 @@ export const router = createBrowserRouter([
     Component: GuestOnlyRoute,
     ErrorBoundary: AppErrorBoundary,
     children: [{ index: true, Component: AuthApp }],
+  },
+  {
+    path: '/ai',
+    Component: RequireAuthRoute,
+    ErrorBoundary: AppErrorBoundary,
+    children: [{ index: true, Component: AiChatApp }],
+  },
+  {
+    path: '/sqlite-admin',
+    Component: RequireAuthRoute,
+    ErrorBoundary: AppErrorBoundary,
+    children: [{ index: true, Component: SqliteAdminApp }],
   },
   {
     path: '/formatter',
@@ -69,6 +84,7 @@ export const router = createBrowserRouter([
               { path: 'role/add', Component: SettingRoleAddApp },
               { path: 'role/edit/:roleKey', Component: SettingRoleEditApp },
               { path: 'system', Component: SettingSystemApp },
+              { path: 'ai-chat', Component: SettingAiChatApp },
               { path: 'anime-subscription', Component: SettingAnimeSubscriptionApp },
               { path: 'anime-subscription/add', Component: SettingAnimeSubscriptionAddApp },
               { path: 'anime-subscription/edit/:id', Component: SettingAnimeSubscriptionEditApp },

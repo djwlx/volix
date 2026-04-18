@@ -4,6 +4,7 @@ import authenticate from '../../middleware/authenticate';
 import {
   analyzeOpenlistAiOrganizerAction,
   browseOpenlistAiOrganizerAction,
+  deleteOpenlistAiOrganizerDuplicateFolderAction,
   executeOpenlistAiOrganizerAction,
   getOpenlistAiOrganizerTaskDetailAction,
   getOpenlistAiOrganizerTaskListAction,
@@ -23,6 +24,7 @@ router
   .post('/analyze', http(analyzeOpenlistAiOrganizerAction))
   .post('/tasks/:id/revise', http(reviseOpenlistAiOrganizerAnalyzeTaskAction))
   .post('/tasks/:id/retry', http(retryOpenlistAiOrganizerTaskAction))
+  .post('/tasks/:id/delete-duplicate-folder', http(deleteOpenlistAiOrganizerDuplicateFolderAction))
   .post('/execute', http(executeOpenlistAiOrganizerAction));
 
 export default router;
