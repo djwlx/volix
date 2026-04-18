@@ -131,6 +131,9 @@ function SettingApp() {
     if (location.pathname.startsWith('/setting/config/ai')) {
       return 'config/ai';
     }
+    if (location.pathname.startsWith('/setting/config/bangumi')) {
+      return 'config/bangumi';
+    }
     if (location.pathname.startsWith('/setting/config/smtp')) {
       return 'config/smtp';
     }
@@ -142,6 +145,9 @@ function SettingApp() {
     }
     if (location.pathname.startsWith('/setting/openlist-ai-organizer')) {
       return 'openlist-ai-organizer';
+    }
+    if (location.pathname.startsWith('/setting/scheduled-task')) {
+      return 'scheduled-task';
     }
     if (location.pathname.startsWith('/setting/role')) {
       return 'role';
@@ -221,6 +227,17 @@ function SettingApp() {
                 ),
               },
               {
+                itemKey: 'scheduled-task',
+                text: '定时任务',
+                icon: (
+                  <MenuIcon
+                    icon={<IconActivity />}
+                    bg="linear-gradient(135deg, rgba(14, 165, 233, 0.16) 0%, rgba(59, 130, 246, 0.22) 100%)"
+                    color="#1d4ed8"
+                  />
+                ),
+              },
+              {
                 itemKey: 'openlist-ai-organizer',
                 text: 'AI 文件整理',
                 icon: (
@@ -261,6 +278,17 @@ function SettingApp() {
                         icon={<IconBolt />}
                         bg="linear-gradient(135deg, rgba(14, 165, 233, 0.18) 0%, rgba(2, 132, 199, 0.22) 100%)"
                         color="#0369a1"
+                      />
+                    ),
+                  },
+                  {
+                    itemKey: 'config/bangumi',
+                    text: 'Bangumi',
+                    icon: (
+                      <MenuIcon
+                        icon={<IconActivity />}
+                        bg="linear-gradient(135deg, rgba(236, 72, 153, 0.16) 0%, rgba(244, 63, 94, 0.22) 100%)"
+                        color="#be185d"
                       />
                     ),
                   },

@@ -17,7 +17,8 @@ import {
   updateAiToolCallRecord,
 } from './ai-chat-conversation.service';
 import { emitAiConversationEvent } from './ai-event-bus.service';
-import { executeAiRegisteredTool, listAiRegisteredTools } from './ai-chat-tool-registry.service';
+import { listAiModelTools } from './ai-chat-tool-registry.service';
+import { executeAiInternalTool } from './ai-internal-tool-executor.service';
 import { serializeJson } from './ai-chat-shared.service';
 import { badRequest } from '../../shared/http-handler';
 import { AiMessageModel } from '../model/ai-message.model';
@@ -57,7 +58,7 @@ const chunkText = (text: string) => {
 };
 
 const buildPlannerMessages = async (conversationId: string): Promise<InternalAiMessage[]> => {
-  const tools = listAiRegisteredTools();
+  const tools = listAiModelTools();
   const rows = await AiMessageModel.findAll({
     where: {
       conversation_id: conversationId,
@@ -195,16 +196,22 @@ const executeToolCall = async (
 
   try {
     const parsedArgs = JSON.parse(toolCall.arguments_json || '{}') as Record<string, unknown>;
-    const result = await executeAiRegisteredTool(
+    const result = await executeAiInternalTool(
       toolCall.tool_name,
       {
         user,
       },
-      parsedArgs
+      parsedArgs,
+      {
+        allowWriteExecution: true,
+      }
     );
+    if (result.status !== 'completed') {
+      throw new Error('tool_waiting_approval_during_execution');
+    }
     const updated = await updateAiToolCallRecord(toolCallId, {
       status: 'completed',
-      result_json: serializeJson(result),
+      result_json: serializeJson(result.frontendResult),
       finished_at: new Date(),
     });
     await createAiMessageRecord({
@@ -215,7 +222,7 @@ const executeToolCall = async (
       content: JSON.stringify(
         {
           toolName: updated.toolName,
-          result,
+          result: result.modelResult,
         },
         null,
         2
@@ -292,7 +299,7 @@ const continueAiRun = async (
       return finalRun;
     }
 
-    const toolDefinitions = listAiRegisteredTools();
+    const toolDefinitions = listAiModelTools();
     const toolDefinition = toolDefinitions.find(item => item.name === plannerResult.toolName);
     if (!toolDefinition) {
       throw new Error(`unknown_tool:${plannerResult.toolName}`);
@@ -336,6 +343,24 @@ const continueAiRun = async (
     await emitAiConversationEvent(conversationId, 'tool_call.created', { toolCall }, { runId });
 
     if (toolCall.requiresApproval) {
+      const approvalPreview = await executeAiInternalTool(
+        plannerResult.toolName,
+        {
+          user,
+        },
+        plannerResult.arguments || {},
+        {
+          allowWriteExecution: false,
+        }
+      );
+      const waitingToolCall =
+        approvalPreview.status === 'waiting_approval'
+          ? await updateAiToolCallRecord(toolCall.id, {
+              result_json: serializeJson({
+                summary: approvalPreview.frontendSummary,
+              }),
+            })
+          : toolCall;
       const waitingRun = await updateAiRunRecord(runId, {
         status: 'waiting_approval',
       });
@@ -344,7 +369,7 @@ const continueAiRun = async (
         conversationId,
         'tool_call.waiting_approval',
         {
-          toolCall,
+          toolCall: waitingToolCall,
         },
         { runId }
       );

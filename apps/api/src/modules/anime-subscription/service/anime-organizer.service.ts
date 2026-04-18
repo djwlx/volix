@@ -92,6 +92,19 @@ export const organizeDownloadedAnime = async (
   item: AnimeSubscriptionItemEntity,
   torrent: QbittorrentTorrentInfo
 ) => {
+  const copied = await copyDownloadedAnimeToLibrary(subscription, item, torrent);
+  return {
+    organized: copied.copied,
+    targetPath: copied.targetPath,
+    reason: copied.reason,
+  };
+};
+
+export const copyDownloadedAnimeToLibrary = async (
+  subscription: AnimeSubscriptionEntity,
+  item: AnimeSubscriptionItemEntity,
+  torrent: QbittorrentTorrentInfo
+) => {
   const subscriptionId = subscription.id as string | number;
 
   if (!String(subscription.series_root_path || '').trim()) {
@@ -101,7 +114,7 @@ export const organizeDownloadedAnime = async (
       reason: 'series_root_path_missing',
     });
     return {
-      organized: false,
+      copied: false,
       reason: '未设置最终番剧目录，暂时无法自动整理',
     };
   }
@@ -118,7 +131,7 @@ export const organizeDownloadedAnime = async (
       reason: 'openlist_download_path_inaccessible',
     });
     return {
-      organized: false,
+      copied: false,
       reason: 'openlist_download_path 无法通过 OpenList 访问，暂时无法自动整理',
     };
   }
@@ -138,7 +151,7 @@ export const organizeDownloadedAnime = async (
       reason: 'source_not_found_in_openlist_download_path',
     });
     return {
-      organized: false,
+      copied: false,
       reason: '未在 OpenList 可见下载目录中找到已完成文件',
     };
   }
@@ -150,7 +163,14 @@ export const organizeDownloadedAnime = async (
     source,
   });
 
-  const target = getTargetParts(subscription, item, source.srcName);
+  const preserveSourceName = item.episode == null;
+  const target = preserveSourceName
+    ? {
+        targetPath: path.posix.join(subscription.series_root_path, source.srcName),
+        targetDir: subscription.series_root_path,
+        targetName: source.srcName,
+      }
+    : getTargetParts(subscription, item, source.srcName);
   await ensureOpenlistDirExists(sdk, target.targetDir);
   logAnimeEvent(subscriptionId, 'organize_move_start', {
     itemId: item.id,
@@ -161,6 +181,7 @@ export const organizeDownloadedAnime = async (
     dstDir: target.targetDir,
     targetPath: target.targetPath,
     targetName: target.targetName,
+    preserveSourceName,
   });
 
   try {
@@ -184,7 +205,8 @@ export const organizeDownloadedAnime = async (
   }
 
   return {
-    organized: true,
+    copied: true,
     targetPath: target.targetPath,
+    copyMode: preserveSourceName ? 'preserve_source_name' : 'rename_to_target',
   };
 };

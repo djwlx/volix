@@ -10,6 +10,7 @@ export enum AppConfigEnum {
   account_qbittorrent = 'account_qbittorrent',
   account_openlist = 'account_openlist',
   account_smtp = 'account_smtp',
+  account_bangumi = 'account_bangumi',
   register_email_verify_enabled = 'register_email_verify_enabled',
 }
 

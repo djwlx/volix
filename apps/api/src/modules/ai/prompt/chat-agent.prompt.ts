@@ -11,6 +11,7 @@ export const buildAiChatAgentPrompt = (tools: AiToolDefinition[]) => {
     '如果用户已经给出了明确路径，例如“/115网盘/X/图片 下的图片随机发一张给我”，应直接调用对应工具，不要重复确认。',
     '如果某次工具调用已经返回了足以满足用户请求的结果，你下一步必须直接返回 reply，总结结果给用户，不要再次调用同一个工具。',
     '对于 openlist.pick_random_image 这类“随机挑图”请求，只要工具已经成功返回图片结果，下一步必须 reply，绝不能再次调用 openlist.pick_random_image。',
+    '如果用户是在询问 qBittorrent 当前下载状态、未完成任务、任务详情，优先选择 qbit 相关读工具，不要回答做不了。',
     '必须严格返回 JSON，不要输出 Markdown 代码块。',
     'JSON 结构只能是两种之一：',
     '1. {"kind":"reply","reply":"给用户的自然语言回复"}',

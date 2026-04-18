@@ -85,6 +85,7 @@ interface CreateDirectoryReaderOptions {
   cacheTtlMs?: number;
   minRequestIntervalMs?: number;
   pageSize?: number;
+  maxPages?: number;
   now?: () => number;
 }
 
@@ -162,6 +163,14 @@ const chunk = <T>(list: T[], size: number) => {
   return result;
 };
 
+const pickRandomIndex = (length: number, random: () => number) => {
+  if (length <= 1) {
+    return 0;
+  }
+  const randomValue = Math.min(0.999999, Math.max(0, random()));
+  return Math.floor(randomValue * length);
+};
+
 const persistDirectoryCacheEntry = async (
   cacheTaskId: string | undefined,
   cacheEntry: { path: string; updatedAt: string; entries: OpenlistFsObject[] }
@@ -184,14 +193,16 @@ const fetchPagedDirectoryEntries = async (
   options?: {
     forceRefresh?: boolean;
     pageSize?: number;
+    maxPages?: number;
   }
 ) => {
   const pageSize = Math.max(1, options?.pageSize ?? OPENLIST_SCAN_PAGE_SIZE);
+  const maxPages = Math.max(1, options?.maxPages ?? Number.POSITIVE_INFINITY);
   const entries: OpenlistFsObject[] = [];
   let page = 1;
   let total = Number.POSITIVE_INFINITY;
 
-  while (entries.length < total) {
+  while (entries.length < total && page <= maxPages) {
     const list = await sdk.listFs({
       path: currentPath,
       refresh: Boolean(options?.forceRefresh && page === 1),
@@ -381,10 +392,15 @@ const buildRetrievedContext = (chunkItems: IndexedOrganizerTreeNode[], allItems:
 
 const getOpenlistSdk = async (options?: { userAgent?: string }) => {
   const account = await getOpenlistAccountConfig();
-  const sdk = createOpenlistSdk({
-    apiHost: account.baseUrl,
-    userAgent: options?.userAgent,
-  });
+  const sdk = createThrottledOpenlistSdk(
+    createOpenlistSdk({
+      apiHost: account.baseUrl,
+      userAgent: options?.userAgent,
+    }),
+    {
+      minRequestIntervalMs: OPENLIST_SCAN_MIN_REQUEST_INTERVAL_MS,
+    }
+  );
   await sdk.loginWithHashedPassword(account.username, account.password);
   return sdk;
 };
@@ -424,6 +440,7 @@ export const createDirectoryReader = async (
   const cacheTtlMs = options?.cacheTtlMs ?? OPENLIST_SCAN_CACHE_TTL_MS;
   const minRequestIntervalMs = options?.minRequestIntervalMs ?? 0;
   const pageSize = options?.pageSize ?? OPENLIST_SCAN_PAGE_SIZE;
+  const maxPages = options?.maxPages ?? Number.POSITIVE_INFINITY;
   const now = options?.now || (() => Date.now());
   const cache = new Map<string, OpenlistFsObject[]>();
   const cacheUpdatedAtMap = new Map<string, number>();
@@ -458,6 +475,7 @@ export const createDirectoryReader = async (
       fetchPagedDirectoryEntries(sdk, cacheKey, {
         forceRefresh: Boolean(options?.forceRefresh),
         pageSize,
+        maxPages,
       });
 
     const request = (
@@ -754,7 +772,10 @@ export const browseOpenlistAiOrganizerPath = async (
   const sdk = await getOpenlistSdk({
     userAgent: options?.userAgent,
   });
-  const reader = await createDirectoryReader(sdk);
+  const reader = await createDirectoryReader(sdk, {
+    minRequestIntervalMs: OPENLIST_SCAN_MIN_REQUEST_INTERVAL_MS,
+    maxPages: 1,
+  });
   const currentPath = await resolveFirstOpenlistAiSearchRoot(reader, String(rawPath || '/'));
   const entries = await reader.read(currentPath);
   const directories = entries.filter(item => item.is_dir);
@@ -841,7 +862,10 @@ export const listOpenlistPathEntries = async (
   const sdk = await getOpenlistSdk({
     userAgent: requestOptions?.userAgent,
   });
-  const reader = await createDirectoryReader(sdk);
+  const reader = await createDirectoryReader(sdk, {
+    minRequestIntervalMs: OPENLIST_SCAN_MIN_REQUEST_INTERVAL_MS,
+    maxPages: 1,
+  });
   const currentPath = await resolveFirstOpenlistAiSearchRoot(reader, String(rawPath || '/'));
   const entries = await reader.read(currentPath);
 
@@ -861,6 +885,82 @@ export const listOpenlistPathEntries = async (
           thumb: item.thumb,
         };
       }),
+  };
+};
+
+const collectRandomOpenlistImageUnderRoot = async (
+  reader: OpenlistRecursiveReader,
+  rootPath: string,
+  random: () => number
+) => {
+  const visited = new Set<string>();
+  let scannedDirectoryCount = 0;
+
+  const visit = async (
+    currentPath: string
+  ): Promise<{
+    imageCandidate: {
+      rootPath: string;
+      name: string;
+      path: string;
+      size: number;
+      modified: string;
+      thumb?: string;
+    } | null;
+    totalImageCount: number;
+  }> => {
+    if (visited.has(currentPath)) {
+      return {
+        imageCandidate: null,
+        totalImageCount: 0,
+      };
+    }
+    visited.add(currentPath);
+    scannedDirectoryCount += 1;
+
+    const entries = await reader.read(currentPath);
+    const imageCandidates = entries
+      .filter(entry => !entry.is_dir && isImageFileName(entry.name))
+      .map(entry => ({
+        rootPath,
+        name: entry.name,
+        path: path.posix.join(currentPath, entry.name),
+        size: entry.size,
+        modified: entry.modified,
+        thumb: entry.thumb,
+      }));
+
+    if (imageCandidates.length > 0) {
+      return {
+        imageCandidate: imageCandidates[pickRandomIndex(imageCandidates.length, random)],
+        totalImageCount: imageCandidates.length,
+      };
+    }
+
+    const remainingDirectories = entries
+      .filter(entry => entry.is_dir)
+      .map(entry => path.posix.join(currentPath, entry.name));
+
+    while (remainingDirectories.length > 0) {
+      const nextIndex = pickRandomIndex(remainingDirectories.length, random);
+      const [nextPath] = remainingDirectories.splice(nextIndex, 1);
+      const result = await visit(nextPath);
+      if (result.imageCandidate) {
+        return result;
+      }
+    }
+
+    return {
+      imageCandidate: null,
+      totalImageCount: 0,
+    };
+  };
+
+  const result = await visit(rootPath);
+  return {
+    scannedDirectoryCount,
+    imageCandidate: result.imageCandidate,
+    totalImageCount: result.totalImageCount,
   };
 };
 
@@ -923,74 +1023,118 @@ export const pickRandomOpenlistImageForAi = async (params: {
     badRequest(`OpenList 中未找到匹配路径: ${String(params.rawPath || '').trim() || '/'}`);
   }
 
-  const imageCandidates: Array<{
+  const random = params.random || Math.random;
+  let scannedDirectoryCount = 0;
+  let selected: {
     rootPath: string;
     name: string;
     path: string;
     size: number;
     modified: string;
     thumb?: string;
-  }> = [];
-  let scannedDirectoryCount = 0;
+  } | null = null;
+  let totalImageCount = 0;
 
   for (const rootPath of rootPaths) {
-    const result = await collectOpenlistImagesUnderRoot(params.reader, rootPath);
+    const result = await collectRandomOpenlistImageUnderRoot(params.reader, rootPath, random);
     scannedDirectoryCount += result.scannedDirectoryCount;
-    imageCandidates.push(...result.imageCandidates);
+    if (result.imageCandidate) {
+      selected = result.imageCandidate;
+      totalImageCount = result.totalImageCount;
+      break;
+    }
   }
 
-  if (imageCandidates.length === 0) {
-    badRequest(`路径 ${String(params.rawPath || '').trim() || '/'} 下没有找到图片文件`);
-  }
-
-  const randomValue = Math.min(0.999999, Math.max(0, params.random?.() ?? Math.random()));
-  const selected = imageCandidates[Math.floor(randomValue * imageCandidates.length)];
-  const file = await params.getFs(selected.path);
-  const sourceImageUrl = file.raw_url || selected.thumb || '';
+  const finalSelected = selected || badRequest(`路径 ${String(params.rawPath || '').trim() || '/'} 下没有找到图片文件`);
+  const file = await params.getFs(finalSelected.path);
+  const sourceImageUrl = file.raw_url || finalSelected.thumb || '';
   let cachedImageUrl = sourceImageUrl;
 
   if (sourceImageUrl) {
     try {
       const cachedFile = await cacheRemoteAiImageAsset({
         sourceUrl: sourceImageUrl,
-        fileName: selected.name,
-        cacheKey: createHash('sha1').update(`${selected.path}|${selected.modified}|${selected.size}`).digest('hex'),
+        fileName: finalSelected.name,
+        cacheKey: createHash('sha1')
+          .update(`${finalSelected.path}|${finalSelected.modified}|${finalSelected.size}`)
+          .digest('hex'),
       });
       cachedImageUrl = cachedFile.publicPath;
     } catch (error) {
       taskLog.warn(
-        `[OPENLIST_AI][image-cache][warn] ${selected.path} -> ${String((error as Error)?.message || 'cache_failed')}`
+        `[OPENLIST_AI][image-cache][warn] ${finalSelected.path} -> ${String(
+          (error as Error)?.message || 'cache_failed'
+        )}`
       );
     }
   }
 
   return {
     kind: 'image',
-    rootPath: selected.rootPath,
-    fileName: selected.name,
-    selectedPath: selected.path,
+    rootPath: finalSelected.rootPath,
+    fileName: finalSelected.name,
+    selectedPath: finalSelected.path,
     imageUrl: cachedImageUrl,
     previewUrl: cachedImageUrl,
     sourceImageUrl,
-    totalImageCount: imageCandidates.length,
+    totalImageCount,
     scannedDirectoryCount,
-    size: selected.size,
-    modified: selected.modified,
+    size: finalSelected.size,
+    modified: finalSelected.modified,
   };
+};
+
+const isRetryableOpenlistImageSearchError = (error: unknown) => {
+  const message = String((error as Error)?.message || '');
+  return message.includes('OpenList 中未找到匹配路径:') || message.includes('下没有找到图片文件');
+};
+
+export const pickRandomOpenlistImageWithPagedFallbackForAi = async (params: {
+  rawPath?: string;
+  createReader: (maxPages: number) => Promise<OpenlistRecursiveReader>;
+  getFs: (targetPath: string) => Promise<OpenlistFsGetData>;
+  random?: () => number;
+  maxPageAttempts?: number;
+}) => {
+  const maxPageAttempts = Math.max(1, params.maxPageAttempts ?? 2);
+  let lastError: unknown;
+
+  for (let maxPages = 1; maxPages <= maxPageAttempts; maxPages += 1) {
+    try {
+      const reader = await params.createReader(maxPages);
+      return await pickRandomOpenlistImageForAi({
+        rawPath: params.rawPath,
+        reader,
+        getFs: params.getFs,
+        random: params.random,
+      });
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableOpenlistImageSearchError(error) || maxPages >= maxPageAttempts) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError;
 };
 
 export const pickRandomOpenlistImageFromPath = async (rawPath?: string, options?: { userAgent?: string }) => {
   const sdk = await getOpenlistSdk({
     userAgent: options?.userAgent,
   });
-  const reader = await createDirectoryReader(sdk);
-  return pickRandomOpenlistImageForAi({
+  return pickRandomOpenlistImageWithPagedFallbackForAi({
     rawPath,
-    reader,
+    createReader: maxPages =>
+      createDirectoryReader(sdk, {
+        minRequestIntervalMs: OPENLIST_SCAN_MIN_REQUEST_INTERVAL_MS,
+        maxPages,
+      }),
     getFs: targetPath =>
       sdk.getFs({
         path: targetPath,
       }),
+    maxPageAttempts: 2,
   });
 };
 
@@ -1187,5 +1331,35 @@ export const executeOpenlistAiOrganizerPlan = async (
     skippedCount,
     failedCount,
     items: results,
+  };
+};
+
+export const runOpenlistAnimeLibraryOrganize = async (rootPath: string, options?: { duplicateFolderName?: string }) => {
+  const analysisResult = await analyzeOpenlistFolderWithAi({
+    rootPath,
+    duplicateFolderName: options?.duplicateFolderName,
+    userInstruction:
+      '这是自动追番下载完成后的番剧目录整理。请保守地整理当前番剧目录中的文件与子目录，优先修正命名和层级，不要跨番剧移动。',
+  });
+
+  const changedItems = analysisResult.items.filter(item => item.hasChange);
+  if (changedItems.length === 0) {
+    return {
+      summary: analysisResult.summary,
+      actionCount: 0,
+      executionResult: null,
+    };
+  }
+
+  const executionResult = await executeOpenlistAiOrganizerPlan({
+    rootPath,
+    duplicateFolderName: options?.duplicateFolderName,
+    items: changedItems,
+  });
+
+  return {
+    summary: analysisResult.summary,
+    actionCount: changedItems.length,
+    executionResult,
   };
 };

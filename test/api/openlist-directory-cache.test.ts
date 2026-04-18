@@ -140,6 +140,36 @@ describe('openlist directory cache', () => {
     expect(pagedMock.calls[1]?.page).toBe(2);
     expect(pagedMock.calls[0]?.perPage).toBe(500);
 
+    const firstPageOnlyMock = createMockSdk(async ({ path: targetPath, page = 1, perPage = 0 }) => {
+      if (targetPath !== '/paged-library') {
+        return { content: [], total: 0 };
+      }
+
+      const total = 501;
+      const start = (page - 1) * perPage;
+      const end = Math.min(start + perPage, total);
+      const content = Array.from({ length: Math.max(0, end - start) }, (_, index) => ({
+        name: `item-${start + index}`,
+        size: 1,
+        is_dir: false,
+        modified: new Date().toISOString(),
+      }));
+
+      return { content, total };
+    });
+
+    const firstPageOnlyReader = await createDirectoryReader(firstPageOnlyMock.sdk, {
+      cacheTaskId: 'task-paged-limit-test',
+      cacheTtlMs: 0,
+      minRequestIntervalMs: 0,
+      maxPages: 1,
+    });
+
+    const firstPageOnlyResult = await firstPageOnlyReader.read('/paged-library', { forceRefresh: true });
+    expect(firstPageOnlyResult).toHaveLength(500);
+    expect(firstPageOnlyMock.calls).toHaveLength(1);
+    expect(firstPageOnlyMock.calls[0]?.page).toBe(1);
+
     const writeCalls: Array<{ type: string; at: number }> = [];
     const rawSdk = {
       getToken: () => '',

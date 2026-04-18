@@ -23,6 +23,7 @@ export interface AnimeMatchResult {
   confidence: number;
   releaseGroup: string;
   reason: string;
+  matchKind?: 'episode' | 'collection';
 }
 
 interface NameCandidate {
@@ -38,6 +39,7 @@ interface ParsedSeasonEpisode {
 }
 
 const RESOLUTION_PRIORITY = ['2160p', '1440p', '1080p', '720p', '480p'];
+const COLLECTION_KEYWORD_PATTERN = /\b(season\s*pack|complete|fin(?:al)?|bd\s*box)\b|合集|全集|全\d+话/i;
 
 const normalizeText = (value: string) => {
   return value
@@ -165,6 +167,13 @@ const buildNameCandidates = (context: AnimeMatchContext) => {
   );
 };
 
+const detectMatchKind = (title: string, parsedEpisode: ParsedSeasonEpisode) => {
+  if (parsedEpisode.episode) {
+    return 'episode' as const;
+  }
+  return COLLECTION_KEYWORD_PATTERN.test(title) ? ('collection' as const) : ('episode' as const);
+};
+
 const runRuleMatch = (context: AnimeMatchContext, input: AnimeMatchInput): AnimeMatchResult => {
   const candidates = buildNameCandidates(context);
   const normalizedTitle = normalizeText(input.title);
@@ -176,6 +185,7 @@ const runRuleMatch = (context: AnimeMatchContext, input: AnimeMatchInput): Anime
     seasonEpisode.seasonSource === 'explicit'
       ? seasonEpisode.season
       : matchedCandidate?.seasonHint || seasonEpisode.season;
+  const matchKind = detectMatchKind(input.title, seasonEpisode);
   const resolution = detectResolution(input.title);
   const subtitleLanguage = detectSubtitleLanguage(input.title, input.description);
 
@@ -183,7 +193,7 @@ const runRuleMatch = (context: AnimeMatchContext, input: AnimeMatchInput): Anime
     matched: Boolean(matchedCandidate),
     normalizedSeriesName: context.name,
     season: inferredSeason,
-    episode: seasonEpisode.episode,
+    episode: matchKind === 'collection' ? null : seasonEpisode.episode,
     subtitleLanguage,
     resolution,
     confidence: matchedCandidate ? 0.9 : 0.2,
@@ -193,6 +203,7 @@ const runRuleMatch = (context: AnimeMatchContext, input: AnimeMatchInput): Anime
         ? `规则命中：${matchedCandidate.raw}，按别名季数映射为 S${String(matchedCandidate.seasonHint).padStart(2, '0')}`
         : `规则命中：${matchedCandidate.raw}`
       : '规则未命中',
+    matchKind,
   };
 };
 
@@ -208,12 +219,18 @@ const normalizeAiMatchResult = (
     matched: raw?.matched === true,
     normalizedSeriesName: String(raw?.normalizedSeriesName || context.name).trim() || context.name,
     season: Number.isFinite(Number(raw?.season)) ? Number(raw?.season) : base.season,
-    episode: Number.isFinite(Number(raw?.episode)) ? Number(raw?.episode) : base.episode,
+    episode:
+      raw?.matchKind === 'collection' || base.matchKind === 'collection'
+        ? null
+        : Number.isFinite(Number(raw?.episode))
+        ? Number(raw?.episode)
+        : base.episode,
     subtitleLanguage: String(raw?.subtitleLanguage || base.subtitleLanguage || '').trim(),
     resolution: String(raw?.resolution || base.resolution || '').trim(),
     confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : base.confidence,
     releaseGroup: base.releaseGroup,
     reason: String(raw?.reason || 'AI 判定').trim(),
+    matchKind: raw?.matchKind === 'collection' || base.matchKind === 'collection' ? 'collection' : 'episode',
   };
 };
 
@@ -230,6 +247,7 @@ const runAiMatch = async (context: AnimeMatchContext, input: AnimeMatchInput) =>
   "normalizedSeriesName": "string",
   "season": 1,
   "episode": 2,
+  "matchKind": "episode|collection",
   "subtitleLanguage": "zh|en|jp|unknown",
   "resolution": "2160p|1440p|1080p|720p|480p|unknown",
   "confidence": 0.93,
@@ -267,7 +285,7 @@ export const matchAnimeRssItem = async (
   input: AnimeMatchInput
 ): Promise<AnimeMatchResult> => {
   const ruleResult = runRuleMatch(context, input);
-  if (ruleResult.matched && ruleResult.episode) {
+  if (ruleResult.matched && (ruleResult.episode || ruleResult.matchKind === 'collection')) {
     return ruleResult;
   }
   if (!context.useAi) {

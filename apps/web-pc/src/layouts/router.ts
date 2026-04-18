@@ -19,10 +19,12 @@ import SettingConfigQbittorrentApp from '@/apps/setting/pages/config/config-qbit
 import SettingConfigOpenlistApp from '@/apps/setting/pages/config/config-openlist';
 import SettingConfigSmtpApp from '@/apps/setting/pages/config/config-smtp';
 import SettingConfigAiApp from '@/apps/setting/pages/config/config-ai';
+import SettingConfigBangumiApp from '@/apps/setting/pages/config/config-bangumi';
 import SettingAnimeSubscriptionApp from '@/apps/setting/pages/anime-subscription';
 import SettingAnimeSubscriptionAddApp from '@/apps/setting/pages/anime-subscription/add';
 import SettingAnimeSubscriptionEditApp from '@/apps/setting/pages/anime-subscription/edit';
 import SettingOpenlistAiOrganizerApp from '@/apps/setting/pages/openlist-ai-organizer';
+import SettingScheduledTaskApp from '@/apps/setting/pages/scheduled-task';
 import SettingAiChatApp from '@/apps/setting/pages/ai-chat';
 import SettingSystemApp from '@/apps/setting/pages/system';
 import RedirectToSetting from './redirect-to-setting';
@@ -89,8 +91,10 @@ export const router = createBrowserRouter([
               { path: 'anime-subscription/add', Component: SettingAnimeSubscriptionAddApp },
               { path: 'anime-subscription/edit/:id', Component: SettingAnimeSubscriptionEditApp },
               { path: 'openlist-ai-organizer', Component: SettingOpenlistAiOrganizerApp },
+              { path: 'scheduled-task', Component: SettingScheduledTaskApp },
               { path: 'config/115', Component: SettingConfig115App },
               { path: 'config/ai', Component: SettingConfigAiApp },
+              { path: 'config/bangumi', Component: SettingConfigBangumiApp },
               { path: 'config/qbittorrent', Component: SettingConfigQbittorrentApp },
               { path: 'config/openlist', Component: SettingConfigOpenlistApp },
               { path: 'config/smtp', Component: SettingConfigSmtpApp },

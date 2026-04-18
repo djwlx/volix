@@ -56,8 +56,8 @@ interface ProcessedCandidate {
   detail_url?: string;
   torrent_url?: string;
   published_at?: string;
-  season: number;
-  episode: number;
+  season?: number | null;
+  episode?: number | null;
   episode_raw: string;
   resolution?: string;
   subtitle_language?: string;
@@ -65,9 +65,51 @@ interface ProcessedCandidate {
   score: number;
   target_path?: string;
   reason: string;
+  matchKind?: 'episode' | 'collection';
 }
 
 const runningSubscriptionChecks = new Map<string, Promise<unknown>>();
+
+const getDownloadCandidateGroupKey = (item: {
+  rss_guid?: string;
+  season?: number | null;
+  episode?: number | null;
+  matchKind?: 'episode' | 'collection';
+}) => {
+  if (item.matchKind === 'collection') {
+    const guid = String(item.rss_guid || '').trim();
+    return guid ? `collection:${guid}` : '';
+  }
+  return getEpisodeKey(item.season, item.episode);
+};
+
+export const buildAnimeDownloadSelectionForTest = <
+  T extends {
+    rss_guid?: string;
+    season?: number | null;
+    episode?: number | null;
+    matchKind?: 'episode' | 'collection';
+  }
+>(
+  processedCandidates: T[]
+) => {
+  const grouped = processedCandidates.reduce<Record<string, T[]>>((acc, item) => {
+    const key = getDownloadCandidateGroupKey(item);
+    if (!key) {
+      return acc;
+    }
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(item);
+    return acc;
+  }, {});
+
+  return {
+    grouped,
+    groupedKeys: Object.keys(grouped),
+  };
+};
 
 const buildSeasonEpisodeMapSummary = (existingEpisodeMap: Record<number, Record<number, boolean>>) => {
   const result: Record<string, number[]> = {};
@@ -273,12 +315,13 @@ export const runAnimeSubscriptionCheck = async (
         description: rssItem.description,
         matched: matched.matched,
         season: matched.season || 1,
-        episode: matched.episode || 0,
+        episode: matched.episode ?? null,
         resolution: matched.resolution,
         subtitle_language: matched.subtitleLanguage,
         release_group: matched.releaseGroup,
         score: Math.round(matched.confidence * 100),
         reason: matched.reason,
+        matchKind: matched.matchKind || 'episode',
       });
     }
 
@@ -327,7 +370,7 @@ export const runAnimeSubscriptionCheck = async (
         const preliminaryMap = new Map(preliminaryMatches.map(item => [item.rss_guid, item]));
         for (const decision of aiPlan.decisions) {
           const source = preliminaryMap.get(decision.rssGuid);
-          if (!source || !decision.shouldDownload || !decision.episode) {
+          if (!source || !decision.shouldDownload || (!decision.episode && source.matchKind !== 'collection')) {
             continue;
           }
 
@@ -347,6 +390,7 @@ export const runAnimeSubscriptionCheck = async (
             score: Math.max(source.score || 0, Math.round((decision.confidence || 0) * 100)),
             target_path: decision.targetPath,
             reason: decision.reason,
+            matchKind: source.matchKind,
           });
         }
 
@@ -363,10 +407,13 @@ export const runAnimeSubscriptionCheck = async (
 
     if (processedCandidates.length === 0) {
       for (const matched of preliminaryMatches) {
-        if (!matched.matched || !matched.episode) {
+        if (!matched.matched || (!matched.episode && matched.matchKind !== 'collection')) {
           continue;
         }
-        if (isExistingEpisode(existingEpisodeMap, matched.season || 1, matched.episode || 0)) {
+        if (
+          matched.matchKind !== 'collection' &&
+          isExistingEpisode(existingEpisodeMap, matched.season || 1, matched.episode || 0)
+        ) {
           continue;
         }
 
@@ -385,21 +432,12 @@ export const runAnimeSubscriptionCheck = async (
           release_group: matched.release_group,
           score: matched.score,
           reason: matched.reason,
+          matchKind: matched.matchKind,
         });
       }
     }
 
-    const grouped = processedCandidates.reduce<Record<string, typeof processedCandidates>>((acc, item) => {
-      const key = getEpisodeKey(item.season, item.episode);
-      if (!key) {
-        return acc;
-      }
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key].push(item);
-      return acc;
-    }, {});
+    const grouped = buildAnimeDownloadSelectionForTest(processedCandidates).grouped;
 
     let queuedCount = 0;
     let skippedCount = 0;

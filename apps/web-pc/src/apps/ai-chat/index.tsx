@@ -694,6 +694,7 @@ function AiChatApp() {
                       }}
                     >
                       <Button
+                        className={styles.conversationDeleteButton}
                         theme="borderless"
                         type="tertiary"
                         icon={<IconDelete />}

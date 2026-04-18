@@ -14,7 +14,7 @@ import {
 import { getResolutionScore } from './anime-matcher.service';
 import type { AnimeSubscriptionEntity, AnimeSubscriptionItemEntity } from '../types/anime-subscription.types';
 import { logAnimeError, logAnimeEvent } from './anime-log.service';
-import { organizeDownloadedAnime } from './anime-organizer.service';
+import { runAnimePostProcess } from './anime-post-process.service';
 import { sendSmtpMail } from '../../user/service/email.service';
 import type { SmtpAccountConfigItem } from '@volix/types';
 
@@ -34,6 +34,7 @@ interface DownloadCandidate {
   score: number;
   target_path?: string;
   reason: string;
+  matchKind?: 'episode' | 'collection';
 }
 
 const parseSmtpAccountConfig = (raw?: string): SmtpAccountConfigItem | null => {
@@ -96,7 +97,7 @@ const sendOrganizedNotificationMail = async (
     smtpPassword: smtp.password,
     fromEmail: smtp.fromEmail,
     toEmail: notifyEmail,
-    subject: `Volix 自动追番已整理完成：${subscription.name}`,
+    subject: `Volix 自动追番已复制并整理完成：${subscription.name}`,
     text: [
       `番剧：${subscription.name}`,
       `标题：${item.rss_title}`,
@@ -104,12 +105,13 @@ const sendOrganizedNotificationMail = async (
         ? `季集：S${String(item.season).padStart(2, '0')}E${String(item.episode).padStart(2, '0')}`
         : '',
       `目标路径：${targetPath}`,
+      '状态：已完成 AI 文件整理',
     ]
       .filter(Boolean)
       .join('\n'),
     html: `
       <div>
-        <p>自动追番已整理完成。</p>
+        <p>自动追番已复制完成，并已完成 AI 文件整理。</p>
         <p><b>番剧：</b>${subscription.name}</p>
         <p><b>标题：</b>${item.rss_title}</p>
         ${
@@ -527,7 +529,7 @@ export const syncAnimeDownloadStatus = async (subscription?: AnimeSubscriptionEn
             itemId: item.id,
             qbitHash: item.qbit_hash,
           });
-          const organized = await organizeDownloadedAnime(subscription, item, torrent);
+          const organized = await runAnimePostProcess({ subscription, item, torrent });
           if (organized.organized) {
             const targetPath = String(organized.targetPath || '').trim();
             organizedCount += 1;
@@ -540,6 +542,8 @@ export const syncAnimeDownloadStatus = async (subscription?: AnimeSubscriptionEn
               itemId: item.id,
               qbitHash: item.qbit_hash,
               targetPath,
+              stage: organized.stage,
+              copyMode: organized.copyMode,
             });
             try {
               await sendOrganizedNotificationMail(subscription, item, targetPath);

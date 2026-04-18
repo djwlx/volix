@@ -3,6 +3,7 @@ import { AppFeature } from '@volix/types';
 import type {
   AccountConfigMap,
   AiAccountConfigItem,
+  BangumiAccountConfigItem,
   AdminCreateUserPayload,
   AdminUpdateUserPayload,
   AssignUserRolePayload,
@@ -27,6 +28,7 @@ import request from '../../../utils/request';
 import { badRequest, unauthorized } from '../../shared/http-handler';
 import { AppConfigEnum, getConfig, setConfig } from '../../config';
 import { createOpenlistSdk, createQbittorrentSdk } from '../../../sdk';
+import { createBangumiSdk } from '../../../sdk';
 import {
   addRole,
   addUser,
@@ -61,6 +63,7 @@ const ACCOUNT_CONFIG_KEY_MAP: Record<AccountConfigPlatform, AppConfigEnum> = {
   [AccountConfigPlatform.QBITTORRENT]: AppConfigEnum.account_qbittorrent,
   [AccountConfigPlatform.OPENLIST]: AppConfigEnum.account_openlist,
   [AccountConfigPlatform.SMTP]: AppConfigEnum.account_smtp,
+  [AccountConfigPlatform.BANGUMI]: AppConfigEnum.account_bangumi,
 };
 const REGISTER_EMAIL_VERIFY_CONFIG_KEY = AppConfigEnum.register_email_verify_enabled;
 
@@ -229,6 +232,28 @@ const normalizeAiModelListConfig = (config: unknown): Pick<AiAccountConfigItem, 
   };
 };
 
+const normalizeBangumiAccountConfig = (config: unknown): BangumiAccountConfigItem => {
+  if (!config || typeof config !== 'object') {
+    badRequest('Bangumi 配置格式错误');
+  }
+
+  const raw = config as Partial<BangumiAccountConfigItem>;
+  const baseUrl = typeof raw.baseUrl === 'string' ? raw.baseUrl.trim() : '';
+  const accessToken = typeof raw.accessToken === 'string' ? raw.accessToken.trim() : '';
+
+  if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
+    badRequest('Bangumi baseUrl 必须是 http/https 地址');
+  }
+  if (!accessToken) {
+    badRequest('Bangumi accessToken 不能为空');
+  }
+
+  return {
+    baseUrl,
+    accessToken,
+  };
+};
+
 const parseServiceAccountConfig = (raw?: string): ServiceAccountConfigItem | null => {
   if (!raw) {
     return null;
@@ -257,6 +282,17 @@ const parseAiAccountConfig = (raw?: string): AiAccountConfigItem | null => {
   }
   try {
     return normalizeAiAccountConfig(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+};
+
+const parseBangumiAccountConfig = (raw?: string): BangumiAccountConfigItem | null => {
+  if (!raw) {
+    return null;
+  }
+  try {
+    return normalizeBangumiAccountConfig(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -593,6 +629,10 @@ export const getAccountConfigs: MyMiddleware = async ctx => {
   if (configData?.[AppConfigEnum.account_smtp]) {
     result[AccountConfigPlatform.SMTP] = parseSmtpAccountConfig(configData[AppConfigEnum.account_smtp]) || undefined;
   }
+  if (configData?.[AppConfigEnum.account_bangumi]) {
+    result[AccountConfigPlatform.BANGUMI] =
+      parseBangumiAccountConfig(configData[AppConfigEnum.account_bangumi]) || undefined;
+  }
 
   return result;
 };
@@ -614,6 +654,8 @@ export const updateAccountConfig: MyMiddleware = async ctx => {
       ? normalizeSmtpAccountConfig(param.config)
       : platform === AccountConfigPlatform.AI
       ? normalizeAiAccountConfig(param.config)
+      : platform === AccountConfigPlatform.BANGUMI
+      ? normalizeBangumiAccountConfig(param.config)
       : normalizeServiceAccountConfig(param.config);
   const configKey = ACCOUNT_CONFIG_KEY_MAP[platform];
   await setConfig(configKey, JSON.stringify(config));
@@ -712,6 +754,21 @@ export const testAccountConfig: MyMiddleware = async ctx => {
       };
     }
 
+    if (platform === AccountConfigPlatform.BANGUMI) {
+      const config = normalizeBangumiAccountConfig(param.config);
+      const sdk = createBangumiSdk({
+        apiHost: config.baseUrl,
+        accessToken: config.accessToken,
+        userAgent: String(ctx.request.headers['user-agent'] || '').trim() || undefined,
+      });
+      const me = (await sdk.getMyself()) as { username?: string; nickname?: string };
+
+      return {
+        success: true,
+        message: `Bangumi 联通成功，当前用户：${me.nickname || me.username || 'unknown'}`,
+      };
+    }
+
     badRequest('当前平台暂不支持联通性测试');
   } catch (error) {
     const message =
@@ -726,6 +783,7 @@ export const testAccountConfig: MyMiddleware = async ctx => {
       [AccountConfigPlatform.QBITTORRENT]: 'qBittorrent',
       [AccountConfigPlatform.OPENLIST]: 'OpenList',
       [AccountConfigPlatform.SMTP]: 'SMTP',
+      [AccountConfigPlatform.BANGUMI]: 'Bangumi',
     };
 
     badRequest(`${platformLabelMap[platform] || '服务'}联通失败: ${message}`);

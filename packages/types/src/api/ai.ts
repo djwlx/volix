@@ -84,6 +84,7 @@ export interface AiToolDefinition {
   riskLevel: AiToolRiskLevel;
   requiresApproval: boolean;
   inputSchema: Record<string, unknown>;
+  category?: string;
 }
 
 export interface CreateAiConversationPayload {

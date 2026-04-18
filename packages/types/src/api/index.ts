@@ -11,3 +11,4 @@ export * from './file';
 export * from './openlist-ai-organizer';
 export * from './ai';
 export * from './sqlite-admin';
+export * from './scheduled-task';
