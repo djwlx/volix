@@ -60,15 +60,16 @@ function SettingScheduledTaskApp() {
         dataSource={list}
         expandedRowKeys={expandedRowKeys}
         onExpand={(expanded, record) => {
+          const task = record as ScheduledTaskResponse;
           setExpandedRowKeys(prev =>
-            expanded ? Array.from(new Set([...prev, record.id])) : prev.filter(item => item !== record.id)
+            expanded ? Array.from(new Set([...prev, task.id])) : prev.filter(item => item !== task.id)
           );
-          if (expanded && !detailMap[String(record.id)]) {
-            getScheduledTaskDetail(record.id)
+          if (expanded && !detailMap[String(task.id)]) {
+            getScheduledTaskDetail(task.id)
               .then(res => {
                 setDetailMap(prev => ({
                   ...prev,
-                  [String(record.id)]: {
+                  [String(task.id)]: {
                     logs: res.data.logs || [],
                     runs: (res.data.runs || []).map(item => ({
                       id: item.id,
@@ -83,11 +84,12 @@ function SettingScheduledTaskApp() {
           }
         }}
         expandedRowRender={record => {
-          const detail = detailMap[String(record.id)];
+          const task = record as ScheduledTaskResponse;
+          const detail = detailMap[String(task.id)];
           return (
             <Space vertical spacing={12} style={{ width: '100%' }}>
               <Typography.Text type="secondary">
-                {record.scriptContent || record.builtinHandler || record.description || '-'}
+                {task.scriptContent || task.builtinHandler || task.description || '-'}
               </Typography.Text>
               <Card bodyStyle={{ padding: 12 }}>
                 <Space vertical spacing={6} style={{ width: '100%' }}>
@@ -107,7 +109,7 @@ function SettingScheduledTaskApp() {
                   {(detail?.logs || []).length > 0 ? (
                     detail?.logs?.map((line, index) => (
                       <Typography.Paragraph
-                        key={`${record.id}-${index}`}
+                        key={`${task.id}-${index}`}
                         style={{
                           margin: 0,
                           fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
@@ -143,51 +145,54 @@ function SettingScheduledTaskApp() {
             title: '操作',
             key: 'action',
             width: 180,
-            render: (_value, record) => (
-              <Space>
-                <Button
-                  theme="borderless"
-                  loading={actionTaskId === record.id}
-                  onClick={async () => {
-                    try {
-                      setActionTaskId(record.id);
-                      await runScheduledTaskNow(record.id);
-                      Toast.success('任务已执行');
-                      await loadData();
-                    } catch (error) {
-                      const message = (error as { response?: { data?: { message?: string } } })?.response?.data
-                        ?.message;
-                      Toast.error(message || '执行失败');
-                    } finally {
-                      setActionTaskId(undefined);
-                    }
-                  }}
-                >
-                  立即执行
-                </Button>
-                <Button
-                  theme="borderless"
-                  type={record.enabled ? 'danger' : 'tertiary'}
-                  loading={actionTaskId === `${record.id}-toggle`}
-                  onClick={async () => {
-                    try {
-                      setActionTaskId(`${record.id}-toggle`);
-                      await toggleScheduledTaskByAdmin(record.id);
-                      Toast.success(record.enabled ? '任务已停用' : '任务已启用');
-                      await loadData();
-                    } catch (error) {
-                      const message = (error as { response?: { data?: { message?: string } } })?.response?.data
-                        ?.message;
-                      Toast.error(message || '切换状态失败');
-                    } finally {
-                      setActionTaskId(undefined);
-                    }
-                  }}
-                >
-                  {record.enabled ? '停用' : '启用'}
-                </Button>
-              </Space>
-            ),
+            render: (_value, record) => {
+              const task = record as ScheduledTaskResponse;
+              return (
+                <Space>
+                  <Button
+                    theme="borderless"
+                    loading={actionTaskId === task.id}
+                    onClick={async () => {
+                      try {
+                        setActionTaskId(task.id);
+                        await runScheduledTaskNow(task.id);
+                        Toast.success('任务已执行');
+                        await loadData();
+                      } catch (error) {
+                        const message = (error as { response?: { data?: { message?: string } } })?.response?.data
+                          ?.message;
+                        Toast.error(message || '执行失败');
+                      } finally {
+                        setActionTaskId(undefined);
+                      }
+                    }}
+                  >
+                    立即执行
+                  </Button>
+                  <Button
+                    theme="borderless"
+                    type={task.enabled ? 'danger' : 'tertiary'}
+                    loading={actionTaskId === `${task.id}-toggle`}
+                    onClick={async () => {
+                      try {
+                        setActionTaskId(`${task.id}-toggle`);
+                        await toggleScheduledTaskByAdmin(task.id);
+                        Toast.success(task.enabled ? '任务已停用' : '任务已启用');
+                        await loadData();
+                      } catch (error) {
+                        const message = (error as { response?: { data?: { message?: string } } })?.response?.data
+                          ?.message;
+                        Toast.error(message || '切换状态失败');
+                      } finally {
+                        setActionTaskId(undefined);
+                      }
+                    }}
+                  >
+                    {task.enabled ? '停用' : '启用'}
+                  </Button>
+                </Space>
+              );
+            },
           },
         ]}
       />
