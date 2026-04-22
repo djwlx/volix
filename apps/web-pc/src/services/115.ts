@@ -74,3 +74,11 @@ export function get115Pic(mode: 'json' | 'direct' = 'json') {
   const url = mode === 'json' ? '/115/pic?mode=json' : '/115/pic?mode=direct';
   return http.get<Random115PicResponse>(url, { responseType: mode === 'json' ? 'json' : 'blob' });
 }
+
+export function get115PicFromParent(pc: string) {
+  return http.get<Random115PicResponse>('/115/pic/parent-random', {
+    params: {
+      pc,
+    },
+  });
+}

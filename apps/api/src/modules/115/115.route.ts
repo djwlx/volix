@@ -10,6 +10,7 @@ import {
   get115QrCodeStatus,
   get115UserInfo,
   getRandom115Pic,
+  getRandom115PicByParent,
   login115ByApp,
   like115Pic,
   retry115Pic,
@@ -22,6 +23,7 @@ const router = new Router({
 
 router
   .get('/pic', http(getRandom115Pic))
+  .get('/pic/parent-random', http(getRandom115PicByParent))
   .get('/pic/info', http(get115PicInfo))
   .post('/pic/like', http(like115Pic))
   .put('/pic/info', http(set115PicInfo))

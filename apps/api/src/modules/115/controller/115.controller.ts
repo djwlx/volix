@@ -16,6 +16,7 @@ import {
   clear115PicData,
   get115PicInfoData,
   getRandom115PicMeta,
+  getRandom115PicFromParentMeta,
   like115PicData,
   retry115PicData,
   set115PicInfoData,
@@ -29,7 +30,7 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
   const { mode } = ctx.query || {};
   const isDirect = mode === 'direct';
   const isJson = mode === 'json';
-  const { url, fileName, cid, pc } = await getRandom115PicMeta(ua as string);
+  const { url, fileName, cid, pc, path, parentPath, notice } = await getRandom115PicMeta(ua as string);
 
   if (isDirect) {
     const streamResult = await request.get(url, {
@@ -49,6 +50,9 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
       fileName,
       cid,
       pc,
+      path,
+      parentPath,
+      notice,
     };
   }
 
@@ -64,6 +68,16 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
 
 export const get115PicInfo: MyMiddleware = async () => {
   return get115PicInfoData();
+};
+
+export const getRandom115PicByParent: MyMiddleware = async ctx => {
+  const ua = ctx.request.headers['user-agent'];
+  const pc = String(ctx.query?.pc || '');
+
+  return getRandom115PicFromParentMeta({
+    pc,
+    userAgent: ua as string,
+  });
 };
 
 export const set115PicInfo: MyMiddleware = async ctx => {

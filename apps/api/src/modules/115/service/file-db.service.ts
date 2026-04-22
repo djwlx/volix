@@ -2,6 +2,28 @@ import { col, fn, Op } from 'sequelize';
 import { File115Model } from '../model/file115.model';
 import type { Cloud115DbFileItem } from '../types/115.types';
 
+const normalizeCloud115DbFileItem = (
+  item?: {
+    pc: string;
+    name: string;
+    class: string;
+    cid: string | null;
+    parentCid: string | null;
+  } | null
+) => {
+  if (!item) {
+    return undefined;
+  }
+
+  return {
+    pc: item.pc,
+    name: item.name,
+    class: item.class,
+    cid: item.cid || '',
+    parentCid: item.parentCid || '',
+  } satisfies Cloud115DbFileItem;
+};
+
 export const getFile115Len = async () => {
   return File115Model.count();
 };
@@ -20,7 +42,7 @@ export const getFile115ByCidIndex = async (cid: string, index: number) => {
     },
     offset: index,
   });
-  return result?.dataValues;
+  return normalizeCloud115DbFileItem(result?.dataValues);
 };
 
 export const getFile115ByPc = async (pc: string) => {
@@ -29,7 +51,7 @@ export const getFile115ByPc = async (pc: string) => {
       pc,
     },
   });
-  return result?.dataValues;
+  return normalizeCloud115DbFileItem(result?.dataValues);
 };
 
 export const getFile115ByCidParentCidIndex = async (cid: string, parentCid: string, index: number) => {
@@ -46,7 +68,33 @@ export const getFile115ByCidParentCidIndex = async (cid: string, parentCid: stri
     },
     offset: index,
   });
-  return result?.dataValues;
+  return normalizeCloud115DbFileItem(result?.dataValues);
+};
+
+export const getFile115ByCidAndParentCid = async (cid: string, parentCid: string) => {
+  const result = (await File115Model.findAll({
+    where: {
+      cid,
+      ...(parentCid === cid
+        ? {
+            [Op.or]: [{ parentCid }, { parentCid: null }],
+          }
+        : {
+            parentCid,
+          }),
+    },
+    raw: true,
+  })) as unknown as Array<{
+    pc: string;
+    name: string;
+    class: string;
+    cid: string | null;
+    parentCid: string | null;
+  }>;
+
+  return result
+    .map(item => normalizeCloud115DbFileItem(item))
+    .filter((item): item is Cloud115DbFileItem => Boolean(item));
 };
 
 export const setFile115List = async (list: Cloud115DbFileItem[]) => {

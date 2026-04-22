@@ -4,6 +4,7 @@
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "bundler",
+    "skipLibCheck": true,
     "declaration": true,
     "emitDeclarationOnly": false,
     "resolveJsonModule": true,

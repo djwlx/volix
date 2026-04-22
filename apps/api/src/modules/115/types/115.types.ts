@@ -7,6 +7,9 @@ export interface RandomPicMeta {
   fileName: string;
   cid: string;
   pc: string;
+  path: string;
+  parentPath: string;
+  notice?: string;
 }
 
 export interface Cloud115DbFileItem {

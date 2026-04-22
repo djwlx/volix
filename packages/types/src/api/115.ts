@@ -54,6 +54,9 @@ export interface Random115PicResponse {
   fileName: string;
   cid: string;
   pc: string;
+  path: string;
+  parentPath: string;
+  notice?: string;
 }
 
 export type PicCacheFolderStatus = 'pending' | 'caching' | 'cached' | 'failed';

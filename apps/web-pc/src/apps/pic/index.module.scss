@@ -32,4 +32,15 @@
   right: 20px;
   bottom: 20px;
   z-index: 10;
+  max-width: min(80vw, 640px);
+}
+
+.actionButtons {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.tooltipTrigger {
+  display: inline-flex;
 }

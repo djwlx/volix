@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "npm run db:migrate && cross-env NODE_ENV=development nodemon",
     "build": "tsc",
+    "typecheck": "tsc --noEmit",
     "db:migrate": "sequelize-cli db:migrate --config config/sequelize-cli.cjs --migrations-path migrations",
     "db:migrate:undo": "sequelize-cli db:migrate:undo --config config/sequelize-cli.cjs --migrations-path migrations",
     "start": "npm run db:migrate && cross-env NODE_ENV=production node app.js"

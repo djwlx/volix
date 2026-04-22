@@ -14,10 +14,11 @@ import { lightLocks } from '../../../utils/light-lock';
 import { log } from '../../../utils/logger';
 import { generateRandomNumber } from '../../../utils/number';
 import { Cloud115DbFileItem, RandomPicMeta } from '../types/115.types';
-import { get115FileData } from './file.service';
+import { get115FileData, get115FileListData } from './file.service';
 import {
   clearAllFile115,
   clearFile115ByCidList,
+  getFile115ByCidAndParentCid,
   getFile115ByCidIndex,
   getFile115ByCidParentCidIndex,
   getFile115ByPc,
@@ -222,6 +223,54 @@ const pickWeightedCid = (items: Array<{ cid: string; score: number }>) => {
   return probabilities[probabilities.length - 1]?.cid || '';
 };
 
+const resolve115FilePath = async (file: Cloud115DbFileItem) => {
+  const parentList = await get115FileListData(0, 1, file.parentCid || file.cid);
+  const parentSegments = (parentList?.path || []).map((item: { name: string }) => item.name).filter(Boolean);
+  const parentPath = `/${parentSegments.join('/')}` || '/';
+  const path = `${parentPath === '/' ? '' : parentPath}/${file.name}`;
+
+  return {
+    path,
+    parentPath,
+  };
+};
+
+const parse115FileMeta = (result: unknown) => {
+  const metaInfo = Object.values((result || {}) as Record<string, unknown>)[0] as
+    | {
+        url?: {
+          url?: string;
+        };
+        file_name?: string;
+      }
+    | undefined;
+
+  return {
+    url: metaInfo?.url?.url || '',
+    fileName: metaInfo?.file_name || 'unknown.jpg',
+  };
+};
+
+const buildRandomPicMetaFromFile = async (
+  file: Cloud115DbFileItem,
+  userAgent: string,
+  notice?: string
+): Promise<RandomPicMeta> => {
+  const result = await get115FileData(file.pc, userAgent);
+  const { url, fileName } = parse115FileMeta(result);
+  const { path, parentPath } = await resolve115FilePath(file);
+
+  return {
+    url,
+    fileName,
+    cid: file.cid,
+    pc: file.pc,
+    path,
+    parentPath,
+    notice,
+  };
+};
+
 const cache115PicByCid = async (cid: string) => {
   const limit = 500;
   const timer = 3000;
@@ -379,25 +428,35 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
   const fileInfo =
     (await getFile115ByCidParentCidIndex(targetFolder.cid, targetFolder.parentCid, index)) ||
     (await getFile115ByCidIndex(targetFolder.cid, index));
-  const pc = fileInfo?.pc;
-  const safePc = pc || badRequest('暂无可用缓存图片，请稍后重试');
-  const result = await get115FileData(safePc, userAgent);
-  const metaInfo = Object.values(result)[0] as
-    | {
-        url?: {
-          url?: string;
-        };
-        file_name?: string;
-      }
-    | undefined;
-  const url = metaInfo?.url?.url;
-  const fileName = metaInfo?.file_name || 'unknown.jpg';
-  return {
-    url: url || '',
-    fileName,
-    cid: fileInfo?.cid || targetFolder.cid,
-    pc: safePc,
-  };
+  const selectedFile = fileInfo || badRequest('暂无可用缓存图片，请稍后重试');
+  return buildRandomPicMetaFromFile(selectedFile, userAgent);
+}
+
+export async function getRandom115PicFromParentMeta(params: { pc: string; userAgent: string }): Promise<RandomPicMeta> {
+  const pc = params.pc.trim();
+  if (!pc) {
+    badRequest('缺少图片参数');
+  }
+
+  const currentFile = await getFile115ByPc(pc);
+  if (!currentFile) {
+    badRequest('未找到当前图片');
+  }
+  const safeCurrentFile = currentFile as Cloud115DbFileItem;
+
+  const sameFolderFiles = await getFile115ByCidAndParentCid(
+    safeCurrentFile.cid,
+    safeCurrentFile.parentCid || safeCurrentFile.cid
+  );
+  const siblingFiles = sameFolderFiles.filter(item => item.pc !== safeCurrentFile.pc);
+
+  if (siblingFiles.length === 0) {
+    return buildRandomPicMetaFromFile(safeCurrentFile, params.userAgent, '当前目录没有其他图片可切换');
+  }
+
+  const nextIndex = generateRandomNumber(0, siblingFiles.length - 1);
+  const nextFile = siblingFiles[nextIndex] || siblingFiles[0] || badRequest('当前目录没有可用图片');
+  return buildRandomPicMetaFromFile(nextFile, params.userAgent);
 }
 
 export async function get115PicInfoData() {
