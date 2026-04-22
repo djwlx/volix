@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Empty, Nav, Select, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Empty, Nav, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconArrowLeft, IconUserGroup } from '@douyinfe/semi-icons';
 import { IconAvatar, IconList } from '@douyinfe/semi-icons-lab';
 import { clearAuthToken } from '@/utils';
@@ -83,20 +83,29 @@ function AdminApp() {
       dataIndex: 'role',
       key: 'role',
       render: (_: unknown, record: UserInfoResponse) => (
-        <Select
+        <select
           value={record.role}
-          style={{ width: 140 }}
+          style={{
+            width: 140,
+            height: 32,
+            padding: '0 12px',
+            borderRadius: 6,
+            border: '1px solid var(--semi-color-border)',
+            background: 'var(--semi-color-bg-0)',
+            color: 'var(--semi-color-text-0)',
+          }}
           disabled={updatingUserId === record.id}
-          onChange={value => {
+          onChange={event => {
+            const value = event.target.value as UserRole;
             if (!value || value === record.role) {
               return;
             }
-            onRoleChange(record, value as UserRole);
+            onRoleChange(record, value);
           }}
         >
-          <Select.Option value={UserRole.USER}>普通用户</Select.Option>
-          <Select.Option value={UserRole.ADMIN}>管理员</Select.Option>
-        </Select>
+          <option value={UserRole.USER}>普通用户</option>
+          <option value={UserRole.ADMIN}>管理员</option>
+        </select>
       ),
     },
   ];
