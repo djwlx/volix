@@ -4,7 +4,9 @@
   "version": "0.0.31",
   "scripts": {
     "build": "node ./scripts/build-app.js",
-    "release": "turbo run build",
+    "release:build": "turbo run build",
+    "release": "node ./scripts/tag-next.js",
+    "tag:next": "node ./scripts/tag-next.js",
     "dev": "turbo run dev",
     "start": "turbo run start",
     "typecheck": "turbo run typecheck",

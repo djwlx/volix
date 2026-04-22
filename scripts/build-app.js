@@ -363,7 +363,7 @@ function buildApp() {
   run('npm install -g pnpm@8.15.9');
   run('pnpm config set allow-build-scripts true');
   run('pnpm install');
-  run('pnpm run release');
+  run('pnpm run release:build');
   copyFrontToEnd();
   copyWorkspaceDependencies();
   cleanupApiPackageJson();
