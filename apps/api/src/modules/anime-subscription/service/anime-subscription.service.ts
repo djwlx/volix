@@ -177,6 +177,18 @@ export const updateAnimeSubscription = async (id: string | number, payload: Part
   });
 };
 
+export const deleteAnimeSubscription = async (id: string | number) => {
+  await AnimeSubscriptionItemModel.destroy({
+    where: {
+      subscription_id: id,
+    },
+  });
+
+  return AnimeSubscriptionModel.destroy({
+    where: { id },
+  });
+};
+
 export const queryAnimeSubscriptionItems = async (subscriptionId: string | number) => {
   return AnimeSubscriptionItemModel.findAll({
     where: {
@@ -545,6 +557,10 @@ export const triggerAnimeSubscriptionCheckInBackground = async (
     alreadyRunning: false,
     message: '已加入后台检查队列',
   };
+};
+
+export const isAnimeSubscriptionCheckRunning = (subscriptionId: string | number) => {
+  return runningSubscriptionChecks.has(String(subscriptionId));
 };
 
 export const syncAllAnimeSubscriptionDownloads = async () => {

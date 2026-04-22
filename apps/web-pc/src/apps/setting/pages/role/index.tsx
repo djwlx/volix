@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Button, Card, Empty, Popconfirm, Space, Table, Tag, Toast } from '@douyinfe/semi-ui';
 import { getRoleList, removeRole } from '@/services/user';
-import { useOutletContext } from 'react-router';
+import { useAppPageContext } from '@/hooks';
 import { AppFeature } from '@volix/types';
 import type { RoleInfoResponse } from '@volix/types';
-import type { SettingOutletContext } from '@/apps/setting/types';
 import { featureLabelMap } from './constants';
 
 function SettingRoleApp() {
-  const { isAdmin, requestNavigate } = useOutletContext<SettingOutletContext>();
+  const { isAdmin, requestNavigate } = useAppPageContext();
   const [roleList, setRoleList] = useState<RoleInfoResponse[]>([]);
   const tableMinWidth = 'max(100%, 1060px)';
 

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useUserStore } from '@/stores/user-store';
-import { getCurrentUser } from '@/services/user';
 import { isAuthenticated } from '@/utils';
 
 /**
@@ -10,13 +9,12 @@ import { isAuthenticated } from '@/utils';
  * @param fetchIfEmpty 是否在 store 中没有用户信息时自动获取，默认 true
  */
 export function useUser(fetchIfEmpty = true) {
-  const user = useUserStore(state => state.user);
-  const loading = useUserStore(state => state.loading);
-  const error = useUserStore(state => state.error);
-  const setUser = useUserStore(state => state.setUser);
-  const setLoading = useUserStore(state => state.setLoading);
-  const setError = useUserStore(state => state.setError);
-  const clearUser = useUserStore(state => state.clearUser);
+  const currentUser = useUserStore(state => state.currentUser);
+  const loading = useUserStore(state => state.userLoading);
+  const error = useUserStore(state => state.authError);
+  const initializeAuth = useUserStore(state => state.initializeAuth);
+  const clearAuth = useUserStore(state => state.clearAuth);
+  const authInitialized = useUserStore(state => state.authInitialized);
 
   const [unauthorized, setUnauthorized] = useState(false);
   const authed = isAuthenticated();
@@ -24,39 +22,25 @@ export function useUser(fetchIfEmpty = true) {
   useEffect(() => {
     const handleUnauthorized = () => {
       setUnauthorized(true);
-      clearUser();
-      setError('未授权，请重新登录');
+      clearAuth();
     };
 
     window.addEventListener('auth:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
-  }, [clearUser, setError]);
+  }, [clearAuth]);
 
   useEffect(() => {
     if (!authed) {
-      clearUser();
+      clearAuth();
     }
-  }, [authed, clearUser]);
+  }, [authed, clearAuth]);
 
   useEffect(() => {
-    // 如果已有用户信息或不需要自动获取，则跳过
-    if (user || !fetchIfEmpty || unauthorized || !authed) return;
+    if (!fetchIfEmpty || unauthorized || !authed || authInitialized) {
+      return;
+    }
+    void initializeAuth();
+  }, [authed, fetchIfEmpty, unauthorized, authInitialized, initializeAuth]);
 
-    const fetchUserData = async () => {
-      try {
-        setLoading(true);
-        const res = await getCurrentUser();
-        setUser(res.data);
-      } catch (err) {
-        const errorMsg = err instanceof Error ? err.message : '获取用户信息失败';
-        setError(errorMsg);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void fetchUserData();
-  }, [authed, fetchIfEmpty, user, unauthorized, setUser, setLoading, setError]);
-
-  return { user, loading, error };
+  return { user: currentUser, currentUser, loading, error, authed };
 }

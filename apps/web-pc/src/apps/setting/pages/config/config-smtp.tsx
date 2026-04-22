@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Space, Toast } from '@douyinfe/semi-ui';
 import { AppForm, Loading } from '@/components';
 import { getAccountConfigs, testAccountConfig, updateAccountConfig } from '@/services/user';
-import { useOutletContext } from 'react-router';
+import { useAppPageContext } from '@/hooks';
 import { AccountConfigPlatform, UserRole } from '@volix/types';
 import type { SmtpAccountConfigItem } from '@volix/types';
-import type { SettingOutletContext } from '@/apps/setting/types';
 
 const EMPTY_VALUES: SmtpAccountConfigItem = {
   host: '',
@@ -17,7 +16,7 @@ const EMPTY_VALUES: SmtpAccountConfigItem = {
 };
 
 function SettingConfigSmtpApp() {
-  const { user, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
+  const { user, requestNavigate, registerLeaveGuard } = useAppPageContext();
   const [initialValues, setInitialValues] = useState<SmtpAccountConfigItem>(EMPTY_VALUES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

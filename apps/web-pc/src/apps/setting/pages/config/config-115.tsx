@@ -1,16 +1,15 @@
 import { Card, Empty, Skeleton, Space, Typography } from '@douyinfe/semi-ui';
-import { useOutletContext } from 'react-router';
 import { useEffect } from 'react';
+import { useAppPageContext } from '@/hooks';
 import { UserRole } from '@volix/types';
 import { Login } from '@/apps/115/login';
 import { UserInfo } from '@/apps/115/user-info';
 import { PicSetting } from '@/apps/115/pic-setting';
 import { FileTree } from '@/apps/115/file-tree';
 import { useUserInfo } from '@/apps/115/hooks/useUserInfo';
-import type { SettingOutletContext } from '@/apps/setting/types';
 
 function SettingConfig115App() {
-  const { user, requestNavigate } = useOutletContext<SettingOutletContext>();
+  const { user, requestNavigate } = useAppPageContext();
   const { data, loading } = useUserInfo();
 
   const isAdmin = user?.role === UserRole.ADMIN;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Nav, SideSheet, Toast } from '@douyinfe/semi-ui';
 import {
   IconActivity,
@@ -6,7 +6,6 @@ import {
   IconCloudStroked,
   IconConfigStroked,
   IconDesktop,
-  IconExit,
   IconLayers,
   IconMailStroked,
   IconMenu,
@@ -14,17 +13,19 @@ import {
   IconUserList,
 } from '@douyinfe/semi-icons';
 import { IconAvatar } from '@douyinfe/semi-icons-lab';
-import { clearAuthToken, getHttpErrorMessage, isAuthError } from '@/utils';
-import { useLocation, useNavigate, Outlet } from 'react-router';
-import { getCurrentUser } from '@/services/user';
-import { UserRole } from '@volix/types';
-import type { UserInfoResponse } from '@volix/types';
-import { AppHeader, Loading } from '@/components';
-import { useIsMobile } from '@/hooks';
-import type { SettingOutletContext } from './types';
+import { useLocation, Outlet } from 'react-router';
+import { useAppPageContext } from '@/hooks';
 import type { ReactNode } from 'react';
 import styles from './index.module.scss';
-import adminIcon from '@/assets/icons/admin.svg';
+
+const COMPACT_LAYOUT_QUERY = '(max-width: 1100px)';
+
+const getCompactLayout = () => {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+  return window.matchMedia(COMPACT_LAYOUT_QUERY).matches;
+};
 
 function MenuIcon(props: { icon: ReactNode; bg: string; color: string }) {
   const { icon, bg, color } = props;
@@ -51,41 +52,27 @@ function MenuIcon(props: { icon: ReactNode; bg: string; color: string }) {
 }
 
 function SettingApp() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const isMobile = useIsMobile();
-  const [user, setUser] = useState<UserInfoResponse>();
-  const [userLoading, setUserLoading] = useState(true);
+  const [isCompactLayout, setIsCompactLayout] = useState(getCompactLayout);
   const [mobileNavVisible, setMobileNavVisible] = useState(false);
-  const leaveGuardRef = useRef<(() => boolean) | null>(null);
+  const { isAdmin, requestNavigate } = useAppPageContext();
 
-  const isAdmin = user?.role === UserRole.ADMIN;
-
-  const refreshUser = async () => {
-    const res = await getCurrentUser();
-    setUser(res.data);
-  };
-
-  const onLogout = useCallback(() => {
-    if (leaveGuardRef.current && !leaveGuardRef.current()) {
-      return;
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
     }
-    clearAuthToken();
-    navigate('/', { replace: true });
-  }, [navigate]);
 
-  const requestNavigate = useCallback(
-    (to: string) => {
-      if (leaveGuardRef.current && !leaveGuardRef.current()) {
-        return;
-      }
-      navigate(to);
-    },
-    [navigate]
-  );
+    const mediaQuery = window.matchMedia(COMPACT_LAYOUT_QUERY);
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsCompactLayout(event.matches);
+    };
 
-  const registerLeaveGuard = useCallback((guard: (() => boolean) | null) => {
-    leaveGuardRef.current = guard;
+    setIsCompactLayout(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
+    };
   }, []);
 
   const handleNavSelect = useCallback(
@@ -102,21 +89,6 @@ function SettingApp() {
     },
     [isAdmin, requestNavigate]
   );
-
-  useEffect(() => {
-    setUserLoading(true);
-    refreshUser()
-      .catch(error => {
-        if (isAuthError(error)) {
-          onLogout();
-          return;
-        }
-        Toast.error(getHttpErrorMessage(error, '获取用户信息失败，请稍后重试'));
-      })
-      .finally(() => {
-        setUserLoading(false);
-      });
-  }, []);
 
   const activeKey = useMemo(() => {
     if (location.pathname.startsWith('/setting/config/115')) {
@@ -139,15 +111,6 @@ function SettingApp() {
     }
     if (location.pathname.startsWith('/setting/system')) {
       return 'system';
-    }
-    if (location.pathname.startsWith('/setting/anime-subscription')) {
-      return 'anime-subscription';
-    }
-    if (location.pathname.startsWith('/setting/openlist-ai-organizer')) {
-      return 'openlist-ai-organizer';
-    }
-    if (location.pathname.startsWith('/setting/scheduled-task')) {
-      return 'scheduled-task';
     }
     if (location.pathname.startsWith('/setting/role')) {
       return 'role';
@@ -212,39 +175,6 @@ function SettingApp() {
                     icon={<IconDesktop />}
                     bg="linear-gradient(135deg, rgba(129, 140, 248, 0.18) 0%, rgba(99, 102, 241, 0.22) 100%)"
                     color="#4f46e5"
-                  />
-                ),
-              },
-              {
-                itemKey: 'anime-subscription',
-                text: '自动追番',
-                icon: (
-                  <MenuIcon
-                    icon={<IconActivity />}
-                    bg="linear-gradient(135deg, rgba(16, 185, 129, 0.18) 0%, rgba(5, 150, 105, 0.22) 100%)"
-                    color="#047857"
-                  />
-                ),
-              },
-              {
-                itemKey: 'scheduled-task',
-                text: '定时任务',
-                icon: (
-                  <MenuIcon
-                    icon={<IconActivity />}
-                    bg="linear-gradient(135deg, rgba(14, 165, 233, 0.16) 0%, rgba(59, 130, 246, 0.22) 100%)"
-                    color="#1d4ed8"
-                  />
-                ),
-              },
-              {
-                itemKey: 'openlist-ai-organizer',
-                text: 'AI 文件整理',
-                icon: (
-                  <MenuIcon
-                    icon={<IconLayers />}
-                    bg="linear-gradient(135deg, rgba(251, 146, 60, 0.16) 0%, rgba(245, 158, 11, 0.22) 100%)"
-                    color="#b45309"
                   />
                 ),
               },
@@ -333,33 +263,9 @@ function SettingApp() {
       : []),
   ];
 
-  if (userLoading) {
-    return <Loading type="page" text="正在加载设置..." />;
-  }
-
   return (
     <div className={styles.page}>
-      <AppHeader
-        title="后台管理"
-        logo={<img alt="后台管理" src={adminIcon} style={{ display: 'block', width: 44, height: 44 }} />}
-        onLogoClick={() => requestNavigate('/')}
-        beforeLogo={
-          isMobile ? (
-            <Button
-              icon={<IconMenu />}
-              theme="borderless"
-              aria-label="打开菜单"
-              onClick={() => setMobileNavVisible(true)}
-            />
-          ) : null
-        }
-        userOverride={user}
-        showUserName={!isMobile}
-        userBadge={isAdmin ? '管理员' : '普通用户'}
-        menuItems={[{ key: 'logout', label: '退出登录', icon: <IconExit />, type: 'danger', onClick: onLogout }]}
-      />
-
-      {isMobile ? (
+      {isCompactLayout ? (
         <SideSheet
           title="菜单"
           visible={mobileNavVisible}
@@ -384,7 +290,7 @@ function SettingApp() {
       ) : null}
 
       <div className={styles.shell}>
-        {!isMobile ? (
+        {!isCompactLayout ? (
           <Nav
             mode="vertical"
             className={`${styles.settingNav} ${styles.sidebar}`}
@@ -400,10 +306,15 @@ function SettingApp() {
             }}
           />
         ) : null}
-        <div className={`${styles.content} ${isMobile ? styles.contentMobile : ''}`}>
-          <Outlet
-            context={{ user, isAdmin, refreshUser, requestNavigate, registerLeaveGuard } satisfies SettingOutletContext}
-          />
+        <div className={`${styles.content} ${isCompactLayout ? styles.contentMobile : ''}`}>
+          {isCompactLayout ? (
+            <div className={styles.mobileActionBar}>
+              <Button icon={<IconMenu />} onClick={() => setMobileNavVisible(true)}>
+                菜单
+              </Button>
+            </div>
+          ) : null}
+          <Outlet />
         </div>
       </div>
     </div>

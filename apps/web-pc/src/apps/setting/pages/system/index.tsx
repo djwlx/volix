@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Space, Toast } from '@douyinfe/semi-ui';
 import { AppForm, Loading } from '@/components';
 import { getSystemConfig, updateSystemConfig } from '@/services/user';
-import { useOutletContext } from 'react-router';
+import { useAppPageContext } from '@/hooks';
 import { UserRole } from '@volix/types';
-import type { SettingOutletContext } from '@/apps/setting/types';
 
 interface SystemConfigFormValues {
   registerEmailVerifyEnabled: boolean;
@@ -15,7 +14,7 @@ const DEFAULT_VALUES: SystemConfigFormValues = {
 };
 
 function SettingSystemApp() {
-  const { user, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
+  const { user, requestNavigate, registerLeaveGuard } = useAppPageContext();
   const [initialValues, setInitialValues] = useState<SystemConfigFormValues>(DEFAULT_VALUES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -84,27 +83,31 @@ function SettingSystemApp() {
 
   return (
     <Card title="系统配置" shadows="hover" style={{ width: '100%' }}>
-      {loading ? <Loading rows={4} /> : <Space vertical spacing={16} style={{ width: '100%' }}>
-        <AppForm
-          key={initialFingerprint}
-          initValues={initialValues}
-          onValueChange={values => {
-            const next = values as Partial<SystemConfigFormValues>;
-            setIsDirty(Boolean(next.registerEmailVerifyEnabled) !== initialValues.registerEmailVerifyEnabled);
-          }}
-          onSubmit={onSubmit}
-        >
-          <AppForm.RadioGroup field="registerEmailVerifyEnabled" label="注册是否需要邮箱验证码" type="button">
-            <AppForm.Radio value={true}>开启</AppForm.Radio>
-            <AppForm.Radio value={false}>关闭</AppForm.Radio>
-          </AppForm.RadioGroup>
-          <Space>
-            <Button type="primary" htmlType="submit" loading={saving}>
-              保存配置
-            </Button>
-          </Space>
-        </AppForm>
-      </Space>}
+      {loading ? (
+        <Loading rows={4} />
+      ) : (
+        <Space vertical spacing={16} style={{ width: '100%' }}>
+          <AppForm
+            key={initialFingerprint}
+            initValues={initialValues}
+            onValueChange={values => {
+              const next = values as Partial<SystemConfigFormValues>;
+              setIsDirty(Boolean(next.registerEmailVerifyEnabled) !== initialValues.registerEmailVerifyEnabled);
+            }}
+            onSubmit={onSubmit}
+          >
+            <AppForm.RadioGroup field="registerEmailVerifyEnabled" label="注册是否需要邮箱验证码" type="button">
+              <AppForm.Radio value={true}>开启</AppForm.Radio>
+              <AppForm.Radio value={false}>关闭</AppForm.Radio>
+            </AppForm.RadioGroup>
+            <Space>
+              <Button type="primary" htmlType="submit" loading={saving}>
+                保存配置
+              </Button>
+            </Space>
+          </AppForm>
+        </Space>
+      )}
     </Card>
   );
 }

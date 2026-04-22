@@ -18,7 +18,7 @@ export interface AiRunEntity {
 
 export type AiRunModelType = Model<AiRunEntity>;
 
-export const AiRunModel = sequelize.define<AiRunModelType>('app_ai_run', {
+export const AiRunModel = sequelize.define<AiRunModelType>('volix_ai_run', {
   id: {
     type: DataTypes.STRING,
     allowNull: false,

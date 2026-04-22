@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Empty, Space, Toast } from '@douyinfe/semi-ui';
 import { getRoleList, updateRoleInfo } from '@/services/user';
 import { AppForm } from '@/components';
-import { useOutletContext, useParams } from 'react-router';
+import { useParams } from 'react-router';
+import { useAppPageContext } from '@/hooks';
 import { AppFeature } from '@volix/types';
 import type { RoleInfoResponse } from '@volix/types';
-import type { SettingOutletContext } from '@/apps/setting/types';
 import { featureLabelMap } from './constants';
 
 interface RoleEditFormValues {
@@ -13,7 +13,7 @@ interface RoleEditFormValues {
 }
 
 function SettingRoleEditApp() {
-  const { user, isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
+  const { user, isAdmin, requestNavigate, registerLeaveGuard } = useAppPageContext();
   const { roleKey = '' } = useParams();
   const [roleInfo, setRoleInfo] = useState<RoleInfoResponse>();
   const [saving, setSaving] = useState(false);

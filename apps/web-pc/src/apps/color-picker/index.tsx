@@ -1,9 +1,6 @@
 import { useRef, useState } from 'react';
 import { Button, Card, Space, Toast, Typography } from '@douyinfe/semi-ui';
-import { AppHeader } from '@/components';
 import { useIsMobile } from '@/hooks';
-import { useNavigate } from 'react-router';
-import colorPickerIcon from '@/assets/icons/color-picker.svg';
 
 interface EyeDropperConstructor {
   new (): {
@@ -21,9 +18,25 @@ interface ColorInfo {
   hsl: string;
 }
 
+const getEyeDropperUnavailableReason = () => {
+  if (!window.isSecureContext) {
+    return '网页取色要求安全上下文。请使用 localhost/127.0.0.1 或 HTTPS 打开页面。';
+  }
+
+  if (window.top !== window.self) {
+    return '网页取色只能在顶层页面使用，当前页面可能被嵌在 iframe 或内嵌浏览器里。';
+  }
+
+  if (!('EyeDropper' in window)) {
+    return '当前环境没有暴露 EyeDropper API。即使是 Chrome，如果版本过旧、被策略禁用，或运行在某些 WebView/内嵌容器里，也会这样。';
+  }
+
+  return '当前环境暂时无法使用网页取色。';
+};
+
 const pageStyle = {
   width: '100%',
-  height: '100dvh',
+  height: '100%',
   background: 'var(--app-page-warm-bg)',
   overflow: 'hidden',
   display: 'flex',
@@ -46,6 +59,19 @@ const contentStyle = {
 const cardStyle = {
   width: '100%',
   borderRadius: 16,
+} as const;
+
+const cardBodyStyle = {
+  display: 'grid',
+  gap: 16,
+} as const;
+
+const sectionTitleStyle = {
+  margin: 0,
+  fontSize: 18,
+  fontWeight: 700,
+  lineHeight: 1.2,
+  color: 'var(--app-text)',
 } as const;
 
 const getColorInfo = (r: number, g: number, b: number): ColorInfo => {
@@ -99,7 +125,6 @@ const copyText = async (value: string, label: string) => {
 };
 
 function ColorPickerApp() {
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -115,7 +140,14 @@ function ColorPickerApp() {
     const EyeDropperApi = (window as WindowWithEyeDropper).EyeDropper;
 
     if (!EyeDropperApi) {
-      Toast.warning('当前浏览器不支持网页取色器，请使用 Chrome/Edge 新版浏览器');
+      const reason = getEyeDropperUnavailableReason();
+      console.warn('[ColorPicker] EyeDropper unavailable', {
+        isSecureContext: window.isSecureContext,
+        isTopLevel: window.top === window.self,
+        hasEyeDropper: 'EyeDropper' in window,
+        userAgent: navigator.userAgent,
+      });
+      Toast.warning(reason);
       return;
     }
 
@@ -206,12 +238,6 @@ function ColorPickerApp() {
 
   return (
     <div style={pageStyle}>
-      <AppHeader
-        title="取色器"
-        description="支持网页取色和图片点击取色，自动生成 HEX、RGB、HSL。"
-        logo={<img alt="取色器" src={colorPickerIcon} style={{ display: 'block', width: 44, height: 44 }} />}
-        onLogoClick={() => navigate('/')}
-      />
       <div style={contentStyle}>
         <div
           style={{
@@ -220,7 +246,8 @@ function ColorPickerApp() {
             gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(280px, 340px) minmax(0, 1fr)',
           }}
         >
-          <Card title="颜色信息" shadows="hover" style={cardStyle} bodyStyle={{ display: 'grid', gap: 14 }}>
+          <Card shadows="hover" style={cardStyle} bodyStyle={{ display: 'grid', gap: 14 }}>
+            <div style={sectionTitleStyle}>颜色信息</div>
             <div
               style={{
                 height: 120,
@@ -278,7 +305,8 @@ function ColorPickerApp() {
             </div>
           </Card>
 
-          <Card title="取色方式" shadows="hover" style={cardStyle} bodyStyle={{ display: 'grid', gap: 16 }}>
+          <Card shadows="hover" style={cardStyle} bodyStyle={cardBodyStyle}>
+            <div style={sectionTitleStyle}>取色方式</div>
             <Space wrap>
               <Button theme="solid" type="primary" onClick={openEyeDropper}>
                 网页取色

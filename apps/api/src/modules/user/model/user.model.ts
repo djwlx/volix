@@ -13,7 +13,7 @@ export type UserType = Model<{
   role_key?: string;
 }>;
 
-export const UserModel = sequelize.define<UserType>('app_user', {
+export const UserModel = sequelize.define<UserType>('volix_user', {
   email: {
     type: DataTypes.STRING,
     allowNull: false,

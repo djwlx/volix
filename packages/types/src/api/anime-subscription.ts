@@ -92,3 +92,8 @@ export interface TriggerAnimeSubscriptionCheckResponse {
   syncedCount?: number;
   organizedCount?: number;
 }
+
+export interface DeleteAnimeSubscriptionResponse {
+  success: boolean;
+  message: string;
+}

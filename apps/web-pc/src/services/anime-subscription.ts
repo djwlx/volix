@@ -1,5 +1,6 @@
 import { http } from '@/utils';
 import type {
+  DeleteAnimeSubscriptionResponse,
   AnimeSubscriptionItemResponse,
   AnimeSubscriptionLogResponse,
   AnimeSubscriptionResponse,
@@ -22,6 +23,10 @@ export const createAnimeSubscription = (data: CreateAnimeSubscriptionPayload) =>
 
 export const updateAnimeSubscription = (id: string | number, data: UpdateAnimeSubscriptionPayload) => {
   return http.put<AnimeSubscriptionResponse>(`/anime-subscriptions/${id}`, data);
+};
+
+export const deleteAnimeSubscription = (id: string | number) => {
+  return http.delete<DeleteAnimeSubscriptionResponse>(`/anime-subscriptions/${id}`);
 };
 
 export const toggleAnimeSubscription = (id: string | number) => {

@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   type AnalyzeOpenlistAiOrganizerPayload,
+  type CancelOpenlistAiOrganizerTaskResponse,
   type CreateOpenlistAiOrganizerReviseTaskResponse,
   type CreateOpenlistAiOrganizerRetryTaskResponse,
   type DeleteOpenlistAiOrganizerDuplicateFolderResponse,
@@ -34,6 +35,7 @@ const MAX_TASKS = 50;
 let storeLock = Promise.resolve();
 let processorStarted = false;
 let processorLoop: Promise<void> | null = null;
+const OPENLIST_AI_ORG_CANCELED_ERROR = '__OPENLIST_AI_ORG_CANCELED__';
 
 const nowIso = () => new Date().toISOString();
 
@@ -123,7 +125,7 @@ const patchTask = async (
 const takeNextRunnableTask = async () => {
   return withTaskStoreLock(async () => {
     const store = await readTaskStore();
-    const index = store.items.findIndex(item => item.status === 'queued');
+    const index = store.items.findIndex(item => item.status === 'queued' && !item.cancelRequested);
     if (index < 0) {
       return null;
     }
@@ -142,6 +144,22 @@ const takeNextRunnableTask = async () => {
   });
 };
 
+const getTaskOrThrowCanceled = async (taskId: string) => {
+  const task = await queryOpenlistAiOrganizerTaskDetail(taskId);
+  if (!task) {
+    badRequest('任务不存在');
+  }
+  const resolvedTask = task as OpenlistAiOrganizerTaskDetail;
+  if (resolvedTask.status === 'canceled' || resolvedTask.cancelRequested) {
+    throw new Error(OPENLIST_AI_ORG_CANCELED_ERROR);
+  }
+  return resolvedTask;
+};
+
+const isTaskCanceledError = (error: unknown) => {
+  return (error as Error)?.message === OPENLIST_AI_ORG_CANCELED_ERROR;
+};
+
 const runTask = async (task: OpenlistAiOrganizerTaskDetail) => {
   taskLog.info(`[OPENLIST_AI_ORG][task:${task.id}][start] ${task.type} ${task.rootPath}`);
   try {
@@ -155,7 +173,11 @@ const runTask = async (task: OpenlistAiOrganizerTaskDetail) => {
         currentStage: '正在递归扫描并进行 AI 分析',
         updatedAt: nowIso(),
       }));
-      const analysisResult = await analyzeOpenlistFolderWithAi(payload);
+      const analysisResult = await analyzeOpenlistFolderWithAi(payload, {
+        assertNotCanceled: async () => {
+          await getTaskOrThrowCanceled(task.id);
+        },
+      });
       await patchTask(task.id, current => ({
         ...current,
         status: 'succeeded',
@@ -178,7 +200,11 @@ const runTask = async (task: OpenlistAiOrganizerTaskDetail) => {
       currentStage: '正在执行 OpenList 整理动作',
       updatedAt: nowIso(),
     }));
-    const executionResult = await executeOpenlistAiOrganizerPlan(payload);
+    const executionResult = await executeOpenlistAiOrganizerPlan(payload, {
+      assertNotCanceled: async () => {
+        await getTaskOrThrowCanceled(task.id);
+      },
+    });
     await patchTask(task.id, current => ({
       ...current,
       status: 'succeeded',
@@ -190,6 +216,18 @@ const runTask = async (task: OpenlistAiOrganizerTaskDetail) => {
     }));
     taskLog.info(`[OPENLIST_AI_ORG][task:${task.id}][finish] execute succeeded`);
   } catch (error) {
+    if (isTaskCanceledError(error)) {
+      await patchTask(task.id, current => ({
+        ...current,
+        status: 'canceled',
+        cancelRequested: false,
+        currentStage: '任务已停止',
+        finishedAt: nowIso(),
+        updatedAt: nowIso(),
+      }));
+      taskLog.warn(`[OPENLIST_AI_ORG][task:${task.id}][canceled] canceled by user`);
+      return;
+    }
     const message = (error as Error)?.message || 'task_failed';
     await patchTask(task.id, current => ({
       ...current,
@@ -366,6 +404,39 @@ export const createRetryOpenlistAiOrganizerTask = async (
     badRequest('原始执行任务缺少请求参数，无法重试');
   }
   return createExecuteOpenlistAiOrganizerTask(payload as ExecuteOpenlistAiOrganizerPayload);
+};
+
+export const cancelOpenlistAiOrganizerTask = async (taskId: string): Promise<CancelOpenlistAiOrganizerTaskResponse> => {
+  const task = await patchTask(taskId, current => {
+    if (current.status === 'queued') {
+      return {
+        ...current,
+        status: 'canceled',
+        cancelRequested: false,
+        currentStage: '任务已停止',
+        finishedAt: nowIso(),
+        updatedAt: nowIso(),
+      };
+    }
+    if (current.status === 'running') {
+      return {
+        ...current,
+        cancelRequested: true,
+        currentStage: '已请求停止，等待当前步骤结束',
+        updatedAt: nowIso(),
+      };
+    }
+    badRequest('当前任务不支持停止');
+    return current;
+  });
+
+  if (!task) {
+    badRequest('任务不存在');
+  }
+
+  return {
+    taskId,
+  };
 };
 
 export const deleteOpenlistAiOrganizerDuplicateFolderByTask = async (

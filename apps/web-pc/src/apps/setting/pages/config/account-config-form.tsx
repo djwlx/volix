@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Space, Toast } from '@douyinfe/semi-ui';
 import { AppForm, Loading } from '@/components';
 import { getAccountConfigs, testAccountConfig, updateAccountConfig } from '@/services/user';
-import { useOutletContext } from 'react-router';
+import { useAppPageContext } from '@/hooks';
 import { AccountConfigPlatform, UserRole } from '@volix/types';
-import type { SettingOutletContext } from '@/apps/setting/types';
 
 interface AccountConfigFormValues {
   baseUrl: string;
@@ -24,7 +23,7 @@ const EMPTY_VALUES: AccountConfigFormValues = {
 };
 
 function AccountConfigForm({ platform, title }: AccountConfigFormProps) {
-  const { user, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
+  const { user, requestNavigate, registerLeaveGuard } = useAppPageContext();
   const [initialValues, setInitialValues] = useState<AccountConfigFormValues>(EMPTY_VALUES);
   const [formValues, setFormValues] = useState<AccountConfigFormValues>(EMPTY_VALUES);
   const [loading, setLoading] = useState(true);

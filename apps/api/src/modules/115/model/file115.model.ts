@@ -9,7 +9,7 @@ export type File115Type = Model<{
   parentCid: string | null;
 }>;
 
-export const File115Model = sequelize.define<File115Type>('115_file', {
+export const File115Model = sequelize.define<File115Type>('volix_115_file', {
   pc: {
     type: DataTypes.STRING,
     allowNull: false,

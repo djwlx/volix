@@ -6,6 +6,7 @@ import { AppForm } from '@/components';
 import { setAuthToken } from '@/utils';
 import { useLocation, useNavigate } from 'react-router';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
+import { useUserStore } from '@/stores';
 
 type Mode = 'login' | 'register';
 
@@ -36,6 +37,7 @@ function AuthApp() {
   const [formApi, setFormApi] = useState<FormApi<Record<string, unknown>>>();
   const navigate = useNavigate();
   const location = useLocation();
+  const refreshCurrentUser = useUserStore(state => state.refreshCurrentUser);
   const modeText = useMemo(() => modeTextMap[mode], [mode]);
   const redirectTo = ((location.state as { from?: string } | null)?.from || '/') as string;
 
@@ -77,6 +79,7 @@ function AuthApp() {
       }
 
       setAuthToken(token);
+      await refreshCurrentUser();
       Toast.success('登录成功');
       navigate(redirectTo, { replace: true });
     } catch (error) {

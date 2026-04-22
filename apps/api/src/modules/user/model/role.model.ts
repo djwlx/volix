@@ -8,7 +8,7 @@ export type RoleType = Model<{
   features?: string;
 }>;
 
-export const RoleModel = sequelize.define<RoleType>('app_role', {
+export const RoleModel = sequelize.define<RoleType>('volix_role', {
   role_key: {
     type: DataTypes.STRING,
     allowNull: false,

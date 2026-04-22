@@ -1,22 +1,105 @@
 import { create } from 'zustand';
 import type { UserInfoResponse } from '@volix/types';
+import { getCurrentUser } from '@/services/user';
+import { clearAuthToken, getAuthToken } from '@/utils';
 
 interface UserState {
-  user: UserInfoResponse | null;
-  loading: boolean;
-  error: string | null;
-  setUser: (user: UserInfoResponse | null) => void;
-  setLoading: (loading: boolean) => void;
-  setError: (error: string | null) => void;
-  clearUser: () => void;
+  currentUser: UserInfoResponse | null;
+  userLoading: boolean;
+  userLoaded: boolean;
+  authInitialized: boolean;
+  authError: string | null;
+  initializeAuth: () => Promise<void>;
+  refreshCurrentUser: () => Promise<UserInfoResponse | null>;
+  setCurrentUser: (user: UserInfoResponse | null) => void;
+  setUserLoading: (loading: boolean) => void;
+  setAuthError: (error: string | null) => void;
+  clearAuth: () => void;
 }
 
 export const useUserStore = create<UserState>(set => ({
-  user: null,
-  loading: false,
-  error: null,
-  setUser: (user: UserInfoResponse | null) => set({ user, error: null }),
-  setLoading: (loading: boolean) => set({ loading }),
-  setError: (error: string | null) => set({ error }),
-  clearUser: () => set({ user: null, error: null, loading: false }),
+  currentUser: null,
+  userLoading: false,
+  userLoaded: false,
+  authInitialized: false,
+  authError: null,
+  initializeAuth: async () => {
+    const token = getAuthToken();
+
+    if (!token) {
+      set({
+        currentUser: null,
+        userLoading: false,
+        userLoaded: true,
+        authInitialized: true,
+        authError: null,
+      });
+      return;
+    }
+
+    set({ userLoading: true, authError: null });
+
+    try {
+      const res = await getCurrentUser();
+      set({
+        currentUser: res.data,
+        userLoading: false,
+        userLoaded: true,
+        authInitialized: true,
+        authError: null,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '获取用户信息失败';
+      clearAuthToken();
+      set({
+        currentUser: null,
+        userLoading: false,
+        userLoaded: true,
+        authInitialized: true,
+        authError: message,
+      });
+    }
+  },
+  refreshCurrentUser: async () => {
+    set({ userLoading: true, authError: null });
+    try {
+      const res = await getCurrentUser();
+      set({
+        currentUser: res.data,
+        userLoading: false,
+        userLoaded: true,
+        authInitialized: true,
+        authError: null,
+      });
+      return res.data;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '获取用户信息失败';
+      clearAuthToken();
+      set({
+        currentUser: null,
+        userLoading: false,
+        userLoaded: true,
+        authInitialized: true,
+        authError: message,
+      });
+      return null;
+    }
+  },
+  setCurrentUser: (user: UserInfoResponse | null) =>
+    set({
+      currentUser: user,
+      authError: null,
+      userLoaded: true,
+      authInitialized: true,
+    }),
+  setUserLoading: (loading: boolean) => set({ userLoading: loading }),
+  setAuthError: (error: string | null) => set({ authError: error }),
+  clearAuth: () =>
+    set({
+      currentUser: null,
+      userLoading: false,
+      userLoaded: true,
+      authInitialized: true,
+      authError: null,
+    }),
 }));

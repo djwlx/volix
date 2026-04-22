@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Space, Toast } from '@douyinfe/semi-ui';
 import { createRole } from '@/services/user';
 import { AppForm } from '@/components';
-import { useOutletContext } from 'react-router';
+import { useAppPageContext } from '@/hooks';
 import { AppFeature } from '@volix/types';
-import type { SettingOutletContext } from '@/apps/setting/types';
 import { featureLabelMap } from './constants';
 
 interface RoleAddFormValues {
@@ -18,7 +17,7 @@ const defaultValues: RoleAddFormValues = {
 };
 
 function SettingRoleAddApp() {
-  const { user, isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
+  const { user, isAdmin, requestNavigate, registerLeaveGuard } = useAppPageContext();
   const [creatingRole, setCreatingRole] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 

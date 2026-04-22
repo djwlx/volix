@@ -126,13 +126,17 @@ export function AppHeader(props: AppHeaderProps) {
             </div>
             {description ? (
               <div className={styles.titleWrap}>
-                <div className={styles.titleText}>{title}</div>
-                <Typography.Text className={styles.description} ellipsis={{ showTooltip: true }}>
+                <Typography.Text className={styles.titleText} title={String(title ?? '')}>
+                  {title}
+                </Typography.Text>
+                <Typography.Text className={styles.description} title={String(description ?? '')}>
                   {description}
                 </Typography.Text>
               </div>
             ) : (
-              <div className={styles.titleText}>{title}</div>
+              <Typography.Text className={styles.titleText} title={String(title ?? '')}>
+                {title}
+              </Typography.Text>
             )}
           </div>
         ),
@@ -142,17 +146,21 @@ export function AppHeader(props: AppHeaderProps) {
           {authed ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 0 }}>
               <Avatar
-                size="32px"
+                size="small"
                 shape="circle"
                 color="blue"
                 src={currentUser?.avatar}
                 imgAttr={{ style: { objectFit: 'cover' } }}
-                style={{ flex: '0 0 32px' }}
+                style={{ width: 32, height: 32, flex: '0 0 32px' }}
               >
                 {currentUser?.nickname?.slice(0, 1) || currentUser?.email?.slice(0, 1)?.toUpperCase() || 'U'}
               </Avatar>
               {showUserName ? (
-                <Typography.Text ellipsis style={{ minWidth: 0 }}>
+                <Typography.Text
+                  style={{ minWidth: 0 }}
+                  className={styles.userName}
+                  title={currentUser?.nickname || currentUser?.email || '未登录'}
+                >
                   {currentUser?.nickname || currentUser?.email || '未登录'}
                 </Typography.Text>
               ) : null}
@@ -160,10 +168,14 @@ export function AppHeader(props: AppHeaderProps) {
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 0 }}>
-              <Avatar size="32px" shape="circle" color="grey" style={{ flex: '0 0 32px' }}>
+              <Avatar size="small" shape="circle" color="grey" style={{ width: 32, height: 32, flex: '0 0 32px' }}>
                 U
               </Avatar>
-              {showUserName ? <Typography.Text style={{ minWidth: 0 }}>未登录</Typography.Text> : null}
+              {showUserName ? (
+                <Typography.Text style={{ minWidth: 0 }} className={styles.userName} title="未登录">
+                  未登录
+                </Typography.Text>
+              ) : null}
             </div>
           )}
         </Dropdown>

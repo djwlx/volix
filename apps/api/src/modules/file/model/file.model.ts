@@ -5,7 +5,7 @@ import { DataTypes, Model } from 'sequelize';
 export type FileEntity = UploadedFileMeta;
 export type FileType = Model<UploadedFileMeta>;
 
-export const FileModel = sequelize.define<FileType>('app_file', {
+export const FileModel = sequelize.define<FileType>('volix_file', {
   name: {
     type: DataTypes.STRING,
     allowNull: false,

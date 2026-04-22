@@ -3,11 +3,11 @@ import { Button, Card, Empty, Space, Toast } from '@douyinfe/semi-ui';
 import { adminUpdateUser, getRoleList, getUserDetail } from '@/services/user';
 import { uploadLocalFile } from '@/services/file';
 import { AppForm } from '@/components';
-import { useOutletContext, useParams } from 'react-router';
+import { useParams } from 'react-router';
+import { useAppPageContext } from '@/hooks';
 import { UserRole } from '@volix/types';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 import type { RoleInfoResponse, UserInfoResponse } from '@volix/types';
-import type { SettingOutletContext } from '@/apps/setting/types';
 
 interface UserEditFormValues {
   email: string;
@@ -18,7 +18,7 @@ interface UserEditFormValues {
 }
 
 function SettingUserEditApp() {
-  const { user, isAdmin, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
+  const { user, isAdmin, requestNavigate, registerLeaveGuard } = useAppPageContext();
   const { id = '' } = useParams();
   const [roleList, setRoleList] = useState<RoleInfoResponse[]>([]);
   const [origin, setOrigin] = useState<UserInfoResponse>();
@@ -131,25 +131,17 @@ function SettingUserEditApp() {
             const next = values as UserEditFormValues;
             const dirty = Boolean(
               (origin.nickname || '') !== (next.nickname || '') ||
-              (origin.avatar || '') !== (next.avatar || '') ||
-              origin.role !== next.role ||
-              (origin.roleKey || 'default') !== (next.roleKey || 'default')
+                (origin.avatar || '') !== (next.avatar || '') ||
+                origin.role !== next.role ||
+                (origin.roleKey || 'default') !== (next.roleKey || 'default')
             );
             setIsDirty(dirty);
           }}
           onSubmit={onSubmit}
         >
           <AppForm.Input field="email" label="邮箱" disabled />
-          <AppForm.Input
-            field="nickname"
-            label="昵称（可选）"
-            placeholder="请输入昵称"
-          />
-          <AppForm.Input
-            field="avatar"
-            label="头像URL（可选）"
-            placeholder="请输入头像URL（http/https 或 /file/）"
-          />
+          <AppForm.Input field="nickname" label="昵称（可选）" placeholder="请输入昵称" />
+          <AppForm.Input field="avatar" label="头像URL（可选）" placeholder="请输入头像URL（http/https 或 /file/）" />
           <AppForm.Select
             field="role"
             label="系统角色"

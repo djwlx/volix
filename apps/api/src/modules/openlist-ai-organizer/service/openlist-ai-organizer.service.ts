@@ -80,6 +80,10 @@ interface OpenlistRecursiveReader {
   read: (currentPath: string, options?: { forceRefresh?: boolean }) => Promise<OpenlistFsObject[]>;
 }
 
+interface CancelCheckOptions {
+  assertNotCanceled?: () => Promise<void>;
+}
+
 interface CreateDirectoryReaderOptions {
   cacheTaskId?: string;
   cacheTtlMs?: number;
@@ -392,15 +396,10 @@ const buildRetrievedContext = (chunkItems: IndexedOrganizerTreeNode[], allItems:
 
 const getOpenlistSdk = async (options?: { userAgent?: string }) => {
   const account = await getOpenlistAccountConfig();
-  const sdk = createThrottledOpenlistSdk(
-    createOpenlistSdk({
-      apiHost: account.baseUrl,
-      userAgent: options?.userAgent,
-    }),
-    {
-      minRequestIntervalMs: OPENLIST_SCAN_MIN_REQUEST_INTERVAL_MS,
-    }
-  );
+  const sdk = createOpenlistSdk({
+    apiHost: account.baseUrl,
+    userAgent: options?.userAgent,
+  });
   await sdk.loginWithHashedPassword(account.username, account.password);
   return sdk;
 };
@@ -522,10 +521,16 @@ export const createDirectoryReader = async (
   };
 };
 
-const scanOrganizerTree = async (reader: DirectoryReader, rootPath: string, duplicateFolderPath: string) => {
+const scanOrganizerTree = async (
+  reader: DirectoryReader,
+  rootPath: string,
+  duplicateFolderPath: string,
+  options?: CancelCheckOptions
+) => {
   const nodes = new Map<string, OrganizerTreeNode>();
 
   const walk = async (currentPath: string, depth: number, parentId?: string): Promise<OrganizerTreeNode> => {
+    await options?.assertNotCanceled?.();
     let childEntries: OpenlistFsObject[] = [];
     if (depth === 0 || currentPath === rootPath || parentId) {
       childEntries = await reader.read(currentPath);
@@ -542,6 +547,7 @@ const scanOrganizerTree = async (reader: DirectoryReader, rootPath: string, dupl
     let maxDepth = depth;
 
     for (const entry of childEntries) {
+      await options?.assertNotCanceled?.();
       const childPath = path.posix.join(currentPath, entry.name);
       if (childPath === duplicateFolderPath || childPath.startsWith(`${duplicateFolderPath}/`)) {
         continue;
@@ -1139,7 +1145,8 @@ export const pickRandomOpenlistImageFromPath = async (rawPath?: string, options?
 };
 
 export const analyzeOpenlistFolderWithAi = async (
-  payload: AnalyzeOpenlistAiOrganizerPayload
+  payload: AnalyzeOpenlistAiOrganizerPayload,
+  options?: CancelCheckOptions
 ): Promise<AnalyzeOpenlistAiOrganizerResponse> => {
   const rootPath = normalizeOpenlistPath(payload.rootPath);
   const duplicateFolderPath = path.posix.join(rootPath, normalizeDuplicateFolderName(payload.duplicateFolderName));
@@ -1154,7 +1161,9 @@ export const analyzeOpenlistFolderWithAi = async (
     badRequest(`OpenList 路径无法访问: ${(error as Error)?.message || 'unknown_error'}`);
   }
 
-  const { rootNode, nodes } = await scanOrganizerTree(reader, rootPath, duplicateFolderPath);
+  await options?.assertNotCanceled?.();
+  const { rootNode, nodes } = await scanOrganizerTree(reader, rootPath, duplicateFolderPath, options);
+  await options?.assertNotCanceled?.();
   const planCandidates = Array.from(nodes.values())
     .filter(
       item =>
@@ -1176,6 +1185,7 @@ export const analyzeOpenlistFolderWithAi = async (
   const chunkSummaries: string[] = [];
 
   for (const [chunkIndex, chunkItems] of chunks.entries()) {
+    await options?.assertNotCanceled?.();
     const retrievedItems = buildRetrievedContext(chunkItems, planCandidates);
     const aiResult = await runAiOpenlistFolderOrganizeTool({
       rootPath,
@@ -1195,6 +1205,8 @@ export const analyzeOpenlistFolderWithAi = async (
       chunkSummaries.push(`Chunk ${chunkIndex + 1}/${chunks.length}: ${aiResult.summary}`);
     }
   }
+
+  await options?.assertNotCanceled?.();
 
   const aiItemMap = new Map(aggregatedAiItems.map(item => [item.id, item]));
   const items = planCandidates
@@ -1229,7 +1241,8 @@ export const analyzeOpenlistFolderWithAi = async (
 };
 
 export const executeOpenlistAiOrganizerPlan = async (
-  payload: ExecuteOpenlistAiOrganizerPayload
+  payload: ExecuteOpenlistAiOrganizerPayload,
+  options?: CancelCheckOptions
 ): Promise<ExecuteOpenlistAiOrganizerResponse> => {
   const rootPath = normalizeOpenlistPath(payload.rootPath);
   const duplicateFolderPath = path.posix.join(rootPath, normalizeDuplicateFolderName(payload.duplicateFolderName));
@@ -1244,6 +1257,7 @@ export const executeOpenlistAiOrganizerPlan = async (
   const sortedItems = items.slice().sort((a, b) => a.depth - b.depth || a.sourcePath.localeCompare(b.sourcePath));
 
   for (const item of sortedItems) {
+    await options?.assertNotCanceled?.();
     const currentSourcePath = remapPathWithMappings(item.sourcePath, pathMappings);
     const sourceName = path.posix.basename(currentSourcePath);
     const sourceParentPath = path.posix.dirname(currentSourcePath);

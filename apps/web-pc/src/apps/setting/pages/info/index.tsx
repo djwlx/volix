@@ -3,9 +3,8 @@ import { Avatar, Button, Card, Input, Space, Tag, Toast, Typography } from '@dou
 import { sendCurrentUserEmailVerifyCode, updateCurrentUserProfile, verifyCurrentUserEmail } from '@/services/user';
 import { uploadLocalFile } from '@/services/file';
 import { AppForm } from '@/components';
-import { useOutletContext } from 'react-router';
+import { useAppPageContext } from '@/hooks';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
-import type { SettingOutletContext } from '@/apps/setting/types';
 
 interface InfoFormValues {
   email: string;
@@ -14,7 +13,7 @@ interface InfoFormValues {
 }
 
 function SettingInfoApp() {
-  const { user, refreshUser } = useOutletContext<SettingOutletContext>();
+  const { user, refreshUser } = useAppPageContext();
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formApi, setFormApi] = useState<FormApi<Record<string, unknown>>>();

@@ -24,7 +24,7 @@ export interface AnalyzeOpenlistAiOrganizerPayload {
 
 export type OpenlistAiOrganizerTaskType = 'analyze' | 'execute';
 
-export type OpenlistAiOrganizerTaskStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+export type OpenlistAiOrganizerTaskStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled';
 
 export interface OpenlistAiOrganizerPlanItem {
   id: string;
@@ -110,6 +110,10 @@ export interface CreateOpenlistAiOrganizerRetryTaskResponse {
   taskId: string;
 }
 
+export interface CancelOpenlistAiOrganizerTaskResponse {
+  taskId: string;
+}
+
 export interface DeleteOpenlistAiOrganizerDuplicateFolderResponse {
   taskId: string;
   duplicateFolderPath: string;
@@ -134,6 +138,7 @@ export interface OpenlistAiOrganizerTaskSummary {
 }
 
 export interface OpenlistAiOrganizerTaskDetail extends OpenlistAiOrganizerTaskSummary {
+  cancelRequested?: boolean;
   analyzePayload?: AnalyzeOpenlistAiOrganizerPayload;
   executePayload?: ExecuteOpenlistAiOrganizerPayload;
   analysisResult?: AnalyzeOpenlistAiOrganizerResponse;

@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Space, Toast } from '@douyinfe/semi-ui';
 import { AppForm, Loading } from '@/components';
 import { getAccountConfigs, getAiModelList, testAccountConfig, updateAccountConfig } from '@/services/user';
-import { useOutletContext } from 'react-router';
+import { useAppPageContext } from '@/hooks';
 import { AccountConfigPlatform, UserRole } from '@volix/types';
 import type { AiAccountConfigItem } from '@volix/types';
-import type { SettingOutletContext } from '@/apps/setting/types';
 
 const EMPTY_VALUES: AiAccountConfigItem = {
   baseUrl: '',
@@ -14,7 +13,7 @@ const EMPTY_VALUES: AiAccountConfigItem = {
 };
 
 function SettingConfigAiApp() {
-  const { user, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
+  const { user, requestNavigate, registerLeaveGuard } = useAppPageContext();
   const [initialValues, setInitialValues] = useState<AiAccountConfigItem>(EMPTY_VALUES);
   const [formValues, setFormValues] = useState<AiAccountConfigItem>(EMPTY_VALUES);
   const [loading, setLoading] = useState(true);

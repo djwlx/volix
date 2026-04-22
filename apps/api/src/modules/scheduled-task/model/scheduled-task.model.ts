@@ -4,7 +4,7 @@ import type { ScheduledTaskEntity } from '../types/scheduled-task.types';
 
 export type ScheduledTaskModelType = Model<ScheduledTaskEntity>;
 
-export const ScheduledTaskModel = sequelize.define<ScheduledTaskModelType>('scheduled_task', {
+export const ScheduledTaskModel = sequelize.define<ScheduledTaskModelType>('volix_scheduled_task', {
   id: {
     type: DataTypes.STRING(64),
     allowNull: false,

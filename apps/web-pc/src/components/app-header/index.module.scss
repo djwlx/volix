@@ -34,18 +34,40 @@
   display: grid;
   gap: 2px;
   min-width: 0;
+  flex: 1;
 }
 
 .titleText {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
   font-size: 18px;
   font-weight: 700;
   line-height: 1.2;
   color: var(--app-text);
   letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .description {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
   font-size: 13px;
   line-height: 1.4;
   color: var(--app-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userName {
+  display: block;
+  min-width: 0;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

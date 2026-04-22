@@ -12,6 +12,8 @@ import { AppConfigEnum } from '../../config/model/config.model';
 import { getConfig } from '../../config/service/config.service';
 import {
   createAnimeSubscription,
+  deleteAnimeSubscription,
+  isAnimeSubscriptionCheckRunning,
   queryAnimeSubscriptionById,
   queryAnimeSubscriptionItems,
   queryAnimeSubscriptions,
@@ -440,6 +442,23 @@ export const triggerAnimeSubscriptionCheck: MyMiddleware = async ctx => {
     success: true,
     message: result.message,
     checkedAt: new Date().toISOString(),
+  };
+};
+
+export const deleteAnimeSubscriptionAction: MyMiddleware = async ctx => {
+  ensureAdmin(ctx);
+  const { id } = ctx.params;
+  await getRequiredSubscription(id);
+
+  if (isAnimeSubscriptionCheckRunning(id)) {
+    badRequest('该任务正在后台检查中，请稍后再删除');
+  }
+
+  await deleteAnimeSubscription(id);
+
+  return {
+    success: true,
+    message: '追番任务已删除',
   };
 };
 

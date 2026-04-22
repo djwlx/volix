@@ -1,5 +1,5 @@
 .page {
-  min-height: 100dvh;
+  min-height: 100%;
   background:
     radial-gradient(circle at top right, rgba(56, 189, 248, 0.08), transparent 24%),
     linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(241, 245, 249, 1) 100%);
@@ -18,7 +18,7 @@
 }
 
 .layout {
-  min-height: calc(100dvh - 104px);
+  min-height: 100%;
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
   gap: 18px;
@@ -96,13 +96,6 @@
   line-height: 1;
   letter-spacing: -0.03em;
   color: #0f172a;
-}
-
-.mainDescription {
-  margin-top: 8px;
-  font-size: 14px;
-  line-height: 1.7;
-  color: #64748b;
 }
 
 .toolbar {

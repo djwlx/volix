@@ -21,7 +21,7 @@ export interface ConfigType {
 
 export type ConfigModelType = Model<ConfigType>;
 
-export const ConfigModel = sequelize.define<ConfigModelType>('app_config', {
+export const ConfigModel = sequelize.define<ConfigModelType>('volix_config', {
   config_name: {
     type: DataTypes.STRING,
     allowNull: false,

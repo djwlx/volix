@@ -14,7 +14,7 @@ export interface AiConversationEntity {
 
 export type AiConversationModelType = Model<AiConversationEntity>;
 
-export const AiConversationModel = sequelize.define<AiConversationModelType>('app_ai_conversation', {
+export const AiConversationModel = sequelize.define<AiConversationModelType>('volix_ai_conversation', {
   id: {
     type: DataTypes.STRING,
     allowNull: false,

@@ -14,7 +14,7 @@ export interface AiEventEntity {
 
 export type AiEventModelType = Model<AiEventEntity>;
 
-export const AiEventModel = sequelize.define<AiEventModelType>('app_ai_event', {
+export const AiEventModel = sequelize.define<AiEventModelType>('volix_ai_event', {
   id: {
     type: DataTypes.STRING,
     allowNull: false,

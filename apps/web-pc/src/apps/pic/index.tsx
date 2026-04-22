@@ -122,9 +122,9 @@ function PicApp() {
           <Button theme="solid" type="tertiary" onClick={() => fetchImg()}>
             换一张
           </Button>
-          <Tooltip content={isAdmin && picMeta.parentPath ? picMeta.parentPath : ''} position="top" trigger="hover">
+          <Tooltip content={isAdmin && picMeta.path ? picMeta.path : ''} position="top" trigger="hover">
             <span className={styles.tooltipTrigger}>
-              <Button theme="solid" type="secondary" disabled={!picMeta.parentPath} onClick={() => fetchSiblingImg()}>
+              <Button theme="solid" type="secondary" disabled={!picMeta.path} onClick={() => fetchSiblingImg()}>
                 同文件夹随机
               </Button>
             </span>

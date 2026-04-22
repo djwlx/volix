@@ -21,7 +21,7 @@ export interface AiToolCallEntity {
 
 export type AiToolCallModelType = Model<AiToolCallEntity>;
 
-export const AiToolCallModel = sequelize.define<AiToolCallModelType>('app_ai_tool_call', {
+export const AiToolCallModel = sequelize.define<AiToolCallModelType>('volix_ai_tool_call', {
   id: {
     type: DataTypes.STRING,
     allowNull: false,

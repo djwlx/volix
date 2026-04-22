@@ -17,7 +17,7 @@ export interface AiMessageEntity {
 
 export type AiMessageModelType = Model<AiMessageEntity>;
 
-export const AiMessageModel = sequelize.define<AiMessageModelType>('app_ai_message', {
+export const AiMessageModel = sequelize.define<AiMessageModelType>('volix_ai_message', {
   id: {
     type: DataTypes.STRING,
     allowNull: false,

@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Space, Toast, Typography } from '@douyinfe/semi-ui';
 import { AppForm, Loading } from '@/components';
 import { getAccountConfigs, testAccountConfig, updateAccountConfig } from '@/services/user';
-import { useOutletContext } from 'react-router';
+import { useAppPageContext } from '@/hooks';
 import { AccountConfigPlatform, UserRole } from '@volix/types';
 import type { BangumiAccountConfigItem } from '@volix/types';
-import type { SettingOutletContext } from '@/apps/setting/types';
 
 const EMPTY_VALUES: BangumiAccountConfigItem = {
   baseUrl: 'https://api.bgm.tv',
@@ -13,7 +12,7 @@ const EMPTY_VALUES: BangumiAccountConfigItem = {
 };
 
 function SettingConfigBangumiApp() {
-  const { user, requestNavigate, registerLeaveGuard } = useOutletContext<SettingOutletContext>();
+  const { user, requestNavigate, registerLeaveGuard } = useAppPageContext();
   const [initialValues, setInitialValues] = useState<BangumiAccountConfigItem>(EMPTY_VALUES);
   const [formValues, setFormValues] = useState<BangumiAccountConfigItem>(EMPTY_VALUES);
   const [loading, setLoading] = useState(true);

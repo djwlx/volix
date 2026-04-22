@@ -7,6 +7,7 @@ import { UserRole } from '@volix/types';
 import { badRequest, unauthorized } from '../../shared/http-handler';
 import { browseOpenlistAiOrganizerPath } from '../service/openlist-ai-organizer.service';
 import {
+  cancelOpenlistAiOrganizerTask,
   createAnalyzeOpenlistAiOrganizerTask,
   deleteOpenlistAiOrganizerDuplicateFolderByTask,
   createExecuteOpenlistAiOrganizerTask,
@@ -52,6 +53,11 @@ export const reviseOpenlistAiOrganizerAnalyzeTaskAction: MyMiddleware = async ct
 export const retryOpenlistAiOrganizerTaskAction: MyMiddleware = async ctx => {
   ensureAdmin(ctx);
   return createRetryOpenlistAiOrganizerTask(String(ctx.params.id || ''));
+};
+
+export const cancelOpenlistAiOrganizerTaskAction: MyMiddleware = async ctx => {
+  ensureAdmin(ctx);
+  return cancelOpenlistAiOrganizerTask(String(ctx.params.id || ''));
 };
 
 export const deleteOpenlistAiOrganizerDuplicateFolderAction: MyMiddleware = async ctx => {

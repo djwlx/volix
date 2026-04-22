@@ -5,7 +5,7 @@ import type { AnimeSubscriptionItemEntity } from '../types/anime-subscription.ty
 
 export type AnimeSubscriptionItemType = Model<AnimeSubscriptionItemEntity>;
 
-export const AnimeSubscriptionItemModel = sequelize.define<AnimeSubscriptionItemType>('anime_subscription_item', {
+export const AnimeSubscriptionItemModel = sequelize.define<AnimeSubscriptionItemType>('volix_anime_subscription_item', {
   subscription_id: {
     type: DataTypes.INTEGER,
     allowNull: false,

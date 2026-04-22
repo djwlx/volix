@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
-import { AppHeader } from '@/components';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useUser } from '@/hooks';
 import {
   createSqliteAdminRow,
@@ -17,7 +16,6 @@ import {
 } from '@volix/types';
 import { IconDelete, IconEdit, IconPlus, IconRefresh } from '@douyinfe/semi-icons';
 import { Button, Card, Empty, Input, Modal, Space, Table, Tag, TextArea, Toast } from '@douyinfe/semi-ui';
-import { useNavigate } from 'react-router';
 import styles from './index.module.scss';
 
 type EditorMode = 'create' | 'edit';
@@ -30,6 +28,7 @@ type EditorState = {
 };
 
 const DEFAULT_PAGE_SIZE = 20;
+const MOBILE_TABLE_BREAKPOINT = '(max-width: 1023px)';
 
 const stringifyEditorValue = (value: unknown) => {
   if (value === null || value === undefined) {
@@ -91,7 +90,6 @@ const renderCellValue = (value: unknown) => {
 };
 
 function SqliteAdminApp() {
-  const navigate = useNavigate();
   const { user, loading } = useUser();
   const [tables, setTables] = useState<SqliteAdminTableSummary[]>([]);
   const [tablesLoading, setTablesLoading] = useState(false);
@@ -99,6 +97,13 @@ function SqliteAdminApp() {
   const [tableDetail, setTableDetail] = useState<SqliteAdminTableData>();
   const [detailLoading, setDetailLoading] = useState(false);
   const [page, setPage] = useState(1);
+  const tableDetailRequestSeqRef = useRef(0);
+  const [isMobileTableLayout, setIsMobileTableLayout] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia(MOBILE_TABLE_BREAKPOINT).matches;
+  });
   const [editor, setEditor] = useState<EditorState>({
     visible: false,
     mode: 'create',
@@ -134,17 +139,24 @@ function SqliteAdminApp() {
     if (!tableName) {
       return;
     }
+    const requestSeq = ++tableDetailRequestSeqRef.current;
     setDetailLoading(true);
     try {
       const res = await getSqliteAdminTableDetail(tableName, {
         page: nextPage,
         pageSize: DEFAULT_PAGE_SIZE,
       });
-      setTableDetail(res.data);
+      if (requestSeq === tableDetailRequestSeqRef.current) {
+        setTableDetail(res.data);
+      }
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '获取表数据失败'));
+      if (requestSeq === tableDetailRequestSeqRef.current) {
+        Toast.error(getHttpErrorMessage(error, '获取表数据失败'));
+      }
     } finally {
-      setDetailLoading(false);
+      if (requestSeq === tableDetailRequestSeqRef.current) {
+        setDetailLoading(false);
+      }
     }
   };
 
@@ -160,6 +172,33 @@ function SqliteAdminApp() {
     }
     loadTableDetail(selectedTable, page).catch(() => undefined);
   }, [selectedTable, page, isAdmin]);
+
+  useEffect(() => {
+    setTableDetail(undefined);
+    setEditor({
+      visible: false,
+      mode: 'create',
+      values: {},
+    });
+  }, [selectedTable]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(MOBILE_TABLE_BREAKPOINT);
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsMobileTableLayout(event.matches);
+    };
+
+    setIsMobileTableLayout(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+
+    return () => {
+      mediaQuery.removeEventListener('change', handleChange);
+    };
+  }, []);
 
   const openCreateModal = () => {
     setEditor({
@@ -260,23 +299,6 @@ function SqliteAdminApp() {
   if (!isAdmin) {
     return (
       <div className={styles.page}>
-        <AppHeader
-          title="SQLite 数据管理"
-          description="仅管理员可访问的表格化数据编辑台"
-          logo={
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 12,
-                background: 'linear-gradient(135deg, #0f172a, #0284c7)',
-              }}
-            />
-          }
-          onLogoClick={() => navigate('/')}
-          userOverride={user || undefined}
-          userBadge="管理员"
-        />
         <div className={styles.content}>
           <Card className={styles.mainCard}>
             <Empty title="暂无权限" description="只有管理员可以直接编辑 SQLite 表数据。" />
@@ -286,64 +308,48 @@ function SqliteAdminApp() {
     );
   }
 
-  const tableColumns = [
-    ...columns.map(column => ({
-      title: column.name,
-      dataIndex: column.name,
-      key: column.name,
-      width: 220,
-      render: (value: unknown) => renderCellValue(value),
-    })),
-    {
-      title: '操作',
-      key: 'action',
-      fixed: 'right' as const,
-      width: 128,
-      render: (_: unknown, record: Record<string, unknown>) => (
-        <Space>
-          <Button
-            size="small"
-            theme="borderless"
-            type="primary"
-            icon={<IconEdit />}
-            onClick={() => openEditModal(record)}
-          >
-            编辑
-          </Button>
-          <Button size="small" theme="borderless" type="danger" icon={<IconDelete />} onClick={() => removeRow(record)}>
-            删除
-          </Button>
-        </Space>
-      ),
-    },
-  ];
+  const tableColumns = useMemo(() => {
+    return [
+      ...columns.map(column => ({
+        title: column.name,
+        dataIndex: column.name,
+        key: column.name,
+        width: 220,
+        render: (value: unknown) => renderCellValue(value),
+      })),
+      {
+        title: '操作',
+        key: 'action',
+        fixed: isMobileTableLayout ? undefined : ('right' as const),
+        width: 128,
+        render: (_: unknown, record: Record<string, unknown>) => (
+          <Space>
+            <Button
+              size="small"
+              theme="borderless"
+              type="primary"
+              icon={<IconEdit />}
+              onClick={() => openEditModal(record)}
+            >
+              编辑
+            </Button>
+            <Button
+              size="small"
+              theme="borderless"
+              type="danger"
+              icon={<IconDelete />}
+              onClick={() => removeRow(record)}
+            >
+              删除
+            </Button>
+          </Space>
+        ),
+      },
+    ];
+  }, [columns, isMobileTableLayout, openEditModal, removeRow]);
 
   return (
     <div className={styles.page}>
-      <AppHeader
-        title="SQLite 数据管理"
-        description="管理员可直接浏览和编辑当前应用数据库中的表数据"
-        logo={
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              background: 'linear-gradient(135deg, #020617 0%, #0369a1 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              fontWeight: 800,
-            }}
-          >
-            DB
-          </div>
-        }
-        onLogoClick={() => navigate('/')}
-        userOverride={user || undefined}
-        userBadge="管理员"
-      />
       <div className={styles.content}>
         <div className={styles.layout}>
           <Card
@@ -367,6 +373,9 @@ function SqliteAdminApp() {
                     type="button"
                     className={`${styles.tableItem} ${selectedTable === table.name ? styles.tableItemActive : ''}`}
                     onClick={() => {
+                      if (selectedTable === table.name) {
+                        return;
+                      }
                       setSelectedTable(table.name);
                       setPage(1);
                     }}
@@ -387,10 +396,6 @@ function SqliteAdminApp() {
                 <div className={styles.mainHeader}>
                   <div>
                     <div className={styles.mainTitle}>{tableDetail.table}</div>
-                    <div className={styles.mainDescription}>
-                      当前显示第 {tableDetail.page} 页，共 {tableDetail.total} 行。编辑输入支持
-                      `null`、`true`、`false`、数字和 JSON。
-                    </div>
                   </div>
                   <div className={styles.toolbar}>
                     <Button
