@@ -358,16 +358,16 @@ function removeAllDist() {
   console.log('✓ 所有 dist 已清理');
 }
 
-function buildApp() {
+function releaseApp() {
   removeAllDist();
   run('npm install -g pnpm@8.15.9');
   run('pnpm config set allow-build-scripts true');
   run('pnpm install');
-  run('pnpm run release:build');
+  run('pnpm run build');
   copyFrontToEnd();
   copyWorkspaceDependencies();
   cleanupApiPackageJson();
   copyApiDistToRoot();
 }
 
-buildApp();
+releaseApp();

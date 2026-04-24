@@ -28,7 +28,7 @@ async function findPackageJsons(dir) {
 }
 
 function usage() {
-  console.log('\nUsage: node scripts/update_versions.js <new-version>');
+  console.log('\nUsage: node scripts/update-versions.js <new-version>');
   console.log('If <new-version> is omitted, the root package.json version is used.');
 }
 
