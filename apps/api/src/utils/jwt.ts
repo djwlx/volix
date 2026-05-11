@@ -8,9 +8,7 @@ interface JwtData {
 
 class JWT {
   static setToken(data: JwtData) {
-    return jwt.sign(data, key, {
-      expiresIn: '48h',
-    });
+    return jwt.sign(data, key, {});
   }
   static getData(token: string): JwtData {
     const data = jwt.verify(token, key);
