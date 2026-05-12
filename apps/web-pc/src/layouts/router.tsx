@@ -16,6 +16,7 @@ import SqliteAdminApp from '@/apps/sqlite-admin';
 import ColorPickerApp from '@/apps/color-picker';
 import FormatterApp from '@/apps/formatter';
 import PicApp from '@/apps/pic';
+import PicLikedApp from '@/apps/pic-liked';
 import AuthApp from '@/apps/auth';
 import SettingApp from '@/apps/setting';
 import SettingInfoApp from '@/apps/setting/pages/info';
@@ -226,6 +227,21 @@ export const router = createBrowserRouter([
         handle: routeHandle({
           appHeader: null,
           contentSpacing: 'flush',
+        }),
+      },
+      {
+        path: 'pic/likes',
+        Component: PicLikedApp,
+        handle: routeHandle({
+          appHeader: {
+            title: '我的喜欢',
+            description: '管理你收藏的 115 图片',
+            logo: (
+              <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #dc2626 0%, #f97316 100%)' }}>
+                <IconStar style={{ fontSize: 20 }} />
+              </div>
+            ),
+          },
         }),
       },
       {

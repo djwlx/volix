@@ -24,6 +24,7 @@ declare global {
   namespace NodeJS {
     interface ProcessEnv {
       NODE_ENV: 'development' | 'production';
+      VOLIX_API_ALLOW_INSECURE_TLS?: '1' | '0' | 'true' | 'false' | 'yes' | 'no';
     }
   }
 }

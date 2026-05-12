@@ -4,8 +4,11 @@ import type {
   ClearPicInfoParams,
   FileListData,
   FileListParams,
+  Liked115PicListResponse,
+  Like115PicResponse,
   Like115PicParams,
   PicInfo115,
+  PicPathByPcResponse,
   PicInfoParams,
   QrCodeResponse,
   QrCodeStatus,
@@ -67,7 +70,7 @@ export function retry115Pic(data: RetryPicInfoParams) {
 }
 
 export function like115Pic(data: Like115PicParams) {
-  return http.post('/115/pic/like', data);
+  return http.post<Like115PicResponse>('/115/pic/like', data);
 }
 
 export function get115Pic(mode: 'json' | 'direct' = 'json') {
@@ -80,5 +83,19 @@ export function get115PicFromParent(pc: string) {
     params: {
       pc,
     },
+  });
+}
+
+export function get115PicPathByPc(pc: string) {
+  return http.get<PicPathByPcResponse>('/115/pic/path', {
+    params: {
+      pc,
+    },
+  });
+}
+
+export function get115LikedPics(params?: { offset?: number; pageSize?: number }) {
+  return http.get<Liked115PicListResponse>('/115/pic/likes', {
+    params,
   });
 }

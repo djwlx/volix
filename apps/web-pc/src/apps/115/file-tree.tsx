@@ -4,7 +4,7 @@ import { useFileList, type FileItem, type UndoneMapItem } from './hooks/useFileL
 import { useEffect, useState } from 'react';
 import type { TreeNodeData } from '@douyinfe/semi-ui/lib/es/tree';
 import type { PicCacheFolderItem } from '@volix/types';
-import { get115PicInfo, set115PicInfo } from '@/services/115';
+import { clear115Pic, get115PicInfo, set115PicInfo } from '@/services/115';
 import { getHttpErrorMessage } from '@/utils/error';
 import { renderPicCacheStatusTag } from './pic-cache-status';
 
@@ -13,6 +13,7 @@ export function FileTree() {
   const { fileTree: treeData, loadMore, moreLoading, unDoneMap } = useFileList();
   const [loadingMoreDir, setLoadingMoreDir] = useState('');
   const [folderStatusMap, setFolderStatusMap] = useState<Record<string, PicCacheFolderItem>>({});
+  const [cachedCidMap, setCachedCidMap] = useState<Record<string, true>>({});
 
   const fetchPicInfo = async () => {
     const result = await get115PicInfo();
@@ -22,6 +23,14 @@ export function FileTree() {
           acc[item.cid] = item;
           return acc;
         }, {} as Record<string, PicCacheFolderItem>)
+      );
+      setCachedCidMap(
+        (result.data.cachedCids || []).reduce((acc, cid) => {
+          if (cid) {
+            acc[cid] = true;
+          }
+          return acc;
+        }, {} as Record<string, true>)
       );
     }
   };
@@ -45,16 +54,37 @@ export function FileTree() {
     }
   };
 
+  const onRemoveCache = async (cid: string) => {
+    const confirmed = window.confirm('确定删除该目录缓存？此修改将不可逆');
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await clear115Pic({ paths: [cid] });
+      await fetchPicInfo();
+      Toast.success('已删除该目录缓存');
+    } catch (error) {
+      Toast.error(getHttpErrorMessage(error, '删除缓存失败'));
+    }
+  };
+
   const formatTreeData = (data: FileItem[], unComplete: Record<string, UndoneMapItem>, dir: string): TreeNodeData[] => {
     const treeData = data.map(item => {
       const isDir = !item.fid;
       const folderInfo = folderStatusMap[item.dir];
+      const hasCache = Boolean(folderInfo) || Boolean(cachedCidMap[item.dir]);
+      const displayStatus = folderInfo?.status || (hasCache ? 'cached' : '');
       const fileItem: TreeNodeData = {
         ...item,
         label: (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ flex: 1, minWidth: 0 }}>{item.name}</span>
-            {isDir && folderInfo ? renderPicCacheStatusTag(folderInfo) : null}
+            {isDir && displayStatus
+              ? renderPicCacheStatusTag({
+                  status: displayStatus,
+                })
+              : null}
             {isDir ? (
               <Dropdown
                 trigger="click"
@@ -70,13 +100,22 @@ export function FileTree() {
                       复制 CID
                     </Dropdown.Item>
                     <Dropdown.Item
-                      disabled={Boolean(folderInfo)}
+                      disabled={hasCache}
                       onClick={event => {
                         event.stopPropagation();
                         void onAddCache(item.dir);
                       }}
                     >
-                      {folderInfo ? '已加入缓存' : '加入缓存'}
+                      {hasCache ? '已加入缓存' : '加入缓存'}
+                    </Dropdown.Item>
+                    <Dropdown.Item
+                      disabled={!hasCache}
+                      onClick={event => {
+                        event.stopPropagation();
+                        void onRemoveCache(item.dir);
+                      }}
+                    >
+                      去掉缓存
                     </Dropdown.Item>
                   </Dropdown.Menu>
                 }
@@ -138,7 +177,7 @@ export function FileTree() {
   useEffect(() => {
     const data = formatTreeData(treeData, unDoneMap, '0');
     setFileTree(data);
-  }, [treeData, unDoneMap, loadingMoreDir, folderStatusMap]);
+  }, [treeData, unDoneMap, loadingMoreDir, folderStatusMap, cachedCidMap]);
 
   useEffect(() => {
     if (!moreLoading) {

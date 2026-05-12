@@ -5,7 +5,10 @@ import {
   exitCloud115,
   get115File,
   get115FileList,
+  get115LikedPicList,
+  get115PicCacheFileByPc,
   get115PicInfo,
+  get115PicPathByPc,
   get115QrCode,
   get115QrCodeStatus,
   get115UserInfo,
@@ -24,6 +27,9 @@ const router = new Router({
 router
   .get('/pic', http(getRandom115Pic))
   .get('/pic/parent-random', http(getRandom115PicByParent))
+  .get('/pic/path', http(get115PicPathByPc))
+  .get('/pic/cache/:pc', http(get115PicCacheFileByPc))
+  .get('/pic/likes', http(get115LikedPicList))
   .get('/pic/info', http(get115PicInfo))
   .post('/pic/like', http(like115Pic))
   .put('/pic/info', http(set115PicInfo))

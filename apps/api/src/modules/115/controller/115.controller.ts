@@ -1,4 +1,5 @@
 import ejs from 'ejs';
+import fs from 'fs';
 import mime from 'mime-types';
 import type {
   ClearPicInfoParams,
@@ -14,9 +15,12 @@ import { badRequest } from '../../shared/http-handler';
 import { get115FileData, get115FileListData } from '../service/file.service';
 import {
   clear115PicData,
+  getLiked115PicListData,
   get115PicInfoData,
+  get115PicCacheFileByPcData,
   getRandom115PicMeta,
   getRandom115PicFromParentMeta,
+  get115PicPathByPcData,
   like115PicData,
   retry115PicData,
   set115PicInfoData,
@@ -30,7 +34,15 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
   const { mode } = ctx.query || {};
   const isDirect = mode === 'direct';
   const isJson = mode === 'json';
-  const { url, fileName, cid, pc, path, parentPath, notice } = await getRandom115PicMeta(ua as string);
+  const { url, fileName, cid, pc, path, parentPath, liked, localCacheFilePath, localCacheMimeType, notice } =
+    await getRandom115PicMeta(ua as string);
+
+  if (isDirect && localCacheFilePath) {
+    ctx.set('Content-Type', localCacheMimeType || mime.lookup(fileName) || 'image/png');
+    ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
+    ctx.body = fs.createReadStream(localCacheFilePath);
+    return;
+  }
 
   if (isDirect) {
     const streamResult = await request.get(url, {
@@ -52,6 +64,7 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
       pc,
       path,
       parentPath,
+      liked,
       notice,
     };
   }
@@ -80,6 +93,49 @@ export const getRandom115PicByParent: MyMiddleware = async ctx => {
   });
 };
 
+export const get115PicPathByPc: MyMiddleware = async ctx => {
+  const pc = String(ctx.query?.pc || '');
+  return get115PicPathByPcData(pc);
+};
+
+export const get115PicCacheFileByPc: MyMiddleware = async ctx => {
+  const pc = String(ctx.params?.pc || '');
+  const ua = ctx.request.headers['user-agent'];
+  const source = await get115PicCacheFileByPcData(pc, String(ua || ''));
+
+  if (source.kind === 'local') {
+    ctx.set('Content-Type', source.mimeType || 'application/octet-stream');
+    ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(source.fileName)}"`);
+    ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
+    ctx.body = fs.createReadStream(source.filePath);
+    return;
+  }
+
+  const streamResult = await request.get(source.url, {
+    responseType: 'stream',
+    headers: {
+      'User-Agent': ua,
+    },
+  });
+  ctx.set('Content-Type', source.mimeType || mime.lookup(source.fileName) || 'image/png');
+  ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
+  ctx.body = streamResult.data;
+};
+
+export const get115LikedPicList: MyMiddleware = async ctx => {
+  const offset = Number(ctx.query?.offset || 0);
+  const pageSize = Number(ctx.query?.pageSize || 50);
+  const ua = ctx.request.headers['user-agent'];
+
+  return getLiked115PicListData(
+    {
+      offset,
+      pageSize,
+    },
+    String(ua || '')
+  );
+};
+
 export const set115PicInfo: MyMiddleware = async ctx => {
   return set115PicInfoData(ctx.request.body as PicInfoParams);
 };
@@ -97,7 +153,8 @@ export const retry115Pic: MyMiddleware = async ctx => {
 };
 
 export const like115Pic: MyMiddleware = async ctx => {
-  return like115PicData(ctx.request.body as Like115PicParams);
+  const ua = ctx.request.headers['user-agent'];
+  return like115PicData(ctx.request.body as Like115PicParams, String(ua || ''));
 };
 
 export const get115UserInfo: MyMiddleware = async ctx => {

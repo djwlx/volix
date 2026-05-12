@@ -9,13 +9,18 @@ export interface RandomPicMeta {
   pc: string;
   path: string;
   parentPath: string;
+  liked: boolean;
+  localCacheFilePath?: string;
+  localCacheMimeType?: string;
   notice?: string;
 }
 
 export interface Cloud115DbFileItem {
   pc: string;
-  name: string;
   class: string;
   cid: string;
   parentCid: string;
+  fullPath: string;
+  isLiked: boolean;
+  localCacheFileName: string;
 }

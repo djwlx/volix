@@ -47,6 +47,17 @@ export interface RetryPicInfoParams {
 export interface Like115PicParams {
   cid?: string;
   pc?: string;
+  liked?: boolean;
+}
+
+export interface Like115PicResponse {
+  pc: string;
+  cid: string;
+  liked: boolean;
+  path: string;
+  parentPath: string;
+  cached: boolean;
+  url: string;
 }
 
 export interface Random115PicResponse {
@@ -56,7 +67,35 @@ export interface Random115PicResponse {
   pc: string;
   path: string;
   parentPath: string;
+  liked: boolean;
   notice?: string;
+}
+
+export interface PicPathByPcResponse {
+  pc: string;
+  cid: string;
+  parentPath: string;
+  path: string;
+  liked: boolean;
+  cached: boolean;
+}
+
+export interface Liked115PicItem {
+  pc: string;
+  cid: string;
+  path: string;
+  parentPath: string;
+  fileName: string;
+  liked: boolean;
+  cached: boolean;
+  url: string;
+}
+
+export interface Liked115PicListResponse {
+  count: number;
+  data: Liked115PicItem[];
+  offset: number;
+  pageSize: number;
 }
 
 export type PicCacheFolderStatus = 'pending' | 'caching' | 'cached' | 'failed';
@@ -92,5 +131,7 @@ export interface QrCodeStatus {
 export interface PicInfo115 {
   loading: boolean;
   count: number;
+  likedCount: number;
   folders: PicCacheFolderItem[];
+  cachedCids: string[];
 }

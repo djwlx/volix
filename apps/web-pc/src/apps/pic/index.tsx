@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Image, Space, Toast, Tooltip } from '@douyinfe/semi-ui';
 import styles from './index.module.scss';
-import { get115Pic, get115PicFromParent, like115Pic } from '@/services/115';
+import { get115FileList, get115Pic, get115PicFromParent, get115PicPathByPc, like115Pic } from '@/services/115';
 import { Loading } from '@/components';
 import { getHttpErrorMessage } from '@/utils/error';
 import { useUser } from '@/hooks';
@@ -12,13 +12,14 @@ interface PicMeta {
   src: string;
   cid: string;
   pc: string;
-  path: string;
-  parentPath: string;
+  fileName: string;
+  liked: boolean;
 }
 
 function PicApp() {
   const { user } = useUser(false);
   const [picMeta, setPicMeta] = useState<PicMeta | null>(null);
+  const [picPath, setPicPath] = useState('');
   const [loading, setLoading] = useState(true);
   const [liking, setLiking] = useState(false);
   const isAdmin = user?.role === UserRole.ADMIN;
@@ -29,9 +30,10 @@ function PicApp() {
         src: data.url,
         cid: data.cid,
         pc: data.pc,
-        path: data.path || '',
-        parentPath: data.parentPath || '',
+        fileName: data.fileName || '',
+        liked: Boolean(data.liked),
       });
+      setPicPath(data.path || '');
 
       if (data.notice) {
         Toast.info(data.notice);
@@ -40,6 +42,52 @@ function PicApp() {
     }
 
     setPicMeta(null);
+    setPicPath('');
+  };
+
+  const resolveFilePath = async (meta: Pick<PicMeta, 'pc' | 'cid' | 'fileName'>) => {
+    const { pc, cid, fileName } = meta;
+    if (!pc) {
+      return {
+        path: '',
+        liked: false,
+      };
+    }
+
+    try {
+      const res = await get115PicPathByPc(pc);
+      const resolvedPath = String(res.data.path || '').trim();
+      const liked = Boolean(res.data.liked);
+      if (resolvedPath) {
+        return {
+          path: resolvedPath,
+          liked,
+        };
+      }
+
+      // Fallback for old cache rows without stored full_path.
+      const folderRes = await get115FileList({
+        cid,
+        offset: 0,
+        pageSize: 1,
+      });
+      const folderPath = `/${(folderRes.data.path || [])
+        .map(item => item.name)
+        .filter(Boolean)
+        .join('/')}`.replace(/\/+/g, '/');
+      const fallbackPath =
+        folderPath && folderPath !== '/' ? `${folderPath}/${fileName || ''}`.replace(/\/+/g, '/') : fileName || '';
+      return {
+        path: fallbackPath,
+        liked,
+      };
+    } catch {
+      // ignore path resolve error
+      return {
+        path: '',
+        liked: false,
+      };
+    }
   };
 
   const fetchImg = async () => {
@@ -77,11 +125,13 @@ function PicApp() {
 
     try {
       setLiking(true);
-      await like115Pic({
+      const result = await like115Pic({
         cid: picMeta.cid,
         pc: picMeta.pc,
       });
-      Toast.success('已提高该目录的随机几率');
+      const liked = Boolean(result.data?.liked);
+      setPicMeta(prev => (prev ? { ...prev, liked } : prev));
+      Toast.success(liked ? '已加入我的喜欢，后端正在缓存图片' : '已取消喜欢并清理缓存');
     } catch (error) {
       Toast.error(getHttpErrorMessage(error, '喜欢失败'));
     } finally {
@@ -93,9 +143,34 @@ function PicApp() {
     fetchImg();
   }, []);
 
+  useEffect(() => {
+    if (!isAdmin || !picMeta?.pc) {
+      return;
+    }
+
+    let cancelled = false;
+
+    resolveFilePath({
+      pc: picMeta.pc,
+      cid: picMeta.cid,
+      fileName: picMeta.fileName,
+    }).then(result => {
+      if (!cancelled) {
+        setPicPath(result.path || '');
+        setPicMeta(prev => (prev ? { ...prev, liked: result.liked } : prev));
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, picMeta?.pc, picMeta?.cid, picMeta?.fileName]);
+
   if (loading) {
     return <Loading type="page" />;
   }
+
+  const pathTooltipContent = isAdmin ? picPath : '';
 
   return picMeta?.src ? (
     <div className={styles.page}>
@@ -122,15 +197,23 @@ function PicApp() {
           <Button theme="solid" type="tertiary" onClick={() => fetchImg()}>
             换一张
           </Button>
-          <Tooltip content={isAdmin && picMeta.path ? picMeta.path : ''} position="top" trigger="hover">
+          {isAdmin && pathTooltipContent ? (
+            <Tooltip content={pathTooltipContent} position="top" trigger="hover">
+              <span className={styles.tooltipTrigger}>
+                <Button theme="solid" type="secondary" disabled={!picMeta.pc} onClick={() => fetchSiblingImg()}>
+                  同文件夹随机
+                </Button>
+              </span>
+            </Tooltip>
+          ) : (
             <span className={styles.tooltipTrigger}>
-              <Button theme="solid" type="secondary" disabled={!picMeta.path} onClick={() => fetchSiblingImg()}>
+              <Button theme="solid" type="secondary" disabled={!picMeta.pc} onClick={() => fetchSiblingImg()}>
                 同文件夹随机
               </Button>
             </span>
-          </Tooltip>
+          )}
           <Button theme="solid" type="primary" loading={liking} onClick={onLike}>
-            喜欢
+            {picMeta.liked ? '取消喜欢' : '喜欢'}
           </Button>
         </Space>
       </div>

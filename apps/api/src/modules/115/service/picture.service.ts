@@ -6,6 +6,10 @@ import type {
   PicInfoParams,
   RetryPicInfoParams,
 } from '@volix/types';
+import fs from 'fs';
+import path from 'path';
+import { pipeline } from 'stream/promises';
+import mime from 'mime-types';
 import { AppConfigEnum } from '../../config/model/config.model';
 import { clearConfig, getConfig, setConfig } from '../../config/service/config.service';
 import { badRequest } from '../../shared/http-handler';
@@ -13,18 +17,24 @@ import { calculateTimeDifference, waitTime } from '../../../utils/date';
 import { lightLocks } from '../../../utils/light-lock';
 import { log } from '../../../utils/logger';
 import { generateRandomNumber } from '../../../utils/number';
+import { PATH } from '../../../utils/path';
+import request from '../../../utils/request';
 import { Cloud115DbFileItem, RandomPicMeta } from '../types/115.types';
 import { get115FileData, get115FileListData } from './file.service';
 import {
   clearAllFile115,
   clearFile115ByCidList,
   getFile115ByCidAndParentCid,
-  getFile115ByCidIndex,
-  getFile115ByCidParentCidIndex,
+  getFile115CachedCidList,
+  getFile115PathByPc,
   getFile115ByPc,
   getFile115CountByCid,
   getFile115Len,
-  getFile115ParentGroupByCidList,
+  getFile115RandomByCidList,
+  getLikedFile115Count,
+  getLikedFile115List,
+  setFile115LocalCacheFileNameByPc,
+  setFile115LikedByPc,
   setFile115List,
 } from './file-db.service';
 import { getCloud115Sdk } from './sdk.service';
@@ -33,13 +43,83 @@ type Cloud115FileListItem = FileListDataItem & {
   class?: string;
 };
 
-const saveFile115List = async (dataList: Cloud115FileListItem[], cid: string) => {
+const log115RandomPerf = (message: string, extra: Record<string, unknown>) => {
+  log.info(`[115-random-perf] ${message}`, extra);
+};
+
+const PIC_LIKED_CACHE_DIR = PATH.upload;
+const DEFAULT_FILE_NAME = 'unknown.jpg';
+const DEFAULT_MIME_TYPE = 'application/octet-stream';
+const DEFAULT_115_DOWNLOAD_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
+const getPicCachePublicUrl = (pc: string) => `/api/115/pic/cache/${encodeURIComponent(pc)}`;
+const sanitizeCacheFileName = (rawFileName: string) => {
+  const safeName = path.basename(String(rawFileName || '').trim() || DEFAULT_FILE_NAME).replace(/[\\/:*?"<>|]/g, '_');
+
+  return safeName || DEFAULT_FILE_NAME;
+};
+const getPicCacheFileName = (pc: string, fileName: string) => `${pc}.${sanitizeCacheFileName(fileName)}`;
+const getPicCacheFilePath = (fileName: string) => path.join(PIC_LIKED_CACHE_DIR, fileName);
+const likeCacheDownloadJobMap = new Map<string, Promise<void>>();
+
+const getLocalPicCacheByFile = async (file: { pc: string; localCacheFileName?: string }) => {
+  const localCacheFileName = String(file.localCacheFileName || '').trim();
+  if (!localCacheFileName) {
+    return undefined;
+  }
+
+  try {
+    const filePath = getPicCacheFilePath(localCacheFileName);
+    await fs.promises.access(filePath, fs.constants.R_OK);
+
+    return {
+      pc: file.pc,
+      filePath,
+      fileName: localCacheFileName.split('.').slice(1).join('.') || DEFAULT_FILE_NAME,
+      mimeType: mime.lookup(localCacheFileName) || DEFAULT_MIME_TYPE,
+      url: getPicCachePublicUrl(file.pc),
+    };
+  } catch {
+    return undefined;
+  }
+};
+
+const getLocalPicCacheByPc = async (pc: string) => {
+  const file = await getFile115ByPc(pc);
+  if (!file) {
+    return undefined;
+  }
+  return getLocalPicCacheByFile({
+    pc: file.pc,
+    localCacheFileName: file.localCacheFileName,
+  });
+};
+
+const clearLocalPicCacheByPc = async (pc: string) => {
+  const file = await getFile115ByPc(pc);
+  const localCacheFileName = String(file?.localCacheFileName || '').trim();
+  if (!localCacheFileName) {
+    return;
+  }
+
+  try {
+    await fs.promises.unlink(getPicCacheFilePath(localCacheFileName));
+  } catch {
+    // ignore remove error
+  }
+
+  await setFile115LocalCacheFileNameByPc(pc, null);
+};
+
+const saveFile115List = async (dataList: Cloud115FileListItem[], cid: string, parentPath: string) => {
   const list: Cloud115DbFileItem[] = dataList.map(item => ({
-    name: item.n,
     class: item.class || '',
     pc: item.pc,
     cid,
     parentCid: item.cid,
+    fullPath: `${parentPath === '/' ? '' : parentPath}/${item.n}`,
+    isLiked: false,
+    localCacheFileName: '',
   }));
 
   await setFile115List(list);
@@ -62,8 +142,6 @@ const normalizePaths = (paths?: string[]) => {
 };
 
 const nowIso = () => new Date().toISOString();
-const PIC_RANDOM_WEIGHT_INCREMENT = 0.2;
-const PIC_RANDOM_WEIGHT_CAP = 0.5;
 
 const getPicCacheFolders = async (): Promise<PicCacheFolderItem[]> => {
   const config = await getConfig(AppConfigEnum.picture_115_folders);
@@ -111,130 +189,6 @@ const savePicCacheFolders = async (folders: PicCacheFolderItem[]) => {
   );
 };
 
-const getPicRandomWeightMap = async () => {
-  const config = await getConfig(AppConfigEnum.picture_115_random_weights);
-  const raw = config?.picture_115_random_weights;
-  if (!raw) {
-    return {} as Record<string, number>;
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as Record<string, number>;
-    return Object.entries(parsed).reduce((acc, [cid, value]) => {
-      if (!cid.trim()) {
-        return acc;
-      }
-      const score = Number(value);
-      acc[cid] = Number.isFinite(score) && score > 0 ? score : 1;
-      return acc;
-    }, {} as Record<string, number>);
-  } catch (error) {
-    log.error('解析 115 图片随机权重失败', error);
-    return {};
-  }
-};
-
-const savePicRandomWeightMap = async (weightMap: Record<string, number>) => {
-  const cleaned = Object.entries(weightMap).reduce((acc, [cid, value]) => {
-    if (!cid.trim()) {
-      return acc;
-    }
-    const score = Number(value);
-    if (!Number.isFinite(score) || score <= 0) {
-      return acc;
-    }
-    acc[cid] = Number(score.toFixed(4));
-    return acc;
-  }, {} as Record<string, number>);
-
-  if (Object.keys(cleaned).length === 0) {
-    await clearConfig(AppConfigEnum.picture_115_random_weights);
-    return;
-  }
-
-  await setConfig(AppConfigEnum.picture_115_random_weights, JSON.stringify(cleaned));
-};
-
-const buildCappedProbabilities = (items: Array<{ cid: string; score: number }>) => {
-  if (items.length === 0) {
-    return [] as Array<{ cid: string; probability: number }>;
-  }
-
-  if (items.length === 1) {
-    return [{ cid: items[0].cid, probability: 1 }];
-  }
-
-  const cap = PIC_RANDOM_WEIGHT_CAP;
-  const scores = items.map(item => ({ ...item, probability: 0 }));
-  const capped = new Set<string>();
-
-  while (true) {
-    const uncapped = scores.filter(item => !capped.has(item.cid));
-    const cappedTotal = scores.filter(item => capped.has(item.cid)).reduce((sum, item) => sum + item.probability, 0);
-    const remain = 1 - cappedTotal;
-
-    if (uncapped.length === 0 || remain <= 0) {
-      break;
-    }
-
-    const scoreTotal = uncapped.reduce((sum, item) => sum + item.score, 0) || uncapped.length;
-    let overflow = false;
-
-    uncapped.forEach(item => {
-      item.probability = (item.score / scoreTotal) * remain;
-    });
-
-    uncapped.forEach(item => {
-      if (item.probability > cap) {
-        item.probability = cap;
-        capped.add(item.cid);
-        overflow = true;
-      }
-    });
-
-    if (!overflow) {
-      break;
-    }
-  }
-
-  const total = scores.reduce((sum, item) => sum + item.probability, 0);
-  if (total <= 0) {
-    const equal = 1 / scores.length;
-    return scores.map(item => ({ cid: item.cid, probability: equal }));
-  }
-
-  return scores.map(item => ({
-    cid: item.cid,
-    probability: item.probability / total,
-  }));
-};
-
-const pickWeightedCid = (items: Array<{ cid: string; score: number }>) => {
-  const probabilities = buildCappedProbabilities(items);
-  let random = Math.random();
-
-  for (let i = 0; i < probabilities.length; i++) {
-    random -= probabilities[i].probability;
-    if (random <= 0) {
-      return probabilities[i].cid;
-    }
-  }
-
-  return probabilities[probabilities.length - 1]?.cid || '';
-};
-
-const resolve115FilePath = async (file: Cloud115DbFileItem) => {
-  const parentList = await get115FileListData(0, 1, file.parentCid || file.cid);
-  const parentSegments = (parentList?.path || []).map((item: { name: string }) => item.name).filter(Boolean);
-  const parentPath = `/${parentSegments.join('/')}` || '/';
-  const path = `${parentPath === '/' ? '' : parentPath}/${file.name}`;
-
-  return {
-    path,
-    parentPath,
-  };
-};
-
 const parse115FileMeta = (result: unknown) => {
   const metaInfo = Object.values((result || {}) as Record<string, unknown>)[0] as
     | {
@@ -247,8 +201,80 @@ const parse115FileMeta = (result: unknown) => {
 
   return {
     url: metaInfo?.url?.url || '',
-    fileName: metaInfo?.file_name || 'unknown.jpg',
+    fileName: metaInfo?.file_name || DEFAULT_FILE_NAME,
   };
+};
+
+const ensureLocalPicCacheByFile = async (file: Cloud115DbFileItem, userAgent: string) => {
+  const cached = await getLocalPicCacheByPc(file.pc);
+  if (cached) {
+    return cached;
+  }
+
+  const result = await get115FileData(file.pc, userAgent);
+  const { url, fileName } = parse115FileMeta(result);
+  if (!url) {
+    badRequest('未获取到图片下载链接');
+  }
+
+  await fs.promises.mkdir(PIC_LIKED_CACHE_DIR, { recursive: true });
+
+  const targetFileName = getPicCacheFileName(file.pc, fileName);
+  const targetPath = getPicCacheFilePath(targetFileName);
+  const tempPath = `${targetPath}.tmp`;
+  const mimeType = mime.lookup(fileName) || DEFAULT_MIME_TYPE;
+
+  try {
+    const response = await request.get(url, {
+      responseType: 'stream',
+      headers: {
+        'User-Agent': userAgent || DEFAULT_115_DOWNLOAD_UA,
+      },
+    });
+
+    await clearLocalPicCacheByPc(file.pc);
+    await pipeline(response.data, fs.createWriteStream(tempPath));
+    await fs.promises.rename(tempPath, targetPath);
+    await setFile115LocalCacheFileNameByPc(file.pc, targetFileName);
+  } catch (error) {
+    try {
+      await fs.promises.unlink(tempPath);
+    } catch {
+      // ignore
+    }
+    throw error;
+  }
+
+  return {
+    pc: file.pc,
+    filePath: targetPath,
+    fileName: sanitizeCacheFileName(fileName),
+    mimeType,
+    url: getPicCachePublicUrl(file.pc),
+  };
+};
+
+const ensureLocalPicCacheByFileAsync = (file: Cloud115DbFileItem, userAgent: string) => {
+  const running = likeCacheDownloadJobMap.get(file.pc);
+  if (running) {
+    return running;
+  }
+
+  const job = (async () => {
+    try {
+      await ensureLocalPicCacheByFile(file, userAgent);
+      log.info('[115-liked-cache] 图片缓存完成', {
+        pc: file.pc,
+      });
+    } catch (error) {
+      log.error('[115-liked-cache] 图片缓存失败', file.pc, error);
+    } finally {
+      likeCacheDownloadJobMap.delete(file.pc);
+    }
+  })();
+
+  likeCacheDownloadJobMap.set(file.pc, job);
+  return job;
 };
 
 const buildRandomPicMetaFromFile = async (
@@ -256,17 +282,66 @@ const buildRandomPicMetaFromFile = async (
   userAgent: string,
   notice?: string
 ): Promise<RandomPicMeta> => {
+  const startAt = Date.now();
+  const localCacheStartAt = Date.now();
+  const localCache = await getLocalPicCacheByFile({
+    pc: file.pc,
+    localCacheFileName: file.localCacheFileName,
+  });
+  const localCacheMs = Date.now() - localCacheStartAt;
+
+  if (localCache) {
+    const totalMs = Date.now() - startAt;
+    const fileName = localCache.fileName || (file.fullPath ? path.posix.basename(file.fullPath) : DEFAULT_FILE_NAME);
+
+    log115RandomPerf('build-meta-finished', {
+      pc: file.pc,
+      cid: file.cid,
+      parentCid: file.parentCid,
+      localCacheMs,
+      source: 'local-cache',
+      totalMs,
+    });
+
+    return {
+      url: localCache.url,
+      fileName,
+      cid: file.cid,
+      pc: file.pc,
+      path: file.fullPath || '',
+      parentPath: file.fullPath ? path.posix.dirname(file.fullPath) : '',
+      liked: Boolean(file.isLiked),
+      localCacheFilePath: localCache.filePath,
+      localCacheMimeType: localCache.mimeType,
+      notice,
+    };
+  }
+
+  const fetchFileMetaStartAt = Date.now();
   const result = await get115FileData(file.pc, userAgent);
+  const fetchFileMetaMs = Date.now() - fetchFileMetaStartAt;
   const { url, fileName } = parse115FileMeta(result);
-  const { path, parentPath } = await resolve115FilePath(file);
+  const totalMs = Date.now() - startAt;
+
+  log115RandomPerf('build-meta-finished', {
+    pc: file.pc,
+    cid: file.cid,
+    parentCid: file.parentCid,
+    localCacheMs,
+    fetchFileMetaMs,
+    source: 'remote-115',
+    pathSource: file.fullPath ? 'db' : 'none',
+    totalMs,
+  });
 
   return {
     url,
     fileName,
     cid: file.cid,
     pc: file.pc,
-    path,
-    parentPath,
+    path: file.fullPath || '',
+    parentPath: file.fullPath ? path.posix.dirname(file.fullPath) : '',
+    liked: Boolean(file.isLiked),
     notice,
   };
 };
@@ -288,6 +363,8 @@ const cache115PicByCid = async (cid: string) => {
       const dataList: Cloud115FileListItem[] = [];
       const nowResult = await sdk.getFileList(i, limit, currentCid);
       const fileList = nowResult.data as Cloud115FileListItem[];
+      const parentSegments = (nowResult.path || []).map((item: { name: string }) => item.name).filter(Boolean);
+      const parentPath = `/${parentSegments.join('/')}` || '/';
 
       fileList.forEach(item => {
         if (item.fid && item.class === 'PIC') {
@@ -300,7 +377,7 @@ const cache115PicByCid = async (cid: string) => {
       });
 
       if (dataList.length > 0) {
-        await saveFile115List(dataList, rootCid);
+        await saveFile115List(dataList, rootCid, parentPath);
       }
 
       await waitTime(timer);
@@ -385,51 +462,39 @@ const ensure115PicQueueRunning = async () => {
 };
 
 export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicMeta> {
-  const [folders, weightMap] = await Promise.all([getPicCacheFolders(), getPicRandomWeightMap()]);
+  const startAt = Date.now();
+  const loadConfigStartAt = Date.now();
+  const folders = await getPicCacheFolders();
+  const loadConfigMs = Date.now() - loadConfigStartAt;
   const availableRootCids = folders
     .filter(item => item.status === 'cached' || item.status === 'caching')
     .map(item => item.cid);
 
-  const parentGroups = await getFile115ParentGroupByCidList(availableRootCids);
-
-  const availableFolders = Array.from(
-    parentGroups
-      .filter(item => item.cid && item.parentCid && item.count > 0)
-      .reduce((acc, item) => {
-        const key = `${item.cid}:${item.parentCid}`;
-        const current = acc.get(key) || {
-          cid: item.cid,
-          parentCid: item.parentCid,
-          count: 0,
-          score: 0,
-        };
-
-        current.count += item.count;
-        current.score = current.count * (weightMap[item.parentCid] ?? 1);
-        acc.set(key, current);
-        return acc;
-      }, new Map<string, { cid: string; parentCid: string; count: number; score: number }>())
-      .values()
-  );
-
-  if (availableFolders.length === 0) {
+  if (availableRootCids.length === 0) {
     badRequest('暂无缓存图片，请先缓存');
   }
 
-  const targetKey = pickWeightedCid(
-    availableFolders.map(item => ({
-      cid: `${item.cid}:${item.parentCid}`,
-      score: item.score,
-    }))
-  );
-  const targetFolder =
-    availableFolders.find(item => `${item.cid}:${item.parentCid}` === targetKey) || availableFolders[0];
-  const index = generateRandomNumber(0, targetFolder.count - 1);
-  const fileInfo =
-    (await getFile115ByCidParentCidIndex(targetFolder.cid, targetFolder.parentCid, index)) ||
-    (await getFile115ByCidIndex(targetFolder.cid, index));
-  const selectedFile = fileInfo || badRequest('暂无可用缓存图片，请稍后重试');
-  return buildRandomPicMetaFromFile(selectedFile, userAgent);
+  const pickFileStartAt = Date.now();
+  const selectedFile =
+    (await getFile115RandomByCidList(availableRootCids)) || badRequest('暂无可用缓存图片，请稍后重试');
+  const pickFileMs = Date.now() - pickFileStartAt;
+  const buildMetaStartAt = Date.now();
+  const meta = await buildRandomPicMetaFromFile(selectedFile, userAgent);
+  const buildMetaMs = Date.now() - buildMetaStartAt;
+
+  log115RandomPerf('get-random-meta-finished', {
+    foldersCount: folders.length,
+    availableRootCidsCount: availableRootCids.length,
+    targetCid: selectedFile.cid,
+    targetParentCid: selectedFile.parentCid,
+    targetPc: selectedFile.pc,
+    loadConfigMs,
+    pickFileMs,
+    buildMetaMs,
+    totalMs: Date.now() - startAt,
+  });
+
+  return meta;
 }
 
 export async function getRandom115PicFromParentMeta(params: { pc: string; userAgent: string }): Promise<RandomPicMeta> {
@@ -460,20 +525,24 @@ export async function getRandom115PicFromParentMeta(params: { pc: string; userAg
 }
 
 export async function get115PicInfoData() {
-  const [picConfig, folders, cidCountMap, count] = await Promise.all([
+  const [picConfig, folders, cidCountMap, count, cachedCids, likedCount] = await Promise.all([
     getConfig(AppConfigEnum.is_115_picture_caching),
     getPicCacheFolders(),
     getFile115CountByCid(),
     getFile115Len(),
+    getFile115CachedCidList(),
+    getLikedFile115Count(),
   ]);
 
   return {
     count,
+    likedCount,
     folders: folders.map(item => ({
       ...item,
       count: cidCountMap[item.cid] || 0,
     })),
     loading: picConfig?.is_115_picture_caching === 'true',
+    cachedCids,
   };
 }
 
@@ -516,7 +585,6 @@ export async function clear115PicData(params?: ClearPicInfoParams) {
     await clearConfig([
       AppConfigEnum.is_115_picture_caching,
       AppConfigEnum.picture_115_folders,
-      AppConfigEnum.picture_115_random_weights,
       'picture_115_cids' as AppConfigEnum,
     ]);
     lightLocks.is115PictureCaching = false;
@@ -524,11 +592,7 @@ export async function clear115PicData(params?: ClearPicInfoParams) {
   }
 
   await withFolderConfigLock(async () => {
-    const [folders, weightMap, parentGroups] = await Promise.all([
-      getPicCacheFolders(),
-      getPicRandomWeightMap(),
-      getFile115ParentGroupByCidList(normalizedPaths),
-    ]);
+    const folders = await getPicCacheFolders();
     const activeFolders = folders.filter(
       item => normalizedPaths.includes(item.cid) && (item.status === 'pending' || item.status === 'caching')
     );
@@ -537,20 +601,8 @@ export async function clear115PicData(params?: ClearPicInfoParams) {
     }
 
     const remainFolders = folders.filter(item => !normalizedPaths.includes(item.cid));
-    const relatedParentCidList = Array.from(
-      new Set(
-        parentGroups
-          .map(item => item.parentCid || item.cid)
-          .filter(Boolean)
-          .concat(normalizedPaths)
-      )
-    );
-    relatedParentCidList.forEach(cid => {
-      delete weightMap[cid];
-    });
     await clearFile115ByCidList(normalizedPaths);
     await savePicCacheFolders(remainFolders);
-    await savePicRandomWeightMap(weightMap);
   });
 
   return get115PicInfoData();
@@ -586,40 +638,139 @@ export async function retry115PicData(params: RetryPicInfoParams) {
   return get115PicInfoData();
 }
 
-export async function like115PicData(params: Like115PicParams) {
-  const cid = params.cid?.trim() || '';
+export async function like115PicData(params: Like115PicParams, userAgent: string) {
   const pc = params.pc?.trim() || '';
-
-  let targetCid = cid;
-  let targetParentCid = cid;
-  if (pc) {
-    const file = await getFile115ByPc(pc);
-    targetCid = file?.cid || targetCid;
-    targetParentCid = file?.parentCid || file?.cid || targetParentCid;
+  if (!pc) {
+    badRequest('缺少图片参数');
   }
 
-  if (!targetCid) {
-    badRequest('未找到图片所属目录');
+  const file = await getFile115ByPc(pc);
+  if (!file) {
+    badRequest('未找到当前图片');
+  }
+  const safeFile = file as Cloud115DbFileItem;
+
+  const targetLiked = typeof params.liked === 'boolean' ? params.liked : !Boolean(safeFile.isLiked);
+  const localCache = targetLiked ? await getLocalPicCacheByPc(pc) : undefined;
+
+  if (targetLiked !== Boolean(safeFile.isLiked)) {
+    await setFile115LikedByPc(pc, targetLiked);
   }
 
-  if (!targetParentCid) {
-    targetParentCid = targetCid;
-  }
-
-  return withFolderConfigLock(async () => {
-    const [folders, weightMap] = await Promise.all([getPicCacheFolders(), getPicRandomWeightMap()]);
-    const currentFolder = folders.find(item => item.cid === targetCid);
-    if (!currentFolder || currentFolder.status !== 'cached') {
-      badRequest('当前目录未处于可喜欢状态');
+  if (targetLiked) {
+    if (!localCache) {
+      void ensureLocalPicCacheByFileAsync(safeFile, userAgent);
     }
+  } else {
+    void clearLocalPicCacheByPc(pc);
+  }
 
-    weightMap[targetParentCid] = Number(((weightMap[targetParentCid] ?? 1) + PIC_RANDOM_WEIGHT_INCREMENT).toFixed(4));
-    await savePicRandomWeightMap(weightMap);
+  return {
+    pc: safeFile.pc,
+    cid: safeFile.cid,
+    liked: targetLiked,
+    path: safeFile.fullPath || '',
+    parentPath: safeFile.fullPath ? path.posix.dirname(safeFile.fullPath) : '',
+    url: targetLiked ? localCache?.url || '' : '',
+    cached: targetLiked ? Boolean(localCache) : false,
+  };
+}
 
-    return {
-      cid: targetCid,
-      parentCid: targetParentCid,
-      weight: weightMap[targetParentCid],
-    };
+export async function getLiked115PicListData(params?: { offset?: number; pageSize?: number }, userAgent = '') {
+  const offset = Math.max(0, Number(params?.offset || 0));
+  const pageSize = Math.min(200, Math.max(1, Number(params?.pageSize || 50)));
+  const [count, list] = await Promise.all([getLikedFile115Count(), getLikedFile115List(offset, pageSize)]);
+  const data = await Promise.all(
+    list.map(async item => {
+      const cache = await getLocalPicCacheByFile({
+        pc: item.pc,
+        localCacheFileName: item.localCacheFileName,
+      });
+
+      if (!cache && item.isLiked) {
+        void ensureLocalPicCacheByFileAsync(item, userAgent);
+      }
+
+      return {
+        pc: item.pc,
+        cid: item.cid,
+        path: item.fullPath || '',
+        parentPath: item.fullPath ? path.posix.dirname(item.fullPath) : '',
+        fileName: cache?.fileName || (item.fullPath ? path.posix.basename(item.fullPath) : ''),
+        liked: Boolean(item.isLiked),
+        cached: Boolean(cache),
+        url: getPicCachePublicUrl(item.pc),
+      };
+    })
+  );
+
+  return {
+    count,
+    data,
+    offset,
+    pageSize,
+  };
+}
+
+export async function get115PicPathByPcData(pc: string) {
+  const normalizedPc = String(pc || '').trim();
+  if (!normalizedPc) {
+    badRequest('缺少图片参数');
+  }
+
+  const info = await getFile115PathByPc(normalizedPc);
+  if (!info) {
+    badRequest('未找到缓存路径');
+  }
+  const safeInfo = info as NonNullable<typeof info>;
+
+  return {
+    pc: safeInfo.pc,
+    cid: safeInfo.cid,
+    parentPath: safeInfo.fullPath ? path.posix.dirname(safeInfo.fullPath) : '',
+    path: safeInfo.fullPath,
+    liked: Boolean(safeInfo.isLiked),
+    cached: Boolean(await getLocalPicCacheByPc(safeInfo.pc)),
+  };
+}
+
+export async function get115PicCacheFileByPcData(pc: string, userAgent = '') {
+  const normalizedPc = String(pc || '').trim();
+  if (!normalizedPc) {
+    badRequest('缺少图片参数');
+  }
+
+  const file = await getFile115ByPc(normalizedPc);
+  if (!file) {
+    badRequest('未找到当前图片');
+  }
+  const safeFile = file as Cloud115DbFileItem;
+
+  const cache = await getLocalPicCacheByFile({
+    pc: safeFile.pc,
+    localCacheFileName: safeFile.localCacheFileName,
   });
+  if (cache) {
+    return {
+      kind: 'local' as const,
+      ...cache,
+    };
+  }
+
+  if (safeFile.isLiked) {
+    void ensureLocalPicCacheByFileAsync(safeFile, userAgent);
+  }
+
+  const meta = parse115FileMeta(await get115FileData(safeFile.pc, userAgent || DEFAULT_115_DOWNLOAD_UA));
+  if (!meta.url) {
+    badRequest('图片地址获取失败');
+  }
+
+  return {
+    kind: 'remote' as const,
+    pc: safeFile.pc,
+    url: meta.url,
+    fileName: meta.fileName || (safeFile.fullPath ? path.posix.basename(safeFile.fullPath) : DEFAULT_FILE_NAME),
+    mimeType: mime.lookup(meta.fileName || '') || DEFAULT_MIME_TYPE,
+  };
 }
