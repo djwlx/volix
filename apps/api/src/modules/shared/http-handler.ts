@@ -32,6 +32,12 @@ export const http = (handler: MyMiddleware): MyMiddleware => {
       }
     } catch (err) {
       if (err instanceof HttpError) {
+        log.warn('[http-handler] 业务请求失败', {
+          method: ctx.request.method,
+          url: ctx.request.url,
+          status: err.status,
+          message: err.message,
+        });
         resError(ctx, {
           code: err.status,
           message: err.message,
@@ -40,7 +46,11 @@ export const http = (handler: MyMiddleware): MyMiddleware => {
         return;
       }
 
-      log.error(err);
+      log.error('[http-handler] 服务异常', {
+        method: ctx.request.method,
+        url: ctx.request.url,
+        error: err,
+      });
       resError(ctx, {
         code: 500,
         message: '服务器错误',

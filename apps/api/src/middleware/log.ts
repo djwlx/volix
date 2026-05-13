@@ -16,13 +16,15 @@ const logMrak = (): MyMiddleware => {
     try {
       await next();
     } catch (err) {
-      log.error(err);
+      log.error('请求处理异常', { method, url, error: err });
+      throw err;
     }
 
     const endTime = Date.now();
     const { status } = ctx.response;
     const time = endTime - startTime + 'ms';
-    log.info(method, status, url, 'body:', body, 'query:', stringQuery, '请求耗时:', time);
+    const logger = status >= 400 ? log.warn.bind(log) : log.info.bind(log);
+    logger(method, status, url, 'body:', body, 'query:', stringQuery, '请求耗时:', time);
   };
 };
 

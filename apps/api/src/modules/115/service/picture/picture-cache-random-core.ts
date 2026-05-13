@@ -5,17 +5,12 @@ import mime from 'mime-types';
 import { AppConfigEnum } from '../../../config/model/config.model';
 import { getConfig, setConfig } from '../../../config/service/config.service';
 import { badRequest } from '../../../shared/http-handler';
-import { log } from '../../../../utils/logger';
 import { generateRandomNumber } from '../../../../utils/number';
 import { PATH } from '../../../../utils/path';
 import { PicRandomCacheConfig, PicRandomCacheStats } from '../../types/115.types';
 
 export type Cloud115FileListItem = FileListDataItem & {
   class?: string;
-};
-
-export const log115RandomPerf = (message: string, extra: Record<string, unknown>) => {
-  log.info(`[115-random-perf] ${message}`, extra);
 };
 
 export const PIC_LIKED_CACHE_DIR = path.join(PATH.cache, '115-liked-picture');
@@ -31,9 +26,15 @@ export const DEFAULT_RANDOM_CACHE_CONFIG: PicRandomCacheConfig = {
   },
   memoryMaxSizeMb: 512,
   localMaxSizeMb: 2048,
+  randomNoRepeatWindowMinutes: 5,
+  randomNoRepeatMaxCount: 50,
 };
 export const MIN_RANDOM_CACHE_SIZE_MB = 100;
 export const MAX_RANDOM_CACHE_SIZE_MB = 102400;
+export const MIN_RANDOM_NO_REPEAT_WINDOW_MINUTES = 0;
+export const MAX_RANDOM_NO_REPEAT_WINDOW_MINUTES = 24 * 60;
+export const MIN_RANDOM_NO_REPEAT_MAX_COUNT = 1;
+export const MAX_RANDOM_NO_REPEAT_MAX_COUNT = 10000;
 export const DEFAULT_115_DOWNLOAD_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36';
 export const getPicCachePublicUrl = (pc: string) => `/api/115/pic/cache/${encodeURIComponent(pc)}`;
@@ -125,6 +126,14 @@ export const normalizeRandomCacheConfig = (input?: Partial<PicRandomCacheConfig>
     typeof safeInput?.localMaxSizeMb === 'number' && Number.isFinite(safeInput.localMaxSizeMb)
       ? safeInput.localMaxSizeMb
       : DEFAULT_RANDOM_CACHE_CONFIG.localMaxSizeMb;
+  const randomNoRepeatWindowMinutesRaw =
+    typeof safeInput?.randomNoRepeatWindowMinutes === 'number' && Number.isFinite(safeInput.randomNoRepeatWindowMinutes)
+      ? safeInput.randomNoRepeatWindowMinutes
+      : DEFAULT_RANDOM_CACHE_CONFIG.randomNoRepeatWindowMinutes;
+  const randomNoRepeatMaxCountRaw =
+    typeof safeInput?.randomNoRepeatMaxCount === 'number' && Number.isFinite(safeInput.randomNoRepeatMaxCount)
+      ? safeInput.randomNoRepeatMaxCount
+      : DEFAULT_RANDOM_CACHE_CONFIG.randomNoRepeatMaxCount;
 
   const normalizedWeights = {
     memory: Math.min(100, Math.max(0, Math.round(sourceWeights.memory))),
@@ -141,6 +150,14 @@ export const normalizeRandomCacheConfig = (input?: Partial<PicRandomCacheConfig>
     sourceWeights: normalizedWeights,
     memoryMaxSizeMb: Math.min(MAX_RANDOM_CACHE_SIZE_MB, Math.max(MIN_RANDOM_CACHE_SIZE_MB, Math.round(memoryRaw))),
     localMaxSizeMb: Math.min(MAX_RANDOM_CACHE_SIZE_MB, Math.max(MIN_RANDOM_CACHE_SIZE_MB, Math.round(localRaw))),
+    randomNoRepeatWindowMinutes: Math.min(
+      MAX_RANDOM_NO_REPEAT_WINDOW_MINUTES,
+      Math.max(MIN_RANDOM_NO_REPEAT_WINDOW_MINUTES, Math.round(randomNoRepeatWindowMinutesRaw))
+    ),
+    randomNoRepeatMaxCount: Math.min(
+      MAX_RANDOM_NO_REPEAT_MAX_COUNT,
+      Math.max(MIN_RANDOM_NO_REPEAT_MAX_COUNT, Math.round(randomNoRepeatMaxCountRaw))
+    ),
   };
 };
 
@@ -182,6 +199,14 @@ export const setRandomCacheConfig = async (params: SetPicRandomCacheConfigParams
     sourceWeights: nextWeights,
     memoryMaxSizeMb: typeof params.memoryMaxSizeMb === 'number' ? params.memoryMaxSizeMb : current.memoryMaxSizeMb,
     localMaxSizeMb: typeof params.localMaxSizeMb === 'number' ? params.localMaxSizeMb : current.localMaxSizeMb,
+    randomNoRepeatWindowMinutes:
+      typeof params.randomNoRepeatWindowMinutes === 'number'
+        ? params.randomNoRepeatWindowMinutes
+        : current.randomNoRepeatWindowMinutes,
+    randomNoRepeatMaxCount:
+      typeof params.randomNoRepeatMaxCount === 'number'
+        ? params.randomNoRepeatMaxCount
+        : current.randomNoRepeatMaxCount,
   });
 
   await setConfig(AppConfigEnum.picture_115_random_weights, JSON.stringify(next));

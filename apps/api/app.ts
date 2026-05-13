@@ -11,13 +11,16 @@ import initApp from './src/utils/dependencies';
 import { log } from './src/utils/logger';
 import { formatTime } from '@volix/utils';
 
-console.log(formatTime());
-
 async function startApp() {
+  log.info('应用启动时间：', formatTime());
   // 启动前操作
   await initApp();
 
   const app = new Koa();
+  app.on('error', error => {
+    log.error('Koa 应用异常', error);
+  });
+
   // 跨域
   app.use(cors());
   // 解析requestBody
@@ -38,4 +41,15 @@ async function startApp() {
   });
 }
 
-startApp();
+void startApp().catch(error => {
+  log.error('应用启动失败', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', reason => {
+  log.error('未处理 Promise 拒绝', reason);
+});
+
+process.on('uncaughtException', error => {
+  log.error('未捕获异常', error);
+});

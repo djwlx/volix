@@ -5,6 +5,7 @@ import { LOG_MAX_SIZE_BYTES, startLogMaintenance } from './log-maintenance';
 const { NODE_ENV } = process.env;
 
 const isProd = NODE_ENV === 'production';
+const getNormalAppenders = () => (isProd ? ['normal', 'console'] : ['console']);
 
 log4js.configure({
   appenders: {
@@ -27,45 +28,40 @@ log4js.configure({
       filename: path.join(`${PATH.log}/databse`, 'database'), //生成文件名
       numBackups: 5,
     },
-    task: {
-      type: 'dateFile',
-      alwaysIncludePattern: true,
-      maxLogSize: LOG_MAX_SIZE_BYTES,
-      pattern: 'yyyy-MM-dd.log',
-      filename: path.join(`${PATH.log}/task`, 'task'), //生成文件名
-      numBackups: 5,
-    },
   },
   categories: {
-    prodNormal: {
-      appenders: ['normal', 'console'],
-      level: 'all',
-    },
-    devNormal: {
-      appenders: ['console'],
+    normal: {
+      appenders: getNormalAppenders(),
       level: 'all',
     },
     dataBase: {
       appenders: ['database'],
       level: 'all',
     },
-    taskInfo: {
-      appenders: ['task'],
-      level: 'all',
-    },
     default: {
-      appenders: ['console'],
+      appenders: getNormalAppenders(),
       level: 'all',
     },
   },
 });
-
-startLogMaintenance();
 // 普通日志
-const log = log4js.getLogger(isProd ? 'prodNormal' : 'devNormal');
+const log = log4js.getLogger('normal');
 // 数据库日志
 const baseLog = log4js.getLogger('dataBase');
-// 任务日志
-const taskLog = log4js.getLogger('taskInfo');
 
-export { log, baseLog, taskLog };
+startLogMaintenance({
+  onSuccess(result, trigger) {
+    if (result.archivedFileCount > 0) {
+      log.info('[log-maintenance] 归档完成', {
+        trigger,
+        archivedBatchCount: result.archivedBatchCount,
+        archivedFileCount: result.archivedFileCount,
+      });
+    }
+  },
+  onError(error, trigger) {
+    log.error('[log-maintenance] 执行失败', { trigger, error });
+  },
+});
+
+export { log, baseLog };

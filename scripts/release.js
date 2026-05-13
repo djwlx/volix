@@ -246,12 +246,21 @@ function copyApiDistToRoot() {
   // 创建根 dist 目录
   fs.mkdirSync(rootDistPath, { recursive: true });
 
-  // 把 api/dist/apps/api/* 移到 dist 根目录
+  // 兼容两种编译输出：
+  // 1) 旧结构: apps/api/dist/apps/api/*
+  // 2) 新结构: apps/api/dist/*
   const apiCompiledPath = path.join(apiDistPath, 'apps', 'api');
-  if (fs.existsSync(apiCompiledPath)) {
-    const files = fs.readdirSync(apiCompiledPath);
+  const apiCompiledRoot = fs.existsSync(apiCompiledPath) ? apiCompiledPath : apiDistPath;
+
+  if (fs.existsSync(apiCompiledRoot)) {
+    const files = fs.readdirSync(apiCompiledRoot);
     files.forEach(file => {
-      const src = path.join(apiCompiledPath, file);
+      // 这些目录/文件由后续专门步骤处理，避免重复复制
+      if (file === 'node_modules' || file === 'public' || file === 'package.json') {
+        return;
+      }
+
+      const src = path.join(apiCompiledRoot, file);
       const dest = path.join(rootDistPath, file);
       if (fs.lstatSync(src).isDirectory()) {
         copyDir(src, dest);
@@ -262,6 +271,8 @@ function copyApiDistToRoot() {
       }
     });
     console.log('  ✓ API 编译代码已复制');
+  } else {
+    console.warn('  ⚠ 未找到 API 编译目录，跳过 API 编译代码复制');
   }
 
   // 复制 node_modules
@@ -361,7 +372,6 @@ function removeAllDist() {
 function releaseApp() {
   removeAllDist();
   run('npm install -g pnpm@8.15.9');
-  run('pnpm config set allow-build-scripts true');
   run('pnpm install');
   run('pnpm run build');
   copyFrontToEnd();

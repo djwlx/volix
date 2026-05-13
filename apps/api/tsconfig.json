@@ -1,13 +1,9 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "module": "CommonJS",
-    "moduleResolution": "node",
-    "baseUrl": ".",
-    "paths": {
-      "@volix/types": ["../../packages/types/src/index.ts"],
-      "@volix/utils": ["../../packages/utils/src/index.ts"]
-    },
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "ignoreDeprecations": "5.0",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

@@ -14,10 +14,13 @@ const sequelize = new Sequelize({
   },
 });
 
-try {
-  sequelize.authenticate().then(() => {});
-} catch (error) {
-  log.error('连接数据库错误', error);
-}
+void sequelize
+  .authenticate()
+  .then(() => {
+    log.info('数据库连接成功');
+  })
+  .catch(error => {
+    log.error('连接数据库错误', error);
+  });
 
 export default sequelize;

@@ -15,7 +15,6 @@ import {
   DEFAULT_FILE_NAME,
   DEFAULT_MIME_TYPE,
   getRandomCacheMetaByPc,
-  log115RandomPerf,
 } from './picture-cache-random-core';
 import {
   getCacheQueueRunner,
@@ -80,26 +79,13 @@ export const buildRandomPicMetaFromFile = async (
   userAgent: string,
   notice?: string
 ): Promise<RandomPicMeta> => {
-  const startAt = Date.now();
-  const localCacheStartAt = Date.now();
   const localCache = await getLocalPicCacheByFile({
     pc: file.pc,
     localCacheFileName: file.localCacheFileName,
   });
-  const localCacheMs = Date.now() - localCacheStartAt;
 
   if (localCache) {
-    const totalMs = Date.now() - startAt;
     const fileName = localCache.fileName || (file.fullPath ? path.posix.basename(file.fullPath) : DEFAULT_FILE_NAME);
-
-    log115RandomPerf('build-meta-finished', {
-      pc: file.pc,
-      cid: file.cid,
-      parentCid: file.parentCid,
-      localCacheMs,
-      source: 'local-cache',
-      totalMs,
-    });
 
     return {
       url: localCache.url,
@@ -115,22 +101,8 @@ export const buildRandomPicMetaFromFile = async (
     };
   }
 
-  const fetchFileMetaStartAt = Date.now();
   const result = await get115FileData(file.pc, userAgent);
-  const fetchFileMetaMs = Date.now() - fetchFileMetaStartAt;
   const { url, fileName } = parse115FileMeta(result);
-  const totalMs = Date.now() - startAt;
-
-  log115RandomPerf('build-meta-finished', {
-    pc: file.pc,
-    cid: file.cid,
-    parentCid: file.parentCid,
-    localCacheMs,
-    fetchFileMetaMs,
-    source: 'remote-115',
-    pathSource: file.fullPath ? 'db' : 'none',
-    totalMs,
-  });
 
   return {
     url,

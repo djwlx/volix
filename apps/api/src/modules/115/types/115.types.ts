@@ -33,6 +33,8 @@ export interface PicRandomCacheConfig {
   };
   memoryMaxSizeMb: number;
   localMaxSizeMb: number;
+  randomNoRepeatWindowMinutes: number;
+  randomNoRepeatMaxCount: number;
 }
 
 export interface PicRandomCacheStats {

@@ -30,6 +30,8 @@ export function PicSetting() {
   const [cloudWeight, setCloudWeight] = useState(50);
   const [memoryMaxSizeMb, setMemoryMaxSizeMb] = useState(512);
   const [localMaxSizeMb, setLocalMaxSizeMb] = useState(2048);
+  const [randomNoRepeatWindowMinutes, setRandomNoRepeatWindowMinutes] = useState(5);
+  const [randomNoRepeatMaxCount, setRandomNoRepeatMaxCount] = useState(50);
   const [memoryCacheFileCount, setMemoryCacheFileCount] = useState(0);
   const [memoryCacheTotalSizeMb, setMemoryCacheTotalSizeMb] = useState(0);
   const [memoryCacheLimitExceeded, setMemoryCacheLimitExceeded] = useState(false);
@@ -50,6 +52,8 @@ export function PicSetting() {
         setCloudWeight(result.data.randomCacheConfig?.sourceWeights?.cloud ?? 50);
         setMemoryMaxSizeMb(result.data.randomCacheConfig?.memoryMaxSizeMb ?? 512);
         setLocalMaxSizeMb(result.data.randomCacheConfig?.localMaxSizeMb ?? 2048);
+        setRandomNoRepeatWindowMinutes(result.data.randomCacheConfig?.randomNoRepeatWindowMinutes ?? 5);
+        setRandomNoRepeatMaxCount(result.data.randomCacheConfig?.randomNoRepeatMaxCount ?? 50);
       }
       setMemoryCacheFileCount(result.data.randomCacheStats?.memoryFileCount ?? 0);
       setMemoryCacheTotalSizeMb(result.data.randomCacheStats?.memoryTotalSizeMb ?? 0);
@@ -127,6 +131,8 @@ export function PicSetting() {
         },
         memoryMaxSizeMb,
         localMaxSizeMb,
+        randomNoRepeatWindowMinutes,
+        randomNoRepeatMaxCount,
       });
       setRandomConfigDirty(false);
       await fetch(true);
@@ -275,6 +281,35 @@ export function PicSetting() {
                   const next = Number(Array.isArray(value) ? value[0] : value);
                   setRandomConfigDirty(true);
                   setLocalMaxSizeMb(Number.isFinite(next) ? next : 100);
+                }}
+              />
+            </Space>
+            <Space spacing={16} align="center">
+              <Text>随机去重窗口（分钟）</Text>
+              <InputNumber
+                min={0}
+                max={1440}
+                value={randomNoRepeatWindowMinutes}
+                onChange={value => {
+                  const next = Number(Array.isArray(value) ? value[0] : value);
+                  setRandomConfigDirty(true);
+                  setRandomNoRepeatWindowMinutes(Number.isFinite(next) ? next : 0);
+                }}
+              />
+              <Text type="tertiary" size="small">
+                设为 0 表示关闭不重复限制
+              </Text>
+            </Space>
+            <Space spacing={16} align="center">
+              <Text>随机去重次数上限</Text>
+              <InputNumber
+                min={1}
+                max={10000}
+                value={randomNoRepeatMaxCount}
+                onChange={value => {
+                  const next = Number(Array.isArray(value) ? value[0] : value);
+                  setRandomConfigDirty(true);
+                  setRandomNoRepeatMaxCount(Number.isFinite(next) ? next : 50);
                 }}
               />
             </Space>

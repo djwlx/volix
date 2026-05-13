@@ -12,6 +12,15 @@ const LOG_ARCHIVE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
 const LOG_DATE_REGEXP = /(\d{4}-\d{2}-\d{2})\.log$/;
 
 type ZipRunner = (archivePath: string, filePaths: string[]) => Promise<void>;
+type ArchiveExpiredLogsResult = {
+  archivedBatchCount: number;
+  archivedFileCount: number;
+};
+type LogMaintenanceTrigger = 'startup' | 'interval';
+type StartLogMaintenanceOptions = {
+  onSuccess?: (result: ArchiveExpiredLogsResult, trigger: LogMaintenanceTrigger) => void;
+  onError?: (error: unknown, trigger: LogMaintenanceTrigger) => void;
+};
 
 const defaultZipRunner: ZipRunner = async (archivePath, filePaths) => {
   if (filePaths.length === 0) {
@@ -67,12 +76,18 @@ const ensureArchivePath = async (archiveDir: string, archiveBaseName: string) =>
   return archivePath;
 };
 
-export const archiveExpiredLogs = async (options?: { rootDir?: string; now?: () => number; zipRunner?: ZipRunner }) => {
+export const archiveExpiredLogs = async (options?: {
+  rootDir?: string;
+  now?: () => number;
+  zipRunner?: ZipRunner;
+}): Promise<ArchiveExpiredLogsResult> => {
   const rootDir = options?.rootDir || PATH.log;
   const now = options?.now || (() => Date.now());
   const zipRunner = options?.zipRunner || defaultZipRunner;
   const cutoffTime = now() - LOG_ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
   const logDirs = await listLogDirectories(rootDir);
+  let archivedBatchCount = 0;
+  let archivedFileCount = 0;
 
   for (const logDir of logDirs) {
     const archiveDir = path.join(logDir, 'archive');
@@ -109,20 +124,37 @@ export const archiveExpiredLogs = async (options?: { rootDir?: string; now?: () 
 
     await zipRunner(archivePath, filePaths);
     await Promise.all(filePaths.map(filePath => fs.promises.rm(filePath, { force: true })));
+    archivedBatchCount += 1;
+    archivedFileCount += filePaths.length;
   }
+
+  return {
+    archivedBatchCount,
+    archivedFileCount,
+  };
 };
 
 let maintenanceStarted = false;
 
-export const startLogMaintenance = () => {
+export const startLogMaintenance = (options?: StartLogMaintenanceOptions) => {
   if (maintenanceStarted) {
     return;
   }
   maintenanceStarted = true;
 
-  void archiveExpiredLogs().catch(() => undefined);
+  const run = (trigger: LogMaintenanceTrigger) => {
+    void archiveExpiredLogs()
+      .then(result => {
+        options?.onSuccess?.(result, trigger);
+      })
+      .catch(error => {
+        options?.onError?.(error, trigger);
+      });
+  };
+
+  run('startup');
   const timer = setInterval(() => {
-    void archiveExpiredLogs().catch(() => undefined);
+    run('interval');
   }, LOG_ARCHIVE_CHECK_INTERVAL_MS);
   timer.unref();
 };
