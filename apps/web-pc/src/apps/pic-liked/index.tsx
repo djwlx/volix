@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Button, Card, Empty, Image, Toast } from '@douyinfe/semi-ui';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, Card, Empty, Image, ImagePreview, Toast } from '@douyinfe/semi-ui';
 import { useNavigate } from 'react-router';
 import type { Liked115PicItem } from '@volix/types';
 import { get115LikedPics, like115Pic } from '@/services/115';
@@ -13,6 +13,10 @@ function PicLikedApp() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [list, setList] = useState<LikedPicCard[]>([]);
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+
+  const previewSrcList = useMemo(() => list.map(item => item.url).filter(Boolean), [list]);
 
   const refresh = async () => {
     setLoading(true);
@@ -67,25 +71,17 @@ function PicLikedApp() {
       ) : (
         <div className={styles.grid}>
           {list.map(item => (
-            <Card key={item.pc} shadows="hover">
+            <Card key={item.pc} shadows="hover" className={styles.card}>
               <div className={styles.cardImageWrap}>
                 {item.url ? (
                   <Image
-                    setDownloadName={() => {
-                      return Date.now().toString();
-                    }}
                     className={styles.cardImage}
                     src={item.url}
-                    preview={{
-                      onDownload: () => {
-                        const downloadLink = document.createElement('a');
-                        downloadLink.href = item.url;
-                        downloadLink.download = item.fileName || `${Date.now()}.png`;
-                        downloadLink.style.display = 'none';
-                        document.body.appendChild(downloadLink);
-                        downloadLink.click();
-                        document.body.removeChild(downloadLink);
-                      },
+                    preview={false}
+                    onClick={() => {
+                      const nextIndex = previewSrcList.findIndex(src => src === item.url);
+                      setPreviewIndex(nextIndex < 0 ? 0 : nextIndex);
+                      setPreviewVisible(true);
                     }}
                   />
                 ) : null}
@@ -93,6 +89,7 @@ function PicLikedApp() {
               <div className={styles.path}>{item.path || item.fileName || item.pc}</div>
               <div className={styles.actions}>
                 <Button
+                  className={styles.actionButton}
                   size="small"
                   onClick={() => {
                     navigate('/pic');
@@ -100,7 +97,7 @@ function PicLikedApp() {
                 >
                   去随机页
                 </Button>
-                <Button size="small" type="danger" onClick={() => onUnlike(item.pc)}>
+                <Button className={styles.actionButton} size="small" type="danger" onClick={() => onUnlike(item.pc)}>
                   取消喜欢
                 </Button>
               </div>
@@ -108,6 +105,14 @@ function PicLikedApp() {
           ))}
         </div>
       )}
+
+      <ImagePreview
+        src={previewSrcList}
+        visible={previewVisible}
+        currentIndex={previewIndex}
+        onChange={index => setPreviewIndex(index)}
+        onVisibleChange={visible => setPreviewVisible(Boolean(visible))}
+      />
     </div>
   );
 }

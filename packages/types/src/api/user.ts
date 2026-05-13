@@ -12,7 +12,6 @@ export enum AccountConfigPlatform {
   QBITTORRENT = 'qbittorrent',
   OPENLIST = 'openlist',
   SMTP = 'smtp',
-  AI = 'ai',
   BANGUMI = 'bangumi',
 }
 
@@ -31,12 +30,6 @@ export interface SmtpAccountConfigItem {
   fromEmail: string;
 }
 
-export interface AiAccountConfigItem {
-  baseUrl: string;
-  apiKey: string;
-  model: string;
-}
-
 export interface BangumiAccountConfigItem {
   baseUrl: string;
   accessToken: string;
@@ -46,32 +39,22 @@ export interface AccountConfigMap {
   qbittorrent?: ServiceAccountConfigItem;
   openlist?: ServiceAccountConfigItem;
   smtp?: SmtpAccountConfigItem;
-  ai?: AiAccountConfigItem;
   bangumi?: BangumiAccountConfigItem;
 }
 
 export interface UpdateAccountConfigPayload {
   platform: AccountConfigPlatform;
-  config: ServiceAccountConfigItem | SmtpAccountConfigItem | AiAccountConfigItem | BangumiAccountConfigItem;
+  config: ServiceAccountConfigItem | SmtpAccountConfigItem | BangumiAccountConfigItem;
 }
 
 export interface TestAccountConfigPayload {
   platform: AccountConfigPlatform;
-  config: ServiceAccountConfigItem | SmtpAccountConfigItem | AiAccountConfigItem | BangumiAccountConfigItem;
+  config: ServiceAccountConfigItem | SmtpAccountConfigItem | BangumiAccountConfigItem;
 }
 
 export interface TestAccountConfigResponse {
   success: boolean;
   message: string;
-}
-
-export interface ListAiModelsPayload {
-  baseUrl: string;
-  apiKey: string;
-}
-
-export interface ListAiModelsResponse {
-  models: string[];
 }
 
 export interface RegisterConfigResponse {

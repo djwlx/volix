@@ -1,17 +1,13 @@
 import { createBrowserRouter } from 'react-router';
 import {
   IconApps,
-  IconBolt,
-  IconCalendarClock,
   IconCloudStroked,
   IconComment,
-  IconImage,
   IconMailStroked,
   IconStar,
   IconTabsStroked,
 } from '@douyinfe/semi-icons';
 import HomeApp from '@/apps/home';
-import AiChatApp from '@/apps/ai-chat';
 import SqliteAdminApp from '@/apps/sqlite-admin';
 import ColorPickerApp from '@/apps/color-picker';
 import FormatterApp from '@/apps/formatter';
@@ -30,13 +26,7 @@ import SettingConfig115App from '@/apps/setting/pages/config/config-115';
 import SettingConfigQbittorrentApp from '@/apps/setting/pages/config/config-qbittorrent';
 import SettingConfigOpenlistApp from '@/apps/setting/pages/config/config-openlist';
 import SettingConfigSmtpApp from '@/apps/setting/pages/config/config-smtp';
-import SettingConfigAiApp from '@/apps/setting/pages/config/config-ai';
 import SettingConfigBangumiApp from '@/apps/setting/pages/config/config-bangumi';
-import SettingAnimeSubscriptionApp from '@/apps/setting/pages/anime-subscription';
-import SettingAnimeSubscriptionAddApp from '@/apps/setting/pages/anime-subscription/add';
-import SettingAnimeSubscriptionEditApp from '@/apps/setting/pages/anime-subscription/edit';
-import SettingOpenlistAiOrganizerApp from '@/apps/setting/pages/openlist-ai-organizer';
-import SettingScheduledTaskApp from '@/apps/setting/pages/scheduled-task';
 import SettingSystemApp from '@/apps/setting/pages/system';
 import RedirectToSetting from './redirect-to-setting';
 import AppErrorBoundary from './error-boundary';
@@ -80,109 +70,6 @@ export const router = createBrowserRouter([
     }),
     children: [
       { index: true, Component: HomeApp },
-      {
-        path: 'ai',
-        Component: AiChatApp,
-        handle: routeHandle({
-          requiresAuth: true,
-          appHeader: {
-            title: 'AI 助手',
-            description: '统一会话、工具执行与审批确认的工作台',
-            logo: (
-              <div
-                style={{
-                  ...logoWrapStyle,
-                  borderRadius: 14,
-                  background: 'linear-gradient(135deg, #0f172a 0%, #0369a1 55%, #38bdf8 100%)',
-                  boxShadow: '0 16px 28px rgba(14, 165, 233, 0.24)',
-                }}
-              >
-                <IconBolt style={{ fontSize: 20 }} />
-              </div>
-            ),
-          },
-        }),
-      },
-      {
-        path: 'anime-subscription',
-        Component: SettingAnimeSubscriptionApp,
-        handle: routeHandle({
-          requiresAuth: true,
-          appHeader: {
-            title: '自动追番',
-            description: '查看和维护自动追番任务',
-            logo: (
-              <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #047857 0%, #10b981 100%)' }}>
-                <IconStar style={{ fontSize: 20 }} />
-              </div>
-            ),
-          },
-        }),
-      },
-      {
-        path: 'anime-subscription/add',
-        Component: SettingAnimeSubscriptionAddApp,
-        handle: routeHandle({
-          requiresAuth: true,
-          appHeader: {
-            title: '新增追番任务',
-            description: '创建新的自动追番规则',
-            logo: (
-              <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #047857 0%, #10b981 100%)' }}>
-                <IconStar style={{ fontSize: 20 }} />
-              </div>
-            ),
-          },
-        }),
-      },
-      {
-        path: 'anime-subscription/edit/:id',
-        Component: SettingAnimeSubscriptionEditApp,
-        handle: routeHandle({
-          requiresAuth: true,
-          appHeader: {
-            title: '编辑追番任务',
-            description: '调整追番规则和投递策略',
-            logo: (
-              <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #047857 0%, #10b981 100%)' }}>
-                <IconStar style={{ fontSize: 20 }} />
-              </div>
-            ),
-          },
-        }),
-      },
-      {
-        path: 'openlist-ai-organizer',
-        Component: SettingOpenlistAiOrganizerApp,
-        handle: routeHandle({
-          requiresAuth: true,
-          appHeader: {
-            title: 'AI 文件整理',
-            description: '分析目录、确认计划并执行整理',
-            logo: (
-              <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #b45309 0%, #f59e0b 100%)' }}>
-                <IconImage style={{ fontSize: 20 }} />
-              </div>
-            ),
-          },
-        }),
-      },
-      {
-        path: 'scheduled-task',
-        Component: SettingScheduledTaskApp,
-        handle: routeHandle({
-          requiresAuth: true,
-          appHeader: {
-            title: '定时任务',
-            description: '查看、执行和管理系统定时任务',
-            logo: (
-              <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #1d4ed8 0%, #38bdf8 100%)' }}>
-                <IconCalendarClock style={{ fontSize: 20 }} />
-              </div>
-            ),
-          },
-        }),
-      },
       {
         path: 'sqlite-admin',
         Component: SqliteAdminApp,
@@ -289,21 +176,6 @@ export const router = createBrowserRouter([
                 logo: (
                   <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)' }}>
                     <IconCloudStroked style={{ fontSize: 20 }} />
-                  </div>
-                ),
-              },
-            }),
-          },
-          {
-            path: 'config/ai',
-            Component: SettingConfigAiApp,
-            handle: routeHandle({
-              appHeader: {
-                title: 'AI 配置',
-                description: '配置模型、接口和默认行为',
-                logo: (
-                  <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #0f172a 0%, #0369a1 100%)' }}>
-                    <IconBolt style={{ fontSize: 20 }} />
                   </div>
                 ),
               },

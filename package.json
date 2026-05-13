@@ -8,6 +8,7 @@
     "release": "node ./scripts/release.js",
     "dev": "turbo run dev",
     "typecheck": "turbo run typecheck",
+    "agents:check": "node ./scripts/agents-check.cjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "prepare": "husky"

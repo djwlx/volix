@@ -6,7 +6,6 @@ import {
   assignUserRole,
   createRole,
   getAccountConfigs,
-  getAiModelList,
   getRegisterConfig,
   getCurrentUser,
   getUserDetail,
@@ -42,7 +41,6 @@ router
   .post('/me/email-verify-code', http(sendCurrentUserEmailVerifyCode))
   .post('/me/email-verify', http(verifyCurrentUserEmail))
   .get('/account-configs', http(getAccountConfigs))
-  .post('/account-configs/ai-models', http(getAiModelList))
   .put('/account-configs', http(updateAccountConfig))
   .post('/account-configs/test', http(testAccountConfig))
   .get('/system-config', http(getSystemConfig))

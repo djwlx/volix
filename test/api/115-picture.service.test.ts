@@ -8,6 +8,22 @@ const getFile115ByCidParentCidIndexMock = vi.fn();
 const getFile115ByCidIndexMock = vi.fn();
 const getFile115ByPcMock = vi.fn();
 const getFile115ByCidAndParentCidMock = vi.fn();
+const getFile115CachedParentCidSetByRootCidMock = vi.fn();
+const getFile115RandomByCidListMock = vi.fn();
+const getFile115LenMock = vi.fn();
+const getFile115CountByCidMock = vi.fn();
+const getFile115CachedCidListMock = vi.fn();
+const getFile115CachedFolderPathListMock = vi.fn();
+const getLikedFile115CountMock = vi.fn();
+const clearAllFile115Mock = vi.fn();
+const clearFile115ByCidListMock = vi.fn();
+const clearFile115ByFolderPathListMock = vi.fn();
+const getFile115RootCidListByCidListMock = vi.fn();
+const getFile115RootCidListByFolderPathListMock = vi.fn();
+const getAllFile115LocalCacheFileNameListMock = vi.fn();
+const getFile115LocalCacheFileNameListByCidListMock = vi.fn();
+const getFile115LocalCacheFileNameListByFolderPathListMock = vi.fn();
+const setFile115ListMock = vi.fn();
 const get115FileDataMock = vi.fn();
 const get115FileListDataMock = vi.fn();
 const generateRandomNumberMock = vi.fn();
@@ -19,16 +35,27 @@ vi.mock('../../apps/api/src/modules/config/service/config.service', () => ({
 }));
 
 vi.mock('../../apps/api/src/modules/115/service/file-db.service', () => ({
-  getFile115Len: vi.fn(),
-  getFile115CountByCid: vi.fn(),
-  clearAllFile115: vi.fn(),
-  clearFile115ByCidList: vi.fn(),
-  setFile115List: vi.fn(),
+  getFile115Len: getFile115LenMock,
+  getFile115CountByCid: getFile115CountByCidMock,
+  getFile115CachedCidList: getFile115CachedCidListMock,
+  getFile115CachedFolderPathList: getFile115CachedFolderPathListMock,
+  getLikedFile115Count: getLikedFile115CountMock,
+  clearAllFile115: clearAllFile115Mock,
+  clearFile115ByCidList: clearFile115ByCidListMock,
+  clearFile115ByFolderPathList: clearFile115ByFolderPathListMock,
+  getFile115RootCidListByCidList: getFile115RootCidListByCidListMock,
+  getFile115RootCidListByFolderPathList: getFile115RootCidListByFolderPathListMock,
+  getAllFile115LocalCacheFileNameList: getAllFile115LocalCacheFileNameListMock,
+  getFile115LocalCacheFileNameListByCidList: getFile115LocalCacheFileNameListByCidListMock,
+  getFile115LocalCacheFileNameListByFolderPathList: getFile115LocalCacheFileNameListByFolderPathListMock,
+  setFile115List: setFile115ListMock,
   getFile115ParentGroupByCidList: getFile115ParentGroupByCidListMock,
   getFile115ByCidParentCidIndex: getFile115ByCidParentCidIndexMock,
   getFile115ByCidIndex: getFile115ByCidIndexMock,
   getFile115ByPc: getFile115ByPcMock,
   getFile115ByCidAndParentCid: getFile115ByCidAndParentCidMock,
+  getFile115CachedParentCidSetByRootCid: getFile115CachedParentCidSetByRootCidMock,
+  getFile115RandomByCidList: getFile115RandomByCidListMock,
 }));
 
 vi.mock('../../apps/api/src/modules/115/service/file.service', () => ({
@@ -48,20 +75,34 @@ describe('115 picture service random meta', () => {
     getConfigMock.mockResolvedValue(null);
     clearConfigMock.mockResolvedValue(undefined);
     setConfigMock.mockResolvedValue(undefined);
+    getFile115LenMock.mockResolvedValue(0);
+    getFile115CountByCidMock.mockResolvedValue({});
+    getFile115CachedCidListMock.mockResolvedValue([]);
+    getFile115CachedFolderPathListMock.mockResolvedValue([]);
+    getLikedFile115CountMock.mockResolvedValue(0);
+    clearAllFile115Mock.mockResolvedValue(0);
+    clearFile115ByCidListMock.mockResolvedValue(0);
+    clearFile115ByFolderPathListMock.mockResolvedValue(0);
+    getFile115RootCidListByCidListMock.mockResolvedValue([]);
+    getFile115RootCidListByFolderPathListMock.mockResolvedValue([]);
+    getAllFile115LocalCacheFileNameListMock.mockResolvedValue([]);
+    getFile115LocalCacheFileNameListByCidListMock.mockResolvedValue([]);
+    getFile115LocalCacheFileNameListByFolderPathListMock.mockResolvedValue([]);
+    getFile115CachedParentCidSetByRootCidMock.mockResolvedValue(new Set());
+    getFile115RandomByCidListMock.mockResolvedValue(undefined);
   });
 
   test('getRandom115PicMeta returns path and parentPath for the selected image', async () => {
-    getConfigMock
-      .mockResolvedValueOnce({
-        picture_115_folders: JSON.stringify([{ cid: 'root', status: 'cached' }]),
-      })
-      .mockResolvedValueOnce(null);
-    getFile115ParentGroupByCidListMock.mockResolvedValue([{ cid: 'root', parentCid: 'folder-a', count: 2 }]);
-    getFile115ByCidParentCidIndexMock.mockResolvedValue({
+    getConfigMock.mockResolvedValue({
+      picture_115_folders: JSON.stringify([{ cid: 'root', status: 'cached' }]),
+    });
+    getFile115RandomByCidListMock.mockResolvedValue({
       cid: 'root',
       parentCid: 'folder-a',
       pc: 'pc-1',
-      name: '01.jpg',
+      fullPath: '/Root/Album A/01.jpg',
+      isLiked: false,
+      localCacheFileName: '',
     });
     get115FileDataMock.mockResolvedValue({
       info: {
@@ -86,11 +127,13 @@ describe('115 picture service random meta', () => {
       cid: 'root',
       parentCid: 'folder-a',
       pc: 'pc-1',
-      name: '01.jpg',
+      fullPath: '/Root/Album A/01.jpg',
+      isLiked: false,
+      localCacheFileName: '',
     });
     getFile115ByCidAndParentCidMock.mockResolvedValue([
-      { cid: 'root', parentCid: 'folder-a', pc: 'pc-1', name: '01.jpg' },
-      { cid: 'root', parentCid: 'folder-a', pc: 'pc-2', name: '02.jpg' },
+      { cid: 'root', parentCid: 'folder-a', pc: 'pc-1', fullPath: '/Root/Album A/01.jpg' },
+      { cid: 'root', parentCid: 'folder-a', pc: 'pc-2', fullPath: '/Root/Album A/02.jpg' },
     ]);
     get115FileDataMock.mockResolvedValue({
       info: {
@@ -119,10 +162,12 @@ describe('115 picture service random meta', () => {
       cid: 'root',
       parentCid: 'folder-a',
       pc: 'pc-1',
-      name: '01.jpg',
+      fullPath: '/Root/Album A/01.jpg',
+      isLiked: false,
+      localCacheFileName: '',
     });
     getFile115ByCidAndParentCidMock.mockResolvedValue([
-      { cid: 'root', parentCid: 'folder-a', pc: 'pc-1', name: '01.jpg' },
+      { cid: 'root', parentCid: 'folder-a', pc: 'pc-1', fullPath: '/Root/Album A/01.jpg' },
     ]);
     get115FileDataMock.mockResolvedValue({
       info: {
@@ -142,6 +187,85 @@ describe('115 picture service random meta', () => {
 
     expect(result.pc).toBe('pc-1');
     expect(result.notice).toBe('当前目录没有其他图片可切换');
+  });
+
+  test('clear115PicData supports removing by cid and folder path in one request', async () => {
+    getConfigMock.mockResolvedValue({
+      picture_115_folders: JSON.stringify([{ cid: 'root-cid', status: 'cached' }]),
+    });
+
+    const { clear115PicData } = await import('../../apps/api/src/modules/115/service/picture.service');
+    await clear115PicData({
+      paths: ['root-cid'],
+      folderPaths: ['/Root/Album A'],
+    });
+
+    expect(clearFile115ByCidListMock).toHaveBeenCalledWith(['root-cid']);
+    expect(clearFile115ByFolderPathListMock).toHaveBeenCalledWith(['/Root/Album A']);
+  });
+
+  test('clear115PicData keeps local cached files when removing cache', async () => {
+    getConfigMock.mockResolvedValue({
+      picture_115_folders: JSON.stringify([{ cid: 'root-cid', status: 'cached' }]),
+    });
+    getFile115LocalCacheFileNameListByCidListMock.mockResolvedValue(['pc-1.01.jpg']);
+
+    const fsModule = await import('fs');
+    const unlinkSpy = vi.spyOn(fsModule.promises, 'unlink').mockImplementation(async () => undefined);
+
+    const { clear115PicData } = await import('../../apps/api/src/modules/115/service/picture.service');
+    await clear115PicData({
+      paths: ['root-cid'],
+    });
+
+    expect(unlinkSpy).not.toHaveBeenCalled();
+    unlinkSpy.mockRestore();
+  });
+
+  test('clear115PicData marks root folder as partial after removing sub folder cache by folder path', async () => {
+    getConfigMock.mockResolvedValue({
+      picture_115_folders: JSON.stringify([{ cid: 'root-cid', status: 'cached' }]),
+    });
+    getFile115RootCidListByFolderPathListMock.mockResolvedValue(['root-cid']);
+
+    const { clear115PicData } = await import('../../apps/api/src/modules/115/service/picture.service');
+    await clear115PicData({
+      folderPaths: ['/Root/Album A'],
+    });
+
+    expect(clearFile115ByFolderPathListMock).toHaveBeenCalledWith(['/Root/Album A']);
+    expect(setConfigMock).toHaveBeenCalledWith(expect.any(String), expect.stringContaining('"status":"partial"'));
+  });
+
+  test('clear115PicData marks root folder as partial after removing sub folder cache by cid', async () => {
+    getConfigMock.mockResolvedValue({
+      picture_115_folders: JSON.stringify([{ cid: 'root-cid', status: 'cached' }]),
+    });
+    getFile115RootCidListByCidListMock.mockResolvedValue(['root-cid']);
+
+    const { clear115PicData } = await import('../../apps/api/src/modules/115/service/picture.service');
+    await clear115PicData({
+      paths: ['sub-folder-cid'],
+    });
+
+    expect(clearFile115ByCidListMock).toHaveBeenCalledWith(['sub-folder-cid']);
+    expect(setConfigMock).toHaveBeenCalledWith(expect.any(String), expect.stringContaining('"status":"partial"'));
+  });
+
+  test('set115PicInfoData re-queues partial folder to pending', async () => {
+    getConfigMock.mockResolvedValue({
+      picture_115_folders: JSON.stringify([{ cid: 'root-cid', status: 'partial' }]),
+    });
+
+    const { set115PicInfoData } = await import('../../apps/api/src/modules/115/service/picture.service');
+    await set115PicInfoData({
+      paths: ['root-cid'],
+    });
+
+    expect(setConfigMock).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.stringContaining('"cid":"root-cid","status":"pending"')
+    );
   });
 });
 
@@ -216,5 +340,30 @@ describe('115 picture controller', () => {
       userAgent: 'agent',
     });
     expect(result.path).toBe('/Root/Album A/02.jpg');
+  });
+
+  test('clear115Pic forwards folderPaths from query to service', async () => {
+    const clear115PicDataMock = vi.fn().mockResolvedValue('success');
+
+    vi.doMock('../../apps/api/src/modules/115/service/picture.service', async () => ({
+      clear115PicData: clear115PicDataMock,
+      get115PicInfoData: vi.fn(),
+      getRandom115PicMeta: vi.fn(),
+      getRandom115PicFromParentMeta: vi.fn(),
+      like115PicData: vi.fn(),
+      retry115PicData: vi.fn(),
+      set115PicInfoData: vi.fn(),
+    }));
+
+    const { clear115Pic } = await import('../../apps/api/src/modules/115/controller/115.controller');
+    await clear115Pic({
+      query: { folderPaths: '/Root/Album A,/Root/Album B' },
+      request: { body: {} },
+    } as never);
+
+    expect(clear115PicDataMock).toHaveBeenCalledWith({
+      paths: [],
+      folderPaths: ['/Root/Album A', '/Root/Album B'],
+    });
   });
 });

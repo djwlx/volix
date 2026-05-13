@@ -18,9 +18,6 @@ export const PATH = {
   get cache() {
     return path.join(ROOT, DATA, 'cache');
   },
-  get openlistAiOrganizerCache() {
-    return path.join(ROOT, DATA, 'cache', 'openlist-ai-organizer');
-  },
   get log() {
     return path.join(ROOT, DATA, 'log');
   },

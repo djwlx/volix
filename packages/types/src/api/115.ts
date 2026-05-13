@@ -38,6 +38,7 @@ export interface PicInfoParams {
 
 export interface ClearPicInfoParams {
   paths?: string[];
+  folderPaths?: string[];
 }
 
 export interface RetryPicInfoParams {
@@ -98,7 +99,7 @@ export interface Liked115PicListResponse {
   pageSize: number;
 }
 
-export type PicCacheFolderStatus = 'pending' | 'caching' | 'cached' | 'failed';
+export type PicCacheFolderStatus = 'pending' | 'caching' | 'cached' | 'failed' | 'partial';
 
 export interface PicCacheFolderItem {
   cid: string;
@@ -106,6 +107,27 @@ export interface PicCacheFolderItem {
   errorMessage?: string;
   updatedAt?: string;
   count?: number;
+}
+
+export interface PicRandomCacheConfig {
+  sourceWeights: {
+    memory: number;
+    local: number;
+    cloud: number;
+  };
+  memoryMaxSizeMb: number;
+  localMaxSizeMb: number;
+}
+
+export interface PicRandomCacheStats {
+  memoryFileCount: number;
+  memoryTotalSizeBytes: number;
+  memoryTotalSizeMb: number;
+  memoryLimitExceeded: boolean;
+  localFileCount: number;
+  localTotalSizeBytes: number;
+  localTotalSizeMb: number;
+  localLimitExceeded: boolean;
 }
 
 // 完整的类型定义
@@ -134,4 +156,17 @@ export interface PicInfo115 {
   likedCount: number;
   folders: PicCacheFolderItem[];
   cachedCids: string[];
+  cachedFolderPaths: string[];
+  randomCacheConfig: PicRandomCacheConfig;
+  randomCacheStats: PicRandomCacheStats;
+}
+
+export interface SetPicRandomCacheConfigParams {
+  sourceWeights?: {
+    memory?: number;
+    local?: number;
+    cloud?: number;
+  };
+  memoryMaxSizeMb?: number;
+  localMaxSizeMb?: number;
 }

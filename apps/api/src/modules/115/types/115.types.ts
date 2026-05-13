@@ -24,3 +24,24 @@ export interface Cloud115DbFileItem {
   isLiked: boolean;
   localCacheFileName: string;
 }
+
+export interface PicRandomCacheConfig {
+  sourceWeights: {
+    memory: number;
+    local: number;
+    cloud: number;
+  };
+  memoryMaxSizeMb: number;
+  localMaxSizeMb: number;
+}
+
+export interface PicRandomCacheStats {
+  memoryFileCount: number;
+  memoryTotalSizeBytes: number;
+  memoryTotalSizeMb: number;
+  memoryLimitExceeded: boolean;
+  localFileCount: number;
+  localTotalSizeBytes: number;
+  localTotalSizeMb: number;
+  localLimitExceeded: boolean;
+}

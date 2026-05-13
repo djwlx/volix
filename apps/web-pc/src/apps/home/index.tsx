@@ -1,5 +1,5 @@
 import { AppCard } from './components';
-import { IconCalendarClock, IconComment, IconImage, IconStar, IconTabsStroked } from '@douyinfe/semi-icons';
+import { IconStar, IconTabsStroked } from '@douyinfe/semi-icons';
 import { isAuthenticated } from '@/utils';
 import { useUser } from '@/hooks';
 import { UserRole } from '@volix/types';
@@ -56,66 +56,6 @@ function HomeApp() {
             />
           </div>
         </div>
-
-        {authed ? (
-          <div className={styles.sectionBlock}>
-            <div className={styles.sectionLabel}>工作台</div>
-            <div className={styles.cardGrid}>
-              <AppCard
-                title="AI 助手"
-                description="统一会话、工具执行与审批确认。"
-                link="/ai"
-                icon={
-                  <div style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #0f172a 0%, #0284c7 100%)' }}>
-                    <IconComment size="large" />
-                  </div>
-                }
-              />
-              {isAdmin ? (
-                <AppCard
-                  title="自动追番"
-                  description="查看和维护追番任务。"
-                  link="/anime-subscription"
-                  icon={
-                    <div
-                      style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #047857 0%, #10b981 100%)' }}
-                    >
-                      <IconStar size="large" />
-                    </div>
-                  }
-                />
-              ) : null}
-              {isAdmin ? (
-                <AppCard
-                  title="AI 文件整理"
-                  description="分析目录、确认计划并执行整理。"
-                  link="/openlist-ai-organizer"
-                  icon={
-                    <div
-                      style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #b45309 0%, #f59e0b 100%)' }}
-                    >
-                      <IconImage size="large" />
-                    </div>
-                  }
-                />
-              ) : null}
-              {isAdmin ? (
-                <AppCard
-                  title="定时任务"
-                  description="查看和执行系统定时任务。"
-                  link="/scheduled-task"
-                  icon={
-                    <div
-                      style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #1d4ed8 0%, #38bdf8 100%)' }}
-                    >
-                      <IconCalendarClock size="large" />
-                    </div>
-                  }
-                />
-              ) : null}
-            </div>
-          </div>
-        ) : null}
 
         {authed ? (
           <div className={styles.sectionBlock}>

@@ -7,6 +7,7 @@ import type {
   PicInfoParams,
   QrCodeStatusParams,
   RetryPicInfoParams,
+  SetPicRandomCacheConfigParams,
 } from '@volix/types';
 import { PATH } from '../../../utils/path';
 import request from '../../../utils/request';
@@ -18,11 +19,13 @@ import {
   getLiked115PicListData,
   get115PicInfoData,
   get115PicCacheFileByPcData,
+  get115RandomPicCacheFileData,
   getRandom115PicMeta,
   getRandom115PicFromParentMeta,
   get115PicPathByPcData,
   like115PicData,
   retry115PicData,
+  set115PicRandomCacheConfigData,
   set115PicInfoData,
 } from '../service/picture.service';
 import { get115QrCodeData, get115QrCodeStatusData } from '../service/qrcode.service';
@@ -122,6 +125,24 @@ export const get115PicCacheFileByPc: MyMiddleware = async ctx => {
   ctx.body = streamResult.data;
 };
 
+export const get115RandomPicCacheFile: MyMiddleware = async ctx => {
+  const cacheFileName = String(ctx.params?.cacheFileName || '');
+  const source = await get115RandomPicCacheFileData(cacheFileName);
+
+  if (source.kind === 'memory') {
+    ctx.set('Content-Type', source.mimeType || 'application/octet-stream');
+    ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(source.fileName)}"`);
+    ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
+    ctx.body = source.buffer;
+    return;
+  }
+
+  ctx.set('Content-Type', source.mimeType || 'application/octet-stream');
+  ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(source.fileName)}"`);
+  ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
+  ctx.body = fs.createReadStream(source.filePath);
+};
+
 export const get115LikedPicList: MyMiddleware = async ctx => {
   const offset = Number(ctx.query?.offset || 0);
   const pageSize = Number(ctx.query?.pageSize || 50);
@@ -140,11 +161,17 @@ export const set115PicInfo: MyMiddleware = async ctx => {
   return set115PicInfoData(ctx.request.body as PicInfoParams);
 };
 
+export const set115PicRandomCacheConfig: MyMiddleware = async ctx => {
+  return set115PicRandomCacheConfigData(ctx.request.body as SetPicRandomCacheConfigParams);
+};
+
 export const clear115Pic: MyMiddleware = async ctx => {
   const body = (ctx.request.body || {}) as ClearPicInfoParams;
   const queryPaths = typeof ctx.query?.paths === 'string' ? ctx.query.paths.split(',') : [];
+  const queryFolderPaths = typeof ctx.query?.folderPaths === 'string' ? ctx.query.folderPaths.split(',') : [];
   return clear115PicData({
     paths: body.paths?.length ? body.paths : queryPaths,
+    folderPaths: body.folderPaths?.length ? body.folderPaths : queryFolderPaths,
   });
 };
 

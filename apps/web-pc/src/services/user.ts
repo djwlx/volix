@@ -8,8 +8,6 @@ import type {
   CreateRolePayload,
   LoginUserPayload,
   LoginUserResponse,
-  ListAiModelsPayload,
-  ListAiModelsResponse,
   RoleInfoResponse,
   RegisterUserPayload,
   RegisterConfigResponse,
@@ -57,10 +55,6 @@ export const verifyCurrentUserEmail = (data: VerifyCurrentUserEmailPayload) => {
 
 export const getAccountConfigs = () => {
   return http.get<AccountConfigMap>('/user/account-configs');
-};
-
-export const getAiModelList = (data: ListAiModelsPayload) => {
-  return http.post<ListAiModelsResponse>('/user/account-configs/ai-models', data);
 };
 
 export const updateAccountConfig = (data: UpdateAccountConfigPayload) => {

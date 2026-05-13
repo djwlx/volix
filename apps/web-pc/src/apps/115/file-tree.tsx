@@ -3,17 +3,34 @@ import { IconMore } from '@douyinfe/semi-icons';
 import { useFileList, type FileItem, type UndoneMapItem } from './hooks/useFileList';
 import { useEffect, useState } from 'react';
 import type { TreeNodeData } from '@douyinfe/semi-ui/lib/es/tree';
-import type { PicCacheFolderItem } from '@volix/types';
+import type { PicCacheFolderItem, PicCacheFolderStatus } from '@volix/types';
 import { clear115Pic, get115PicInfo, set115PicInfo } from '@/services/115';
 import { getHttpErrorMessage } from '@/utils/error';
 import { renderPicCacheStatusTag } from './pic-cache-status';
 
+type PicTreeNodeData = TreeNodeData & {
+  dir?: string;
+  fullPath?: string;
+};
+
+const normalizeFolderPath = (folderPath: string) => {
+  const normalized = `/${String(folderPath || '')
+    .trim()
+    .replace(/^\/+/, '')
+    .replace(/\/+/g, '/')}`;
+  if (normalized === '/' || normalized === '/.') {
+    return '/';
+  }
+  return normalized.replace(/\/+$/, '');
+};
+
 export function FileTree() {
-  const [fileTree, setFileTree] = useState<TreeNodeData[]>([]);
+  const [fileTree, setFileTree] = useState<PicTreeNodeData[]>([]);
   const { fileTree: treeData, loadMore, moreLoading, unDoneMap } = useFileList();
   const [loadingMoreDir, setLoadingMoreDir] = useState('');
   const [folderStatusMap, setFolderStatusMap] = useState<Record<string, PicCacheFolderItem>>({});
   const [cachedCidMap, setCachedCidMap] = useState<Record<string, true>>({});
+  const [cachedFolderPathList, setCachedFolderPathList] = useState<string[]>([]);
 
   const fetchPicInfo = async () => {
     const result = await get115PicInfo();
@@ -32,6 +49,7 @@ export function FileTree() {
           return acc;
         }, {} as Record<string, true>)
       );
+      setCachedFolderPathList((result.data.cachedFolderPaths || []).map(item => normalizeFolderPath(item)));
     }
   };
 
@@ -54,14 +72,18 @@ export function FileTree() {
     }
   };
 
-  const onRemoveCache = async (cid: string) => {
+  const onRemoveCache = async (cid: string, folderPath?: string) => {
     const confirmed = window.confirm('确定删除该目录缓存？此修改将不可逆');
     if (!confirmed) {
       return;
     }
 
     try {
-      await clear115Pic({ paths: [cid] });
+      const payload = {
+        paths: cid ? [cid] : [],
+        folderPaths: folderPath ? [folderPath] : [],
+      };
+      await clear115Pic(payload);
       await fetchPicInfo();
       Toast.success('已删除该目录缓存');
     } catch (error) {
@@ -69,13 +91,47 @@ export function FileTree() {
     }
   };
 
-  const formatTreeData = (data: FileItem[], unComplete: Record<string, UndoneMapItem>, dir: string): TreeNodeData[] => {
+  const getFolderCacheMatch = (folderPath: string) => {
+    const normalizedPath = normalizeFolderPath(folderPath);
+    const prefix = `${normalizedPath}/`;
+    const hasExact = cachedFolderPathList.some(item => item === normalizedPath);
+    const hasDescendant = cachedFolderPathList.some(item => item.startsWith(prefix));
+    return {
+      hasExact,
+      hasDescendant,
+      hasAny: hasExact || hasDescendant,
+    };
+  };
+
+  const formatTreeData = (
+    data: FileItem[],
+    unComplete: Record<string, UndoneMapItem>,
+    dir: string,
+    parentPath = ''
+  ): PicTreeNodeData[] => {
     const treeData = data.map(item => {
       const isDir = !item.fid;
+      const fullPath = normalizeFolderPath(parentPath ? `${parentPath}/${item.name}` : `/${item.name}`);
       const folderInfo = folderStatusMap[item.dir];
-      const hasCache = Boolean(folderInfo) || Boolean(cachedCidMap[item.dir]);
-      const displayStatus = folderInfo?.status || (hasCache ? 'cached' : '');
-      const fileItem: TreeNodeData = {
+      const hasDirectCache = Boolean(folderInfo) || Boolean(cachedCidMap[item.dir]);
+      const folderCacheMatch = isDir
+        ? getFolderCacheMatch(fullPath)
+        : { hasExact: false, hasDescendant: false, hasAny: false };
+      let displayStatus: PicCacheFolderStatus | '' = '';
+
+      if (folderInfo?.status) {
+        displayStatus = folderInfo.status;
+      } else if (hasDirectCache) {
+        displayStatus = 'cached';
+      } else if (folderCacheMatch.hasExact) {
+        displayStatus = 'cached';
+      } else if (folderCacheMatch.hasDescendant) {
+        displayStatus = 'partial';
+      }
+
+      const canRemoveCache = hasDirectCache || folderCacheMatch.hasAny;
+      const canAddCache = displayStatus === '' || displayStatus === 'partial' || displayStatus === 'failed';
+      const fileItem: PicTreeNodeData = {
         ...item,
         label: (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -100,19 +156,19 @@ export function FileTree() {
                       复制 CID
                     </Dropdown.Item>
                     <Dropdown.Item
-                      disabled={hasCache}
+                      disabled={!canAddCache}
                       onClick={event => {
                         event.stopPropagation();
                         void onAddCache(item.dir);
                       }}
                     >
-                      {hasCache ? '已加入缓存' : '加入缓存'}
+                      {displayStatus === 'partial' ? '补全缓存' : canAddCache ? '加入缓存' : '已加入缓存'}
                     </Dropdown.Item>
                     <Dropdown.Item
-                      disabled={!hasCache}
+                      disabled={!canRemoveCache}
                       onClick={event => {
                         event.stopPropagation();
-                        void onRemoveCache(item.dir);
+                        void onRemoveCache(item.dir, fullPath);
                       }}
                     >
                       去掉缓存
@@ -134,7 +190,8 @@ export function FileTree() {
         key: item.id,
         isLeaf: !isDir,
         dir: item.dir,
-        children: item.children ? formatTreeData(item.children, unComplete, item.dir) : undefined,
+        fullPath,
+        children: item.children ? formatTreeData(item.children, unComplete, item.dir, fullPath) : undefined,
       };
       return fileItem;
     });
@@ -159,7 +216,7 @@ export function FileTree() {
         value: useId,
         key: useId,
         isLeaf: true,
-      });
+      } as PicTreeNodeData);
     }
 
     return treeData;
@@ -177,7 +234,7 @@ export function FileTree() {
   useEffect(() => {
     const data = formatTreeData(treeData, unDoneMap, '0');
     setFileTree(data);
-  }, [treeData, unDoneMap, loadingMoreDir, folderStatusMap, cachedCidMap]);
+  }, [treeData, unDoneMap, loadingMoreDir, folderStatusMap, cachedCidMap, cachedFolderPathList]);
 
   useEffect(() => {
     if (!moreLoading) {

@@ -15,6 +15,7 @@ import type {
   QrCodeStatusParams,
   QrLoginParams,
   Random115PicResponse,
+  SetPicRandomCacheConfigParams,
   RetryPicInfoParams,
 } from '@volix/types';
 
@@ -55,18 +56,26 @@ export function set115PicInfo(data: PicInfoParams) {
   return http.put('/115/pic/info', data);
 }
 export function clear115Pic(data?: ClearPicInfoParams) {
+  const queryParams: Record<string, string> = {};
+  if (data?.paths?.length) {
+    queryParams.paths = data.paths.join(',');
+  }
+  if (data?.folderPaths?.length) {
+    queryParams.folderPaths = data.folderPaths.join(',');
+  }
+
   return http.delete('/115/pic/info', {
     data,
-    params: data?.paths?.length
-      ? {
-          paths: data.paths.join(','),
-        }
-      : undefined,
+    params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
   });
 }
 
 export function retry115Pic(data: RetryPicInfoParams) {
   return http.post('/115/pic/info/retry', data);
+}
+
+export function set115PicRandomCacheConfig(data: SetPicRandomCacheConfigParams) {
+  return http.put('/115/pic/random-cache-config', data);
 }
 
 export function like115Pic(data: Like115PicParams) {

@@ -1,4 +1,5 @@
 export * from './model/file115.model';
+export * from './model/file115-segment.model';
 export * from './types/115.types';
 export * from './service/file-db.service';
 export * from './service/file.service';

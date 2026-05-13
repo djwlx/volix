@@ -22,6 +22,10 @@
   gap: 16px;
 }
 
+.card {
+  height: 100%;
+}
+
 .cardImageWrap {
   width: 100%;
   aspect-ratio: 4 / 3;
@@ -40,24 +44,67 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
+  cursor: zoom-in;
 
   img {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
-    pointer-events: auto;
   }
 }
 
 .path {
-  font-size: 12px;
+  font-size: 13px;
+  line-height: 1.45;
   color: #666;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   word-break: break-all;
 }
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.actionButton {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 12px;
+  }
+
+  .toolbar {
+    margin-bottom: 12px;
+  }
+
+  .title {
+    font-size: 18px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .cardImageWrap {
+    border-radius: 10px;
+    margin-bottom: 12px;
+  }
+
+  .path {
+    font-size: 12px;
+    margin-bottom: 12px;
+  }
+
+  .actions {
+    gap: 10px;
+  }
+
+  .actionButton {
+    flex: 1 1 100%;
+  }
 }

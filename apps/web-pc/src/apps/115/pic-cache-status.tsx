@@ -5,12 +5,14 @@ export const picCacheStatusOrder: Record<PicCacheFolderStatus, number> = {
   caching: 0,
   pending: 1,
   failed: 2,
-  cached: 3,
+  partial: 3,
+  cached: 4,
 };
 
 const statusMetaMap: Record<PicCacheFolderStatus, { text: string; color: 'amber' | 'blue' | 'green' | 'red' }> = {
   pending: { text: '等待中', color: 'blue' },
   caching: { text: '缓存中', color: 'amber' },
+  partial: { text: '部分缓存', color: 'amber' },
   cached: { text: '已缓存', color: 'green' },
   failed: { text: '缓存失败', color: 'red' },
 };
