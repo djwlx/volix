@@ -399,7 +399,7 @@ function RssApp() {
               </div>
 
               <div className={styles.filterRow}>
-                <Select
+                <Select<string>
                   multiple
                   filter
                   showClear
@@ -408,7 +408,13 @@ function RssApp() {
                   value={selectedRoutes}
                   style={{ width: '100%' }}
                   placeholder="按订阅多选过滤（名称 / URL）"
-                  onChange={value => setSelectedRoutes((value || []) as string[])}
+                  onChange={value => {
+                    if (Array.isArray(value)) {
+                      setSelectedRoutes(value.map(item => String(item)));
+                      return;
+                    }
+                    setSelectedRoutes(value ? [String(value)] : []);
+                  }}
                 />
               </div>
 
