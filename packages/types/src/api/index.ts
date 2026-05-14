@@ -8,3 +8,4 @@ export * from './115';
 export * from './user';
 export * from './file';
 export * from './sqlite-admin';
+export * from './rss';

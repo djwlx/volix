@@ -54,6 +54,16 @@ function HomeApp() {
                 </div>
               }
             />
+            <AppCard
+              title="RSS 阅读器"
+              description="对接 RSSHub，按订阅源浏览最新内容。"
+              link="/rss"
+              icon={
+                <div style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #0284c7 0%, #14b8a6 100%)' }}>
+                  RSS
+                </div>
+              }
+            />
           </div>
         </div>
 

@@ -10,11 +10,13 @@ import staticMiddleware from './src/middleware/static';
 import initApp from './src/utils/dependencies';
 import { log } from './src/utils/logger';
 import { formatTime } from '@volix/utils';
+import { startRssFeedAutoRefreshTask } from './src/modules/rss/service/rss-auto-refresh.service';
 
 async function startApp() {
   log.info('应用启动时间：', formatTime());
   // 启动前操作
   await initApp();
+  startRssFeedAutoRefreshTask();
 
   const app = new Koa();
   app.on('error', error => {

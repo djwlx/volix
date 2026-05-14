@@ -89,7 +89,6 @@ export const get115PicInfo: MyMiddleware = async () => {
 export const getRandom115PicByParent: MyMiddleware = async ctx => {
   const ua = ctx.request.headers['user-agent'];
   const pc = String(ctx.query?.pc || '');
-
   return getRandom115PicFromParentMeta({
     pc,
     userAgent: ua as string,

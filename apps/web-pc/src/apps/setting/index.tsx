@@ -94,6 +94,9 @@ function SettingApp() {
     if (location.pathname.startsWith('/setting/config/115')) {
       return 'config/115';
     }
+    if (location.pathname.startsWith('/setting/config/rsshub')) {
+      return 'config/rsshub';
+    }
     if (location.pathname.startsWith('/setting/config/qbittorrent')) {
       return 'config/qbittorrent';
     }
@@ -131,6 +134,17 @@ function SettingApp() {
               icon={<IconAvatar />}
               bg="linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(59, 130, 246, 0.22) 100%)"
               color="#2563eb"
+            />
+          ),
+        },
+        {
+          itemKey: 'config/rsshub',
+          text: 'RSS 配置',
+          icon: (
+            <MenuIcon
+              icon={<IconCloudStroked />}
+              bg="linear-gradient(135deg, rgba(14, 165, 233, 0.18) 0%, rgba(20, 184, 166, 0.22) 100%)"
+              color="#0f766e"
             />
           ),
         },

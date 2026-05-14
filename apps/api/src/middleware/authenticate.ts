@@ -10,6 +10,8 @@ interface AuthenticateParam {
   notInclude?: string[];
 }
 
+const AUTH_BYPASS_PATHS = ['/api/rss/resource-cache/:cacheKey'];
+
 const testArray = (array: string[], key: string) => {
   return array.some(item => {
     const regexpTemp = pathToRegexp(item);
@@ -22,8 +24,13 @@ const testArray = (array: string[], key: string) => {
 const authenticate = (option?: AuthenticateParam): MyMiddleware => {
   return async (ctx, next) => {
     // 自定义token放在header中，所以从header中去取，也可以放在其他地方
-    const { header, url } = ctx.request;
+    const { header, url, path } = ctx.request;
     const { include = [], notInclude = [] } = option || {};
+
+    if (testArray(AUTH_BYPASS_PATHS, path)) {
+      await next();
+      return;
+    }
 
     // 控制哪些路由不进行权限校验
     if (testArray(notInclude, url) && !testArray(include, url)) {

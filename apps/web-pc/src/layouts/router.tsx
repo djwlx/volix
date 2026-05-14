@@ -13,6 +13,7 @@ import ColorPickerApp from '@/apps/color-picker';
 import FormatterApp from '@/apps/formatter';
 import PicApp from '@/apps/pic';
 import PicLikedApp from '@/apps/pic-liked';
+import RssApp from '@/apps/rss';
 import AuthApp from '@/apps/auth';
 import SettingApp from '@/apps/setting';
 import SettingInfoApp from '@/apps/setting/pages/info';
@@ -27,6 +28,7 @@ import SettingConfigQbittorrentApp from '@/apps/setting/pages/config/config-qbit
 import SettingConfigOpenlistApp from '@/apps/setting/pages/config/config-openlist';
 import SettingConfigSmtpApp from '@/apps/setting/pages/config/config-smtp';
 import SettingConfigBangumiApp from '@/apps/setting/pages/config/config-bangumi';
+import SettingConfigRsshubApp from '@/apps/setting/pages/config/config-rsshub';
 import SettingSystemApp from '@/apps/setting/pages/system';
 import RedirectToSetting from './redirect-to-setting';
 import AppErrorBoundary from './error-boundary';
@@ -132,6 +134,21 @@ export const router = createBrowserRouter([
         }),
       },
       {
+        path: 'rss',
+        Component: RssApp,
+        handle: routeHandle({
+          appHeader: {
+            title: 'RSS 阅读器',
+            description: '基于 RSSHub 的订阅抓取与阅读',
+            logo: (
+              <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%)' }}>
+                RSS
+              </div>
+            ),
+          },
+        }),
+      },
+      {
         path: 'setting',
         Component: SettingApp,
         handle: routeHandle({
@@ -182,6 +199,7 @@ export const router = createBrowserRouter([
             }),
           },
           { path: 'config/bangumi', Component: SettingConfigBangumiApp },
+          { path: 'config/rsshub', Component: SettingConfigRsshubApp },
           { path: 'config/qbittorrent', Component: SettingConfigQbittorrentApp },
           { path: 'config/openlist', Component: SettingConfigOpenlistApp },
           {
