@@ -212,9 +212,11 @@ function PicApp() {
               </Button>
             </span>
           )}
-          <Button theme="solid" type="primary" loading={liking} onClick={onLike}>
-            {picMeta.liked ? '取消喜欢' : '喜欢'}
-          </Button>
+          {user ? (
+            <Button theme="solid" type="primary" loading={liking} onClick={onLike}>
+              {picMeta.liked ? '取消喜欢' : '喜欢'}
+            </Button>
+          ) : null}
         </Space>
       </div>
     </div>

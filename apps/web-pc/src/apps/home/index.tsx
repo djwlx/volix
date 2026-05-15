@@ -44,16 +44,18 @@ function HomeApp() {
               icon={colorPickerIcon}
             />
             <AppCard title="随机图片" description="快速切换一张随机图片。" icon={picIcon} link="/pic" />
-            <AppCard
-              title="我的喜欢"
-              description="查看和管理你收藏的随机图片。"
-              link="/pic/likes"
-              icon={
-                <div style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #dc2626 0%, #f97316 100%)' }}>
-                  <IconStar size="large" />
-                </div>
-              }
-            />
+            {authed ? (
+              <AppCard
+                title="我的喜欢"
+                description="查看和管理你收藏的随机图片。"
+                link="/pic/likes"
+                icon={
+                  <div style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #dc2626 0%, #f97316 100%)' }}>
+                    <IconStar size="large" />
+                  </div>
+                }
+              />
+            ) : null}
             <AppCard
               title="RSS 阅读器"
               description="对接 RSSHub，按订阅源浏览最新内容。"

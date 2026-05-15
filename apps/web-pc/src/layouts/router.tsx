@@ -116,6 +116,7 @@ export const router = createBrowserRouter([
         path: 'pic/likes',
         Component: PicLikedApp,
         handle: routeHandle({
+          requiresAuth: true,
           appHeader: {
             title: '我的喜欢',
             description: '管理你收藏的 115 图片',
