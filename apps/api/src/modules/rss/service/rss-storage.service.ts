@@ -160,7 +160,7 @@ const processSingleTask = async (taskFilePath: string) => {
     await upsertUserRssFeedState({
       userId: task.userId,
       route: task.route,
-      name: String(task.routeName || '').trim() || String(parsed.title || '').trim() || task.route,
+      name: String(parsed.title || '').trim() || String(task.routeName || '').trim() || task.route,
       feedUrl: task.feedUrl,
       title: parsed.title,
       description: parsed.description,

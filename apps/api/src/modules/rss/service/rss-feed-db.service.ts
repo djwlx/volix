@@ -141,12 +141,13 @@ export const upsertUserRssFeedState = async (params: UpsertUserRssFeedStateParam
     .createHash('sha256')
     .update(`${params.feedUrl}|${params.title}|${params.description}|${params.link}`)
     .digest('hex');
+  const incomingName = String(params.name || '').trim();
 
   if (!current) {
     await UserRssFeedStateModel.create({
       user_id: userId,
       route,
-      name: params.name,
+      name: incomingName || route,
       feed_url: params.feedUrl,
       title: params.title,
       description: params.description,
@@ -159,8 +160,13 @@ export const upsertUserRssFeedState = async (params: UpsertUserRssFeedStateParam
     return;
   }
 
+  const currentName = String(current.dataValues.name || '').trim();
+  const currentTitle = String(current.dataValues.title || '').trim();
+  const shouldAutoUpdateName = !currentName || currentName === route || (currentTitle && currentName === currentTitle);
+  const nextName = shouldAutoUpdateName ? incomingName || currentName || route : currentName;
+
   await current.update({
-    name: params.name || current.dataValues.name,
+    name: nextName,
     feed_url: params.feedUrl,
     title: params.title,
     description: params.description,
