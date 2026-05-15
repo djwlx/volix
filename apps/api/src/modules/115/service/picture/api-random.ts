@@ -9,19 +9,15 @@ import {
   getFile115RandomByCidListExcludePc,
 } from '../file-db.service';
 import {
-  evictRandomMemoryCacheUntilFit,
   getLocalRandomPicCacheFileList,
   getRandomCacheConfig,
   getRandomCacheLimitNotice,
   getRandomCacheStats,
-  getRandomMemoryCacheList,
   pickRandomSourceByWeights,
 } from './picture-cache-random-core';
 import { ensureRandomLocalPicCacheByFileAsync, getPicCacheFolders } from './picture-cache-fs-folder';
-import { tryAddRandomMemoryCacheByLocalItem } from './picture-cache-memory';
 import {
   buildRandomMetaFromRandomLocalCacheItem,
-  buildRandomMetaFromRandomMemoryCacheItem,
   buildRandomPicMetaFromFile,
   mergeNotice,
 } from './picture-cache-random-meta-queue';
@@ -110,7 +106,6 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
   const availableRootCids = folders
     .filter(item => item.status === 'cached' || item.status === 'caching')
     .map(item => item.cid);
-  evictRandomMemoryCacheUntilFit(randomCacheConfig.memoryMaxSizeMb * 1024 * 1024);
   const randomCacheStats: PicRandomCacheStats = getRandomCacheStats(randomCacheConfig, randomCacheList);
   const limitNotice = getRandomCacheLimitNotice(randomCacheStats, randomCacheConfig);
 
@@ -127,137 +122,9 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
   const selectedSource = pickRandomSourceByWeights(randomCacheConfig.sourceWeights);
   const sourceUnavailableNotice: string[] = [];
 
-  if (selectedSource === 'memory') {
-    const memoryStartAt = Date.now();
-    let seedMemoryFromLocalMs: number | undefined;
-
-    let memoryList = getRandomMemoryCacheList();
-    if (memoryList.length === 0 && randomCacheList.length > 0) {
-      const seedLocalIndex = generateRandomNumber(0, randomCacheList.length - 1);
-      const seedLocalItem = randomCacheList[seedLocalIndex] || randomCacheList[0];
-      if (seedLocalItem) {
-        const seedStartAt = Date.now();
-        await tryAddRandomMemoryCacheByLocalItem(seedLocalItem, randomCacheConfig);
-        seedMemoryFromLocalMs = Date.now() - seedStartAt;
-      }
-      memoryList = getRandomMemoryCacheList();
-    }
-
-    const memoryValidList = memoryList.filter(item => item.cid && availableRootCids.includes(item.cid));
-    const memoryUnseenList = memoryValidList.filter(item => !recentPickedPcSet.has(item.pc));
-    const item = pickRandomItem(memoryUnseenList);
-    if (item) {
-      const buildMetaStartAt = Date.now();
-      const meta = buildRandomMetaFromRandomMemoryCacheItem(item, mergeNotice(limitNotice));
-      const buildMetaMs = Date.now() - buildMetaStartAt;
-      const totalMs = Date.now() - startAt;
-      const memoryFlowMs = Date.now() - memoryStartAt;
-      rememberPickedPc(meta.pc, Date.now(), dedupeWindowMs, dedupeMaxCount);
-      logRandomMetaFinished({
-        selectedSource,
-        finalSource: 'memory-cache',
-        fallback: false,
-        dedupeBypass: false,
-        targetPc: meta.pc,
-        targetCid: meta.cid,
-        randomCacheMemoryCount: randomCacheStats.memoryFileCount,
-        randomCacheLocalCount: randomCacheStats.localFileCount,
-        timingsMs: {
-          loadConfigMs,
-          memoryFlowMs,
-          seedMemoryFromLocalMs,
-          buildMetaMs,
-          totalMs,
-        },
-        dedupe: dedupeLogMeta,
-      });
-      return meta;
-    }
-
-    if (memoryValidList.length > 0) {
-      sourceUnavailableNotice.push('内存缓存在去重窗口内均已出现，尝试本地非重复缓存');
-    } else {
-      sourceUnavailableNotice.push('内存缓存未命中当前缓存目录，尝试本地非重复缓存');
-    }
-
-    const localFallbackStartAt = Date.now();
-    let localFallbackGetDbFileMs = 0;
-    let localFallbackWarmMemoryMs: number | undefined;
-    let localFallbackBuildMetaMs: number | undefined;
-
-    if (randomCacheList.length > 0) {
-      const localUnseenList = randomCacheList.filter(item => !recentPickedPcSet.has(item.pc));
-      if (localUnseenList.length === 0) {
-        sourceUnavailableNotice.push('本地缓存在去重窗口内均已出现，已兜底到115云');
-      } else {
-        const localTryList = [...localUnseenList];
-        let localItem: (typeof localUnseenList)[number] | undefined;
-        let safeDbFile: Cloud115DbFileItem | undefined;
-
-        while (localTryList.length > 0) {
-          const index = generateRandomNumber(0, localTryList.length - 1);
-          const candidate = localTryList.splice(index, 1)[0];
-          if (!candidate) {
-            continue;
-          }
-          const getDbFileStartAt = Date.now();
-          const dbFile = await getFile115ByPc(candidate.pc);
-          localFallbackGetDbFileMs += Date.now() - getDbFileStartAt;
-          const normalizedDbFile = dbFile as Cloud115DbFileItem | undefined;
-          if (!normalizedDbFile?.cid || !availableRootCids.includes(normalizedDbFile.cid)) {
-            continue;
-          }
-          localItem = candidate;
-          safeDbFile = normalizedDbFile;
-          break;
-        }
-
-        if (!localItem || !safeDbFile) {
-          sourceUnavailableNotice.push('本地缓存未命中当前缓存目录，已兜底到115云');
-        } else {
-          const warmMemoryStartAt = Date.now();
-          await tryAddRandomMemoryCacheByLocalItem(localItem, randomCacheConfig);
-          localFallbackWarmMemoryMs = Date.now() - warmMemoryStartAt;
-          const buildMetaStartAt = Date.now();
-          const meta = await buildRandomMetaFromRandomLocalCacheItem(localItem, mergeNotice(limitNotice));
-          localFallbackBuildMetaMs = Date.now() - buildMetaStartAt;
-          const totalMs = Date.now() - startAt;
-          const memoryFlowMs = Date.now() - memoryStartAt;
-          const localFallbackMs = Date.now() - localFallbackStartAt;
-          rememberPickedPc(meta.pc, Date.now(), dedupeWindowMs, dedupeMaxCount);
-          logRandomMetaFinished({
-            selectedSource,
-            finalSource: 'local-file-cache',
-            fallback: true,
-            dedupeBypass: false,
-            targetPc: meta.pc,
-            targetCid: meta.cid,
-            randomCacheMemoryCount: randomCacheStats.memoryFileCount,
-            randomCacheLocalCount: randomCacheStats.localFileCount,
-            timingsMs: {
-              loadConfigMs,
-              memoryFlowMs,
-              seedMemoryFromLocalMs,
-              localFallbackMs,
-              localFallbackGetDbFileMs,
-              localFallbackWarmMemoryMs,
-              localFallbackBuildMetaMs,
-              totalMs,
-            },
-            dedupe: dedupeLogMeta,
-          });
-          return meta;
-        }
-      }
-    } else {
-      sourceUnavailableNotice.push('本地文件缓存为空，已兜底到115云');
-    }
-  }
-
   if (selectedSource === 'local') {
     const localFlowStartAt = Date.now();
     let getDbFileMs = 0;
-    let warmMemoryMs: number | undefined;
     let buildMetaMs: number | undefined;
 
     if (randomCacheList.length > 0) {
@@ -290,9 +157,6 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
         if (!localItem || !safeDbFile) {
           sourceUnavailableNotice.push('本地缓存未命中当前缓存目录，已兜底到115云');
         } else {
-          const warmMemoryStartAt = Date.now();
-          await tryAddRandomMemoryCacheByLocalItem(localItem, randomCacheConfig);
-          warmMemoryMs = Date.now() - warmMemoryStartAt;
           const buildMetaStartAt = Date.now();
           const meta = await buildRandomMetaFromRandomLocalCacheItem(localItem, mergeNotice(limitNotice));
           buildMetaMs = Date.now() - buildMetaStartAt;
@@ -312,7 +176,6 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
               loadConfigMs,
               localFlowMs,
               getDbFileMs,
-              warmMemoryMs,
               buildMetaMs,
               totalMs,
             },

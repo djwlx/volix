@@ -5,8 +5,15 @@ export interface RssReaderFetchParams {
   force?: boolean;
 }
 
-export interface RssReaderHistoryFetchParams extends RssReaderFetchParams {
-  cursor?: string;
+export interface RssReaderItem {
+  id: string;
+  title: string;
+  link: string;
+  description: string;
+  descriptionHtml: string;
+  imageUrls: string[];
+  author: string;
+  publishedAt: string;
 }
 
 export interface RssReaderRawFeed {
@@ -14,31 +21,59 @@ export interface RssReaderRawFeed {
   contentType: string;
   xml: string;
   fetchedAt: string;
-}
-
-export type RssReaderHistorySource = 'latest' | 'upstream' | 'archive';
-export type RssReaderHistoryMode = 'upstream' | 'archive' | 'none';
-
-export interface RssReaderHistoryPayload {
-  feedUrl: string;
-  source: RssReaderHistorySource;
-  mode: RssReaderHistoryMode;
-  supportsUpstreamPagination: boolean;
-  hasMore: boolean;
-  nextCursor: string;
-  page: RssReaderRawFeed;
+  title?: string;
+  description?: string;
+  link?: string;
+  items?: RssReaderItem[];
 }
 
 export interface UserRssSetting {
   host: string;
   resourceProxyBaseUrl: string;
   resourceCacheMaxSizeMb: number;
+  refreshIntervalMinutes: number;
+}
+
+export interface RssPathUsageStat {
+  key: string;
+  label: string;
+  path: string;
+  sizeBytes: number;
+  fileCount: number;
+}
+
+export interface RssStorageStatus {
+  queue: {
+    pendingCount: number;
+    running: boolean;
+  };
+  routes: Array<{
+    route: string;
+    name: string;
+    pendingCount: number;
+    itemCount: number;
+    lastUpdatedAt: string;
+    lastNewCount: number;
+    nextUpdateAt: string;
+    storageSizeBytes: number;
+    storageFileCount: number;
+  }>;
+  paths: RssPathUsageStat[];
+  totalSizeBytes: number;
 }
 
 export interface UpdateUserRssSettingPayload {
   host: string;
   resourceProxyBaseUrl?: string;
   resourceCacheMaxSizeMb?: number;
+  refreshIntervalMinutes?: number;
+}
+
+export interface ClearRssStoragePayload {
+  scope?: 'resource-cache' | 'history' | 'all';
+  route?: string;
+  routes?: string[];
+  keepLatestItems?: number;
 }
 
 export interface UserRssSubscriptionItem {

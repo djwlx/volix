@@ -1,8 +1,8 @@
 import { http } from '@/utils';
 import type {
+  ClearRssStoragePayload,
   CreateUserRssSubscriptionPayload,
-  RssReaderHistoryFetchParams,
-  RssReaderHistoryPayload,
+  RssStorageStatus,
   RssReaderFetchParams,
   RssReaderRawFeed,
   UpdateUserRssSettingPayload,
@@ -12,12 +12,6 @@ import type {
 
 export function getRssFeed(params: RssReaderFetchParams) {
   return http.get<RssReaderRawFeed>('/rss/feed', {
-    params,
-  });
-}
-
-export function getRssFeedHistory(params: RssReaderHistoryFetchParams) {
-  return http.get<RssReaderHistoryPayload>('/rss/feed-history', {
     params,
   });
 }
@@ -44,4 +38,12 @@ export function removeUserRssSubscription(route: string) {
       route,
     },
   });
+}
+
+export function getRssStorageStatus() {
+  return http.get<RssStorageStatus>('/rss/storage');
+}
+
+export function clearRssStorage(data: ClearRssStoragePayload) {
+  return http.post<RssStorageStatus>('/rss/storage/clear', data);
 }

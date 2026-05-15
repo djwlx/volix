@@ -16,7 +16,7 @@ const SCOPE_PATH_MAP: Record<ResourceProxyScope, string> = {
 };
 
 const MAX_DOWNLOAD_BYTES = 50 * 1024 * 1024;
-const MIN_CACHE_SIZE_MB = 50;
+const MIN_CACHE_SIZE_MB = 0;
 const MAX_CACHE_SIZE_MB = 102400;
 
 export type ResourceProxyCacheRecord = {
@@ -59,7 +59,7 @@ const normalizeProxyRequestUrl = (value: string) => {
 
 const clampCacheSizeMb = (value: number) => {
   const raw = Number(value || 0);
-  if (!Number.isFinite(raw) || raw <= 0) {
+  if (!Number.isFinite(raw)) {
     return MIN_CACHE_SIZE_MB;
   }
   return Math.min(MAX_CACHE_SIZE_MB, Math.max(MIN_CACHE_SIZE_MB, Math.round(raw)));
@@ -185,6 +185,9 @@ const ensureScopeDir = async (scope: ResourceProxyScope) => {
 };
 
 const cleanupScopeCacheByLimit = async (scope: ResourceProxyScope, maxCacheSizeMb: number) => {
+  if (Number(maxCacheSizeMb) <= 0) {
+    return;
+  }
   const dir = getScopeDir(scope);
   const maxBytes = clampCacheSizeMb(maxCacheSizeMb) * 1024 * 1024;
   const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [] as fs.Dirent[]);

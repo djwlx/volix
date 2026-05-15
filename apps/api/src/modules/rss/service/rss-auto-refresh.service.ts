@@ -1,8 +1,8 @@
 import { log } from '../../../utils/logger';
-import { UserRssSubscriptionModel } from '../model/rss-subscription.model';
+import { listAllRssSubscriptionStates } from './rss-feed-db.service';
 import { fetchRssFeed } from './rss.service';
 
-const RSS_FEED_AUTO_REFRESH_INTERVAL_MS = 3 * 60 * 1000;
+const RSS_FEED_AUTO_REFRESH_INTERVAL_MS = 60 * 1000;
 const RSS_FEED_AUTO_REFRESH_CONCURRENCY = 3;
 
 let rssFeedAutoRefreshTimer: NodeJS.Timeout | null = null;
@@ -25,14 +25,11 @@ const runWithConcurrency = async <T>(list: T[], concurrency: number, worker: (it
 };
 
 const refreshAllSubscribedFeeds = async () => {
-  const rows = await UserRssSubscriptionModel.findAll({
-    attributes: ['user_id', 'route'],
-  });
-
   const tasks = new Map<string, { userId: string; route: string }>();
+  const rows = await listAllRssSubscriptionStates();
   rows.forEach(row => {
-    const userId = String(row.dataValues.user_id || '').trim();
-    const route = String(row.dataValues.route || '').trim();
+    const userId = String(row.userId || '').trim();
+    const route = String(row.route || '').trim();
     if (!userId || !route) {
       return;
     }

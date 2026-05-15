@@ -10,8 +10,6 @@ import {
   DEFAULT_FILE_NAME,
   DEFAULT_MIME_TYPE,
   getLocalRandomPicCacheByFileName,
-  getRandomCacheConfig,
-  getRandomMemoryCacheByFileName,
   sanitizeCacheFileName,
 } from './picture-cache-random-core';
 import {
@@ -24,7 +22,6 @@ import {
   getLocalPicCacheFileList,
   parse115FileMeta,
 } from './picture-cache-fs-folder';
-import { tryAddRandomMemoryCacheByLocalItem } from './picture-cache-memory';
 
 export async function like115PicData(params: Like115PicParams, userAgent: string) {
   const pc = params.pc?.trim() || '';
@@ -133,25 +130,11 @@ export async function get115RandomPicCacheFileData(cacheFileName: string) {
     badRequest('缺少缓存文件参数');
   }
 
-  const memoryCache = getRandomMemoryCacheByFileName(safeName);
-  if (memoryCache) {
-    return {
-      kind: 'memory' as const,
-      pc: memoryCache.pc,
-      fileName: memoryCache.fileName,
-      mimeType: memoryCache.mimeType,
-      buffer: memoryCache.buffer,
-      url: memoryCache.url,
-    };
-  }
-
   const cache = await getLocalRandomPicCacheByFileName(safeName);
   if (!cache) {
     badRequest('未找到本地随机缓存文件');
   }
   const safeCache = cache as NonNullable<typeof cache>;
-  const randomCacheConfig = await getRandomCacheConfig();
-  await tryAddRandomMemoryCacheByLocalItem(safeCache, randomCacheConfig);
 
   return {
     kind: 'local' as const,

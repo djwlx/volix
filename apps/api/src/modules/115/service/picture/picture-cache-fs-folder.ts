@@ -35,7 +35,6 @@ import {
   sanitizeCacheFileName,
   setRandomCacheMetaByPc,
 } from './picture-cache-random-core';
-import { tryAddRandomMemoryCacheByLocalItem } from './picture-cache-memory';
 
 export const getLocalPicCacheFileList = async () => {
   try {
@@ -358,7 +357,6 @@ export const ensureRandomLocalPicCacheByFile = async (file: Cloud115DbFileItem, 
 
   const existedCache = await getLocalRandomPicCacheByPc(file.pc);
   if (existedCache) {
-    await tryAddRandomMemoryCacheByLocalItem(existedCache, config);
     return;
   }
 
@@ -412,11 +410,6 @@ export const ensureRandomLocalPicCacheByFile = async (file: Cloud115DbFileItem, 
       localCacheFileName: targetFileName,
       updatedAtMs: Date.now(),
     });
-
-    const localItem = await getLocalRandomPicCacheByPc(file.pc);
-    if (localItem) {
-      await tryAddRandomMemoryCacheByLocalItem(localItem, config);
-    }
   } catch (error) {
     await fs.promises.unlink(tempPath).catch(() => undefined);
     throw error;

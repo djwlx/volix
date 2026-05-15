@@ -21,7 +21,6 @@ import {
   getFile115RootCidListByFolderPathList,
 } from '../file-db.service';
 import {
-  evictRandomMemoryCacheUntilFit,
   getLocalRandomPicCacheFileList,
   getRandomCacheConfig,
   getRandomCacheStats,
@@ -60,7 +59,6 @@ export async function get115PicInfoData() {
     getRandomCacheConfig(),
     getLocalRandomPicCacheFileList(),
   ]);
-  evictRandomMemoryCacheUntilFit(randomCacheConfig.memoryMaxSizeMb * 1024 * 1024);
   const randomCacheStats: PicRandomCacheStats = getRandomCacheStats(randomCacheConfig, randomCacheList);
 
   return {

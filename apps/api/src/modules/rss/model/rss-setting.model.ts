@@ -7,6 +7,7 @@ export interface UserRssSettingEntity {
   host: string;
   resource_proxy_base_url?: string;
   resource_cache_max_size_mb?: number;
+  refresh_interval_minutes?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -33,5 +34,10 @@ export const UserRssSettingModel = sequelize.define<UserRssSettingModelType>('vo
     type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 512,
+  },
+  refresh_interval_minutes: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 5,
   },
 });

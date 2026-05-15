@@ -4,7 +4,6 @@ import path from 'path';
 import mime from 'mime-types';
 import { AppConfigEnum } from '../../../config/model/config.model';
 import { getConfig, setConfig } from '../../../config/service/config.service';
-import { badRequest } from '../../../shared/http-handler';
 import { generateRandomNumber } from '../../../../utils/number';
 import { PATH } from '../../../../utils/path';
 import { PicRandomCacheConfig, PicRandomCacheStats } from '../../types/115.types';
@@ -20,11 +19,11 @@ export const DEFAULT_FILE_NAME = 'unknown.jpg';
 export const DEFAULT_MIME_TYPE = 'application/octet-stream';
 export const DEFAULT_RANDOM_CACHE_CONFIG: PicRandomCacheConfig = {
   sourceWeights: {
-    memory: 20,
-    local: 30,
+    memory: 0,
+    local: 50,
     cloud: 50,
   },
-  memoryMaxSizeMb: 512,
+  memoryMaxSizeMb: 100,
   localMaxSizeMb: 2048,
   randomNoRepeatWindowMinutes: 5,
   randomNoRepeatMaxCount: 50,
@@ -113,11 +112,9 @@ export const toFixedMb = (bytes: number) => {
 
 export const normalizeRandomCacheConfig = (input?: Partial<PicRandomCacheConfig> | null): PicRandomCacheConfig => {
   const safeInput = input || {};
-  const sourceWeights = {
-    memory: Number(safeInput?.sourceWeights?.memory ?? DEFAULT_RANDOM_CACHE_CONFIG.sourceWeights.memory),
-    local: Number(safeInput?.sourceWeights?.local ?? DEFAULT_RANDOM_CACHE_CONFIG.sourceWeights.local),
-    cloud: Number(safeInput?.sourceWeights?.cloud ?? DEFAULT_RANDOM_CACHE_CONFIG.sourceWeights.cloud),
-  };
+  const sourceLocalRaw = Number(safeInput?.sourceWeights?.local ?? DEFAULT_RANDOM_CACHE_CONFIG.sourceWeights.local);
+  const sourceCloudRaw = Number(safeInput?.sourceWeights?.cloud ?? DEFAULT_RANDOM_CACHE_CONFIG.sourceWeights.cloud);
+  const sourceMemoryRaw = Number(safeInput?.sourceWeights?.memory ?? DEFAULT_RANDOM_CACHE_CONFIG.sourceWeights.memory);
   const memoryRaw =
     typeof safeInput?.memoryMaxSizeMb === 'number' && Number.isFinite(safeInput.memoryMaxSizeMb)
       ? safeInput.memoryMaxSizeMb
@@ -135,15 +132,31 @@ export const normalizeRandomCacheConfig = (input?: Partial<PicRandomCacheConfig>
       ? safeInput.randomNoRepeatMaxCount
       : DEFAULT_RANDOM_CACHE_CONFIG.randomNoRepeatMaxCount;
 
-  const normalizedWeights = {
-    memory: Math.min(100, Math.max(0, Math.round(sourceWeights.memory))),
-    local: Math.min(100, Math.max(0, Math.round(sourceWeights.local))),
-    cloud: Math.min(100, Math.max(0, Math.round(sourceWeights.cloud))),
-  };
+  // Memory random cache is removed. Keep old payloads compatible by redistributing
+  // local/cloud weights to sum 100 while forcing memory to 0.
+  const safeMemoryWeight = Math.max(0, Math.round(Number.isFinite(sourceMemoryRaw) ? sourceMemoryRaw : 0));
+  const safeLocalWeight = Math.max(0, Math.round(Number.isFinite(sourceLocalRaw) ? sourceLocalRaw : 0));
+  const safeCloudWeight = Math.max(0, Math.round(Number.isFinite(sourceCloudRaw) ? sourceCloudRaw : 0));
+  const localAndCloudTotal = safeLocalWeight + safeCloudWeight;
+  const fallbackCloudWeight = safeCloudWeight + safeMemoryWeight;
 
-  const sum = normalizedWeights.memory + normalizedWeights.local + normalizedWeights.cloud;
-  if (sum !== 100) {
-    badRequest('随机来源权重总和必须等于100');
+  const normalizedWeights =
+    localAndCloudTotal > 0
+      ? {
+          memory: 0,
+          local: Math.round((safeLocalWeight / localAndCloudTotal) * 100),
+          cloud: 0,
+        }
+      : {
+          memory: 0,
+          local: 50,
+          cloud: 50,
+        };
+
+  normalizedWeights.cloud = 100 - normalizedWeights.local;
+  if (localAndCloudTotal === 0 && fallbackCloudWeight > 0) {
+    normalizedWeights.local = 0;
+    normalizedWeights.cloud = 100;
   }
 
   return {
@@ -182,21 +195,13 @@ export const getRandomCacheConfig = async (): Promise<PicRandomCacheConfig> => {
 export const setRandomCacheConfig = async (params: SetPicRandomCacheConfigParams) => {
   const current = await getRandomCacheConfig();
   const nextWeightsRaw = {
-    memory: Number(params?.sourceWeights?.memory ?? current.sourceWeights.memory),
+    memory: Number(params?.sourceWeights?.memory ?? 0),
     local: Number(params?.sourceWeights?.local ?? current.sourceWeights.local),
     cloud: Number(params?.sourceWeights?.cloud ?? current.sourceWeights.cloud),
   };
-  const nextWeights = {
-    memory: Number.isFinite(nextWeightsRaw.memory) ? Math.round(nextWeightsRaw.memory) : current.sourceWeights.memory,
-    local: Number.isFinite(nextWeightsRaw.local) ? Math.round(nextWeightsRaw.local) : current.sourceWeights.local,
-    cloud: Number.isFinite(nextWeightsRaw.cloud) ? Math.round(nextWeightsRaw.cloud) : current.sourceWeights.cloud,
-  };
-  if (nextWeights.memory + nextWeights.local + nextWeights.cloud !== 100) {
-    badRequest('随机来源权重总和必须等于100');
-  }
 
   const next = normalizeRandomCacheConfig({
-    sourceWeights: nextWeights,
+    sourceWeights: nextWeightsRaw,
     memoryMaxSizeMb: typeof params.memoryMaxSizeMb === 'number' ? params.memoryMaxSizeMb : current.memoryMaxSizeMb,
     localMaxSizeMb: typeof params.localMaxSizeMb === 'number' ? params.localMaxSizeMb : current.localMaxSizeMb,
     randomNoRepeatWindowMinutes:
@@ -300,10 +305,7 @@ export const getRandomCacheMetaByPc = async (pc: string) => {
 
 export const pickRandomSourceByWeights = (weights: PicRandomCacheConfig['sourceWeights']) => {
   const roll = generateRandomNumber(1, 100);
-  if (roll <= weights.memory) {
-    return 'memory' as const;
-  }
-  if (roll <= weights.memory + weights.local) {
+  if (roll <= weights.local) {
     return 'local' as const;
   }
   return 'cloud' as const;
@@ -336,12 +338,12 @@ export const evictRandomMemoryCacheUntilFit = (maxSizeBytes: number) => {
 };
 
 export const getRandomMemoryCacheStats = (config: PicRandomCacheConfig) => {
-  const maxSizeBytes = config.memoryMaxSizeMb * 1024 * 1024;
+  void config;
   return {
-    memoryFileCount: randomMemoryCacheMap.size,
-    memoryTotalSizeBytes: randomMemoryCacheTotalBytes,
-    memoryTotalSizeMb: toFixedMb(randomMemoryCacheTotalBytes),
-    memoryLimitExceeded: randomMemoryCacheTotalBytes > maxSizeBytes,
+    memoryFileCount: 0,
+    memoryTotalSizeBytes: 0,
+    memoryTotalSizeMb: 0,
+    memoryLimitExceeded: false,
   };
 };
 

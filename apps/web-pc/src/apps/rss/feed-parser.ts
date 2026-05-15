@@ -195,6 +195,29 @@ export const formatFeedDate = (value: string): string => {
 };
 
 export const parseFeed = (rawFeed: RssReaderRawFeed): ReaderFeed => {
+  if (Array.isArray(rawFeed.items) && rawFeed.items.length > 0) {
+    return {
+      title: String(rawFeed.title || '').trim() || '未命名订阅',
+      description: String(rawFeed.description || '').trim(),
+      link: String(rawFeed.link || '').trim(),
+      items: rawFeed.items.map(item => {
+        const normalizedHtml = sanitizeHtml(String(item.descriptionHtml || item.description || ''));
+        return {
+          id: String(item.id || ''),
+          title: String(item.title || '未命名条目').trim() || '未命名条目',
+          link: String(item.link || ''),
+          description: String(item.description || '').trim() || stripHtml(normalizedHtml),
+          descriptionHtml: normalizedHtml,
+          imageUrls: Array.isArray(item.imageUrls)
+            ? item.imageUrls.map(url => String(url || '').trim()).filter(Boolean)
+            : extractImageUrls(normalizedHtml),
+          author: String(item.author || ''),
+          publishedAt: String(item.publishedAt || ''),
+        };
+      }),
+    };
+  }
+
   const xml = rawFeed.xml;
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   const parserError = doc.querySelector('parsererror');

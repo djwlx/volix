@@ -1,29 +1,28 @@
 import {
+  clearRssStorageData,
   createUserRssSubscription,
   fetchRssFeed,
+  getRssStorageData,
   getRssCachedResourceData,
   getUserRssSetting,
   listUserRssSubscriptions,
   removeUserRssSubscription,
   updateUserRssSetting,
 } from '../service/rss.service';
-import { fetchRssFeedHistoryPage } from '../service/rss-feed-history.service';
 import fs from 'fs';
+import mime from 'mime-types';
+import { badRequest } from '../../shared/http-handler';
+import { readRssItemResourceFile } from '../service/rss-feed-item-html-file.service';
 import type {
+  ClearRssStoragePayload,
   CreateUserRssSubscriptionPayload,
   GetRssFeedParams,
-  GetRssFeedHistoryParams,
   UpdateUserRssSettingPayload,
 } from '../types/rss.types';
 
 export const getRssFeed: MyMiddleware = async ctx => {
   const query = ctx.query as unknown as GetRssFeedParams;
   return fetchRssFeed(query, ctx.state.userInfo?.id);
-};
-
-export const getRssFeedHistory: MyMiddleware = async ctx => {
-  const query = ctx.query as unknown as GetRssFeedHistoryParams;
-  return fetchRssFeedHistoryPage(query, ctx.state.userInfo?.id);
 };
 
 export const getCurrentUserRssSetting: MyMiddleware = async ctx => {
@@ -49,6 +48,15 @@ export const removeCurrentUserRssSubscription: MyMiddleware = async ctx => {
   return removeUserRssSubscription(ctx.state.userInfo?.id, route);
 };
 
+export const getRssStorage: MyMiddleware = async ctx => {
+  return getRssStorageData(ctx.state.userInfo?.id);
+};
+
+export const clearCurrentUserRssStorage: MyMiddleware = async ctx => {
+  const body = (ctx.request.body || {}) as ClearRssStoragePayload;
+  return clearRssStorageData(ctx.state.userInfo?.id, body);
+};
+
 export const getRssCachedResource: MyMiddleware = async ctx => {
   const cacheKey = String(ctx.params?.cacheKey || '');
   const cached = await getRssCachedResourceData(cacheKey);
@@ -56,4 +64,24 @@ export const getRssCachedResource: MyMiddleware = async ctx => {
   ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(cached.fileName || 'resource.bin')}"`);
   ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
   ctx.body = fs.createReadStream(cached.filePath);
+};
+
+export const getRssItemResource: MyMiddleware = async ctx => {
+  const subscriptionKey = String(ctx.params?.subscriptionKey || '');
+  const itemKey = String(ctx.params?.itemKey || '');
+  const fileName = String(ctx.params?.fileName || '');
+  const resource = await readRssItemResourceFile({
+    subscriptionKey,
+    itemKey,
+    fileName,
+  });
+  if (!resource) {
+    badRequest('缓存资源不存在');
+    return;
+  }
+  const contentType = String(mime.lookup(resource.fileName) || 'application/octet-stream');
+  ctx.set('Content-Type', contentType);
+  ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(resource.fileName || 'resource.bin')}"`);
+  ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
+  ctx.body = fs.createReadStream(resource.filePath);
 };

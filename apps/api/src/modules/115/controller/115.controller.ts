@@ -128,14 +128,6 @@ export const get115RandomPicCacheFile: MyMiddleware = async ctx => {
   const cacheFileName = String(ctx.params?.cacheFileName || '');
   const source = await get115RandomPicCacheFileData(cacheFileName);
 
-  if (source.kind === 'memory') {
-    ctx.set('Content-Type', source.mimeType || 'application/octet-stream');
-    ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(source.fileName)}"`);
-    ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
-    ctx.body = source.buffer;
-    return;
-  }
-
   ctx.set('Content-Type', source.mimeType || 'application/octet-stream');
   ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(source.fileName)}"`);
   ctx.set('Cache-Control', 'public, max-age=31536000, immutable');

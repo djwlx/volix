@@ -5,8 +5,15 @@ export interface GetRssFeedParams {
   force?: string | boolean;
 }
 
-export interface GetRssFeedHistoryParams extends GetRssFeedParams {
-  cursor?: string;
+export interface RssFeedItem {
+  id: string;
+  title: string;
+  link: string;
+  description: string;
+  descriptionHtml: string;
+  imageUrls: string[];
+  author: string;
+  publishedAt: string;
 }
 
 export interface RssFeedPayload {
@@ -14,31 +21,59 @@ export interface RssFeedPayload {
   contentType: string;
   xml: string;
   fetchedAt: string;
-}
-
-export type RssHistorySource = 'latest' | 'upstream' | 'archive';
-export type RssHistoryMode = 'upstream' | 'archive' | 'none';
-
-export interface RssFeedHistoryPayload {
-  feedUrl: string;
-  source: RssHistorySource;
-  mode: RssHistoryMode;
-  supportsUpstreamPagination: boolean;
-  hasMore: boolean;
-  nextCursor: string;
-  page: RssFeedPayload;
+  title?: string;
+  description?: string;
+  link?: string;
+  items?: RssFeedItem[];
 }
 
 export interface UpdateUserRssSettingPayload {
   host: string;
   resourceProxyBaseUrl?: string;
   resourceCacheMaxSizeMb?: number;
+  refreshIntervalMinutes?: number;
 }
 
 export interface UserRssSettingPayload {
   host: string;
   resourceProxyBaseUrl: string;
   resourceCacheMaxSizeMb: number;
+  refreshIntervalMinutes: number;
+}
+
+export interface RssPathUsageStat {
+  key: string;
+  label: string;
+  path: string;
+  sizeBytes: number;
+  fileCount: number;
+}
+
+export interface RssStorageStatusPayload {
+  queue: {
+    pendingCount: number;
+    running: boolean;
+  };
+  routes: Array<{
+    route: string;
+    name: string;
+    pendingCount: number;
+    itemCount: number;
+    lastUpdatedAt: string;
+    lastNewCount: number;
+    nextUpdateAt: string;
+    storageSizeBytes: number;
+    storageFileCount: number;
+  }>;
+  paths: RssPathUsageStat[];
+  totalSizeBytes: number;
+}
+
+export interface ClearRssStoragePayload {
+  scope?: 'resource-cache' | 'history' | 'all';
+  route?: string;
+  routes?: string[];
+  keepLatestItems?: number;
 }
 
 export interface CreateUserRssSubscriptionPayload {

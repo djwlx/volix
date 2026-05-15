@@ -1,15 +1,4 @@
-import type { RssReaderHistoryMode, RssReaderRawFeed } from '@volix/types';
 import type { ReaderItem } from './feed-parser';
-
-export interface RouteHistoryState {
-  route: string;
-  routeName: string;
-  pages: RssReaderRawFeed[];
-  hasMore: boolean;
-  cursor: string;
-  mode: RssReaderHistoryMode;
-  supportsUpstreamPagination: boolean;
-}
 
 export interface AggregatedItem extends ReaderItem {
   itemKey: string;
