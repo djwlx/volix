@@ -4,17 +4,14 @@ import {
   adminCreateUser,
   adminUpdateUser,
   assignUserRole,
-  createRole,
   getAccountConfigs,
   getRegisterConfig,
   getCurrentUser,
   getUserDetail,
-  getRoleList,
   getSystemConfig,
   getUserList,
   loginUser,
   registerUser,
-  removeRole,
   sendRegisterCode,
   sendCurrentUserEmailVerifyCode,
   setUserRole,
@@ -22,7 +19,6 @@ import {
   updateAccountConfig,
   verifyCurrentUserEmail,
   updateCurrentUserProfile,
-  updateRoleInfo,
   updateSystemConfig,
 } from './index';
 import authenticate from '../../middleware/authenticate';
@@ -49,10 +45,6 @@ router
   .get('/list', http(getUserList))
   .put('/role', http(setUserRole))
   .post('/admin-create', http(adminCreateUser))
-  .get('/roles', http(getRoleList))
-  .post('/roles', http(createRole))
-  .put('/roles/:roleKey', http(updateRoleInfo))
-  .delete('/roles/:roleKey', http(removeRole))
   .put('/assign-role', http(assignUserRole))
   .get('/:id', http(getUserDetail))
   .put('/:id', http(adminUpdateUser));

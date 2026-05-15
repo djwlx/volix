@@ -12,13 +12,12 @@ const EMPTY_VALUES: BangumiAccountConfigItem = {
 };
 
 function SettingConfigBangumiApp() {
-  const { user, requestNavigate, registerLeaveGuard } = useAppPageContext();
+  const { user, requestNavigate } = useAppPageContext();
   const [initialValues, setInitialValues] = useState<BangumiAccountConfigItem>(EMPTY_VALUES);
   const [formValues, setFormValues] = useState<BangumiAccountConfigItem>(EMPTY_VALUES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
 
   const isAdmin = user?.role === UserRole.ADMIN;
 
@@ -49,24 +48,6 @@ function SettingConfigBangumiApp() {
       });
   }, [user, isAdmin, requestNavigate]);
 
-  useEffect(() => {
-    if (!isDirty) {
-      registerLeaveGuard(null);
-      return;
-    }
-    const confirmLeave = () => window.confirm('当前有未保存内容，确定离开吗？');
-    registerLeaveGuard(confirmLeave);
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => {
-      registerLeaveGuard(null);
-      window.removeEventListener('beforeunload', onBeforeUnload);
-    };
-  }, [isDirty, registerLeaveGuard]);
-
   const initialFingerprint = useMemo(() => JSON.stringify(initialValues), [initialValues]);
 
   const onSubmit = async (values: unknown) => {
@@ -83,8 +64,6 @@ function SettingConfigBangumiApp() {
       });
       setInitialValues(nextValues);
       setFormValues(nextValues);
-      setIsDirty(false);
-      registerLeaveGuard(null);
       Toast.success('Bangumi 配置保存成功');
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -132,7 +111,6 @@ function SettingConfigBangumiApp() {
                 accessToken: (next.accessToken || '').trim(),
               };
               setFormValues(nextValues);
-              setIsDirty(JSON.stringify(nextValues) !== initialFingerprint);
             }}
             onSubmit={onSubmit}
           >

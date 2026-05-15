@@ -1,17 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Nav, SideSheet, Toast } from '@douyinfe/semi-ui';
-import {
-  IconActivity,
-  IconBolt,
-  IconCloudStroked,
-  IconConfigStroked,
-  IconDesktop,
-  IconLayers,
-  IconMailStroked,
-  IconMenu,
-  IconShield,
-  IconUserList,
-} from '@douyinfe/semi-icons';
+import { IconCloudStroked, IconConfigStroked, IconDesktop, IconMenu, IconUserList } from '@douyinfe/semi-icons';
 import { IconAvatar } from '@douyinfe/semi-icons-lab';
 import { useLocation, Outlet } from 'react-router';
 import { useAppPageContext } from '@/hooks';
@@ -97,23 +86,11 @@ function SettingApp() {
     if (location.pathname.startsWith('/setting/config/rsshub')) {
       return 'config/rsshub';
     }
-    if (location.pathname.startsWith('/setting/config/qbittorrent')) {
-      return 'config/qbittorrent';
-    }
-    if (location.pathname.startsWith('/setting/config/openlist')) {
-      return 'config/openlist';
-    }
-    if (location.pathname.startsWith('/setting/config/bangumi')) {
-      return 'config/bangumi';
-    }
-    if (location.pathname.startsWith('/setting/config/smtp')) {
-      return 'config/smtp';
+    if (location.pathname.startsWith('/setting/config/account')) {
+      return 'config/account';
     }
     if (location.pathname.startsWith('/setting/system')) {
       return 'system';
-    }
-    if (location.pathname.startsWith('/setting/role')) {
-      return 'role';
     }
     if (location.pathname.startsWith('/setting/user')) {
       return 'user';
@@ -148,6 +125,28 @@ function SettingApp() {
             />
           ),
         },
+        {
+          itemKey: 'config/account',
+          text: '账号管理',
+          icon: (
+            <MenuIcon
+              icon={<IconConfigStroked />}
+              bg="linear-gradient(135deg, rgba(244, 114, 182, 0.16) 0%, rgba(236, 72, 153, 0.2) 100%)"
+              color="#db2777"
+            />
+          ),
+        },
+        {
+          itemKey: 'config/115',
+          text: '随机图片配置',
+          icon: (
+            <MenuIcon
+              icon={<IconCloudStroked />}
+              bg="linear-gradient(135deg, rgba(34, 197, 94, 0.16) 0%, rgba(22, 163, 74, 0.22) 100%)"
+              color="#15803d"
+            />
+          ),
+        },
       ],
     },
     ...(isAdmin
@@ -168,17 +167,6 @@ function SettingApp() {
                 ),
               },
               {
-                itemKey: 'role',
-                text: '角色管理',
-                icon: (
-                  <MenuIcon
-                    icon={<IconShield />}
-                    bg="linear-gradient(135deg, rgba(251, 191, 36, 0.18) 0%, rgba(249, 115, 22, 0.22) 100%)"
-                    color="#c2410c"
-                  />
-                ),
-              },
-              {
                 itemKey: 'system',
                 text: '系统配置',
                 icon: (
@@ -188,74 +176,6 @@ function SettingApp() {
                     color="#4f46e5"
                   />
                 ),
-              },
-              {
-                itemKey: 'config',
-                text: '账号配置',
-                icon: (
-                  <MenuIcon
-                    icon={<IconConfigStroked />}
-                    bg="linear-gradient(135deg, rgba(244, 114, 182, 0.16) 0%, rgba(236, 72, 153, 0.2) 100%)"
-                    color="#db2777"
-                  />
-                ),
-                items: [
-                  {
-                    itemKey: 'config/115',
-                    text: '115',
-                    icon: (
-                      <MenuIcon
-                        icon={<IconCloudStroked />}
-                        bg="linear-gradient(135deg, rgba(34, 197, 94, 0.16) 0%, rgba(22, 163, 74, 0.22) 100%)"
-                        color="#15803d"
-                      />
-                    ),
-                  },
-                  {
-                    itemKey: 'config/bangumi',
-                    text: 'Bangumi',
-                    icon: (
-                      <MenuIcon
-                        icon={<IconActivity />}
-                        bg="linear-gradient(135deg, rgba(236, 72, 153, 0.16) 0%, rgba(244, 63, 94, 0.22) 100%)"
-                        color="#be185d"
-                      />
-                    ),
-                  },
-                  {
-                    itemKey: 'config/qbittorrent',
-                    text: 'qBittorrent',
-                    icon: (
-                      <MenuIcon
-                        icon={<IconBolt />}
-                        bg="linear-gradient(135deg, rgba(59, 130, 246, 0.18) 0%, rgba(37, 99, 235, 0.22) 100%)"
-                        color="#1d4ed8"
-                      />
-                    ),
-                  },
-                  {
-                    itemKey: 'config/openlist',
-                    text: 'OpenList',
-                    icon: (
-                      <MenuIcon
-                        icon={<IconLayers />}
-                        bg="linear-gradient(135deg, rgba(168, 85, 247, 0.18) 0%, rgba(147, 51, 234, 0.22) 100%)"
-                        color="#7e22ce"
-                      />
-                    ),
-                  },
-                  {
-                    itemKey: 'config/smtp',
-                    text: 'SMTP',
-                    icon: (
-                      <MenuIcon
-                        icon={<IconMailStroked />}
-                        bg="linear-gradient(135deg, rgba(251, 146, 60, 0.18) 0%, rgba(249, 115, 22, 0.22) 100%)"
-                        color="#c2410c"
-                      />
-                    ),
-                  },
-                ],
               },
             ],
           },
@@ -281,7 +201,7 @@ function SettingApp() {
             bodyStyle={{ paddingTop: 8 }}
             items={navItems}
             selectedKeys={[activeKey]}
-            defaultOpenKeys={isAdmin ? ['common-settings', 'admin-settings', 'config'] : ['common-settings']}
+            defaultOpenKeys={isAdmin ? ['common-settings', 'admin-settings'] : ['common-settings']}
             onSelect={data => {
               handleNavSelect(data.itemKey as string);
             }}
@@ -300,7 +220,7 @@ function SettingApp() {
             bodyStyle={{ paddingTop: 8 }}
             items={navItems}
             selectedKeys={[activeKey]}
-            defaultOpenKeys={isAdmin ? ['common-settings', 'admin-settings', 'config'] : ['common-settings']}
+            defaultOpenKeys={isAdmin ? ['common-settings', 'admin-settings'] : ['common-settings']}
             onSelect={data => {
               handleNavSelect(data.itemKey as string);
             }}

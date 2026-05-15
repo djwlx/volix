@@ -6,15 +6,17 @@ import { AppConfigEnum } from '../../../config/model/config.model';
 import { getConfig, setConfig } from '../../../config/service/config.service';
 import { generateRandomNumber } from '../../../../utils/number';
 import { PATH } from '../../../../utils/path';
+import { getRequestActingUserId } from '../../../../utils/request-context';
 import { PicRandomCacheConfig, PicRandomCacheStats } from '../../types/115.types';
 
 export type Cloud115FileListItem = FileListDataItem & {
   class?: string;
 };
 
-export const PIC_LIKED_CACHE_DIR = path.join(PATH.cache, '115-liked-picture');
-export const PIC_RANDOM_CACHE_DIR = path.join(PATH.cache, '115-random-picture');
-export const PIC_RANDOM_CACHE_META_FILE = path.join(PIC_RANDOM_CACHE_DIR, 'meta.random-picture.json');
+const get115ScopeDirName = () => String(getRequestActingUserId() || 'public').replace(/[^\w.-]/g, '_');
+export const getLikedPicCacheDir = () => path.join(PATH.cache, '115-liked-picture', get115ScopeDirName());
+export const getRandomPicCacheDir = () => path.join(PATH.cache, '115-random-picture', get115ScopeDirName());
+export const getRandomPicCacheMetaFile = () => path.join(getRandomPicCacheDir(), 'meta.random-picture.json');
 export const DEFAULT_FILE_NAME = 'unknown.jpg';
 export const DEFAULT_MIME_TYPE = 'application/octet-stream';
 export const DEFAULT_RANDOM_CACHE_CONFIG: PicRandomCacheConfig = {
@@ -45,7 +47,7 @@ export const sanitizeCacheFileName = (rawFileName: string) => {
   return safeName || DEFAULT_FILE_NAME;
 };
 export const getPicCacheFileName = (pc: string, fileName: string) => `${pc}.${sanitizeCacheFileName(fileName)}`;
-export const getPicCacheFilePath = (fileName: string) => path.join(PIC_LIKED_CACHE_DIR, fileName);
+export const getPicCacheFilePath = (fileName: string) => path.join(getLikedPicCacheDir(), fileName);
 export const likeCacheDownloadJobMap = new Map<string, Promise<void>>();
 
 export type RandomLocalCacheItem = {
@@ -219,12 +221,14 @@ export const setRandomCacheConfig = async (params: SetPicRandomCacheConfigParams
 };
 
 export const getRandomPicCacheFilePath = (fileName: string) => {
-  return path.join(PIC_RANDOM_CACHE_DIR, sanitizeCacheFileName(fileName));
+  return path.join(getRandomPicCacheDir(), sanitizeCacheFileName(fileName));
 };
 
 export const getLocalRandomPicCacheFileList = async () => {
+  const randomCacheDir = getRandomPicCacheDir();
+  const randomCacheMetaFile = getRandomPicCacheMetaFile();
   try {
-    const entries = await fs.promises.readdir(PIC_RANDOM_CACHE_DIR, {
+    const entries = await fs.promises.readdir(randomCacheDir, {
       withFileTypes: true,
     });
 
@@ -233,7 +237,7 @@ export const getLocalRandomPicCacheFileList = async () => {
         .filter(entry => entry.isFile())
         .map(async entry => {
           const localCacheFileName = String(entry.name || '').trim();
-          if (!localCacheFileName || localCacheFileName === path.basename(PIC_RANDOM_CACHE_META_FILE)) {
+          if (!localCacheFileName || localCacheFileName === path.basename(randomCacheMetaFile)) {
             return undefined;
           }
           if (localCacheFileName.endsWith('.tmp')) {
@@ -279,7 +283,7 @@ export const addRandomMemoryCacheTotalBytes = (deltaBytes: number) => {
 
 export const getRandomCacheMetaMap = async (): Promise<Record<string, RandomCacheMetaRecord>> => {
   try {
-    const raw = await fs.promises.readFile(PIC_RANDOM_CACHE_META_FILE, 'utf-8');
+    const raw = await fs.promises.readFile(getRandomPicCacheMetaFile(), 'utf-8');
     const parsed = JSON.parse(raw) as Record<string, RandomCacheMetaRecord>;
     return parsed && typeof parsed === 'object' ? parsed : {};
   } catch {
@@ -288,8 +292,8 @@ export const getRandomCacheMetaMap = async (): Promise<Record<string, RandomCach
 };
 
 export const saveRandomCacheMetaMap = async (data: Record<string, RandomCacheMetaRecord>) => {
-  await fs.promises.mkdir(PIC_RANDOM_CACHE_DIR, { recursive: true });
-  await fs.promises.writeFile(PIC_RANDOM_CACHE_META_FILE, JSON.stringify(data), 'utf-8');
+  await fs.promises.mkdir(getRandomPicCacheDir(), { recursive: true });
+  await fs.promises.writeFile(getRandomPicCacheMetaFile(), JSON.stringify(data), 'utf-8');
 };
 
 export const setRandomCacheMetaByPc = async (pc: string, meta: RandomCacheMetaRecord) => {

@@ -72,7 +72,6 @@ const authenticate = (option?: AuthenticateParam): MyMiddleware => {
           nickname: userInfo.dataValues.nickname,
           avatar: userInfo.dataValues.avatar,
           role: (userInfo.dataValues.role || UserRole.USER) as UserRole,
-          roleKey: userInfo.dataValues.role_key,
         };
         await next();
       } catch (e) {

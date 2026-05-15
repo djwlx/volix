@@ -10,6 +10,7 @@ import { calculateTimeDifference, waitTime } from '../../../../utils/date';
 import { lightLocks } from '../../../../utils/light-lock';
 import { log } from '../../../../utils/logger';
 import request from '../../../../utils/request';
+import { getRequestActingUserId } from '../../../../utils/request-context';
 import type { Cloud115DbFileItem } from '../../types/115.types';
 import { get115FileData } from '../file.service';
 import { getFile115ByPc, setFile115LocalCacheFileNameByPc, setFile115List } from '../file-db.service';
@@ -18,9 +19,8 @@ import {
   DEFAULT_115_DOWNLOAD_UA,
   DEFAULT_FILE_NAME,
   DEFAULT_MIME_TYPE,
-  PIC_LIKED_CACHE_DIR,
-  PIC_RANDOM_CACHE_DIR,
   clearLocalRandomPicCacheByPc,
+  getLikedPicCacheDir,
   getLocalRandomPicCacheByPc,
   getLocalRandomPicCacheFileList,
   getOriginFileNameFromLocalCacheFileName,
@@ -28,6 +28,7 @@ import {
   getPicCacheFilePath,
   getPicCachePublicUrl,
   getRandomCacheConfig,
+  getRandomPicCacheDir,
   getRandomPicCacheFilePath,
   likeCacheDownloadJobMap,
   parsePcFromLocalCacheFileName,
@@ -38,7 +39,7 @@ import {
 
 export const getLocalPicCacheFileList = async () => {
   try {
-    const entries = await fs.promises.readdir(PIC_LIKED_CACHE_DIR, {
+    const entries = await fs.promises.readdir(getLikedPicCacheDir(), {
       withFileTypes: true,
     });
 
@@ -184,19 +185,30 @@ export const saveFile115List = async (dataList: Cloud115FileListItem[], cid: str
   await setFile115List(list);
 };
 
-let cacheQueueRunner: Promise<void> | null = null;
-let folderConfigLock = Promise.resolve();
-export const getCacheQueueRunner = () => cacheQueueRunner;
+const cacheQueueRunnerMap = new Map<string, Promise<void>>();
+const folderConfigLockMap = new Map<string, Promise<void>>();
+const get115ScopeUserId = () => getRequestActingUserId() || 'public';
+export const getCacheQueueRunner = () => {
+  return cacheQueueRunnerMap.get(get115ScopeUserId()) || null;
+};
 export const setCacheQueueRunner = (runner: Promise<void> | null) => {
-  cacheQueueRunner = runner;
+  const scopeUserId = get115ScopeUserId();
+  if (!runner) {
+    cacheQueueRunnerMap.delete(scopeUserId);
+    return;
+  }
+  cacheQueueRunnerMap.set(scopeUserId, runner);
 };
 
 export const withFolderConfigLock = async <T>(task: () => Promise<T>) => {
-  const run = folderConfigLock.then(task, task);
-  folderConfigLock = run.then(
+  const scopeUserId = get115ScopeUserId();
+  const lock = folderConfigLockMap.get(scopeUserId) || Promise.resolve();
+  const run = lock.then(task, task);
+  const nextLock = run.then(
     () => undefined,
     () => undefined
   );
+  folderConfigLockMap.set(scopeUserId, nextLock);
   return run;
 };
 
@@ -292,7 +304,7 @@ export const ensureLocalPicCacheByFile = async (file: Cloud115DbFileItem, userAg
     badRequest('未获取到图片下载链接');
   }
 
-  await fs.promises.mkdir(PIC_LIKED_CACHE_DIR, { recursive: true });
+  await fs.promises.mkdir(getLikedPicCacheDir(), { recursive: true });
 
   const targetFileName = getPicCacheFileName(file.pc, fileName);
   const targetPath = getPicCacheFilePath(targetFileName);
@@ -373,7 +385,7 @@ export const ensureRandomLocalPicCacheByFile = async (file: Cloud115DbFileItem, 
     return;
   }
 
-  await fs.promises.mkdir(PIC_RANDOM_CACHE_DIR, { recursive: true });
+  await fs.promises.mkdir(getRandomPicCacheDir(), { recursive: true });
 
   const targetFileName = getPicCacheFileName(file.pc, fileName);
   const targetPath = getRandomPicCacheFilePath(targetFileName);

@@ -21,8 +21,20 @@ import {
   buildRandomPicMetaFromFile,
   mergeNotice,
 } from './picture-cache-random-meta-queue';
+import { getRequestActingUserId } from '../../../../utils/request-context';
 
-const randomPickedHistory: Array<{ pc: string; pickedAt: number }> = [];
+const randomPickedHistoryByUser = new Map<string, Array<{ pc: string; pickedAt: number }>>();
+
+const getRandomPickedHistory = () => {
+  const key = getRequestActingUserId() || 'public';
+  const existing = randomPickedHistoryByUser.get(key);
+  if (existing) {
+    return existing;
+  }
+  const created: Array<{ pc: string; pickedAt: number }> = [];
+  randomPickedHistoryByUser.set(key, created);
+  return created;
+};
 
 const pickRandomItem = <T>(list: T[]): T | undefined => {
   if (list.length === 0) {
@@ -33,7 +45,12 @@ const pickRandomItem = <T>(list: T[]): T | undefined => {
   return list[index] || list[0];
 };
 
-const pruneRandomPickedHistory = (now: number, windowMs: number, maxCount: number) => {
+const pruneRandomPickedHistory = (
+  randomPickedHistory: Array<{ pc: string; pickedAt: number }>,
+  now: number,
+  windowMs: number,
+  maxCount: number
+) => {
   if (windowMs <= 0 || maxCount <= 0) {
     randomPickedHistory.length = 0;
     return;
@@ -49,17 +66,28 @@ const pruneRandomPickedHistory = (now: number, windowMs: number, maxCount: numbe
   }
 };
 
-const getRecentPickedPcSet = (now: number, windowMs: number, maxCount: number) => {
+const getRecentPickedPcSet = (
+  randomPickedHistory: Array<{ pc: string; pickedAt: number }>,
+  now: number,
+  windowMs: number,
+  maxCount: number
+) => {
   if (windowMs <= 0 || maxCount <= 0) {
     randomPickedHistory.length = 0;
     return new Set<string>();
   }
 
-  pruneRandomPickedHistory(now, windowMs, maxCount);
+  pruneRandomPickedHistory(randomPickedHistory, now, windowMs, maxCount);
   return new Set(randomPickedHistory.map(item => item.pc).filter(Boolean));
 };
 
-const rememberPickedPc = (pc: string, now: number, windowMs: number, maxCount: number) => {
+const rememberPickedPc = (
+  randomPickedHistory: Array<{ pc: string; pickedAt: number }>,
+  pc: string,
+  now: number,
+  windowMs: number,
+  maxCount: number
+) => {
   if (windowMs <= 0 || maxCount <= 0) {
     return;
   }
@@ -73,10 +101,15 @@ const rememberPickedPc = (pc: string, now: number, windowMs: number, maxCount: n
     pc: normalizedPc,
     pickedAt: now,
   });
-  pruneRandomPickedHistory(now, windowMs, maxCount);
+  pruneRandomPickedHistory(randomPickedHistory, now, windowMs, maxCount);
 };
 
-const getDedupeLogMeta = (recentPickedPcSet: Set<string>, windowMs: number, maxCount: number) => {
+const getDedupeLogMeta = (
+  randomPickedHistory: Array<{ pc: string; pickedAt: number }>,
+  recentPickedPcSet: Set<string>,
+  windowMs: number,
+  maxCount: number
+) => {
   return {
     enabled: windowMs > 0 && maxCount > 0,
     windowMs,
@@ -91,6 +124,7 @@ const logRandomMetaFinished = (payload: Record<string, unknown>) => {
 };
 
 export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicMeta> {
+  const randomPickedHistory = getRandomPickedHistory();
   const startAt = Date.now();
   const loadConfigStartAt = Date.now();
   const [folders, randomCacheConfig, randomCacheList] = await Promise.all([
@@ -101,8 +135,8 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
   const loadConfigMs = Date.now() - loadConfigStartAt;
   const dedupeWindowMs = Math.max(0, Number(randomCacheConfig.randomNoRepeatWindowMinutes || 0)) * 60 * 1000;
   const dedupeMaxCount = Math.max(0, Math.round(Number(randomCacheConfig.randomNoRepeatMaxCount || 0)));
-  const recentPickedPcSet = getRecentPickedPcSet(startAt, dedupeWindowMs, dedupeMaxCount);
-  const dedupeLogMeta = getDedupeLogMeta(recentPickedPcSet, dedupeWindowMs, dedupeMaxCount);
+  const recentPickedPcSet = getRecentPickedPcSet(randomPickedHistory, startAt, dedupeWindowMs, dedupeMaxCount);
+  const dedupeLogMeta = getDedupeLogMeta(randomPickedHistory, recentPickedPcSet, dedupeWindowMs, dedupeMaxCount);
   const availableRootCids = folders
     .filter(item => item.status === 'cached' || item.status === 'caching')
     .map(item => item.cid);
@@ -162,7 +196,7 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
           buildMetaMs = Date.now() - buildMetaStartAt;
           const totalMs = Date.now() - startAt;
           const localFlowMs = Date.now() - localFlowStartAt;
-          rememberPickedPc(meta.pc, Date.now(), dedupeWindowMs, dedupeMaxCount);
+          rememberPickedPc(randomPickedHistory, meta.pc, Date.now(), dedupeWindowMs, dedupeMaxCount);
           logRandomMetaFinished({
             selectedSource,
             finalSource: 'local-file-cache',
@@ -205,7 +239,7 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
   const mergedNotice = mergeNotice(meta.notice, limitNotice);
 
   void ensureRandomLocalPicCacheByFileAsync(safeSelectedFile, userAgent);
-  rememberPickedPc(meta.pc, Date.now(), dedupeWindowMs, dedupeMaxCount);
+  rememberPickedPc(randomPickedHistory, meta.pc, Date.now(), dedupeWindowMs, dedupeMaxCount);
   const totalMs = Date.now() - startAt;
   const finalSource = selectedSource === 'cloud' ? 'cloud-115' : `${selectedSource}-fallback-cloud-115`;
   logRandomMetaFinished({
@@ -240,12 +274,13 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
 }
 
 export async function getRandom115PicFromParentMeta(params: { pc: string; userAgent: string }): Promise<RandomPicMeta> {
+  const randomPickedHistory = getRandomPickedHistory();
   const startAt = Date.now();
   const randomCacheConfig = await getRandomCacheConfig();
   const dedupeWindowMs = Math.max(0, Number(randomCacheConfig.randomNoRepeatWindowMinutes || 0)) * 60 * 1000;
   const dedupeMaxCount = Math.max(0, Math.round(Number(randomCacheConfig.randomNoRepeatMaxCount || 0)));
-  const recentPickedPcSet = getRecentPickedPcSet(startAt, dedupeWindowMs, dedupeMaxCount);
-  const dedupeLogMeta = getDedupeLogMeta(recentPickedPcSet, dedupeWindowMs, dedupeMaxCount);
+  const recentPickedPcSet = getRecentPickedPcSet(randomPickedHistory, startAt, dedupeWindowMs, dedupeMaxCount);
+  const dedupeLogMeta = getDedupeLogMeta(randomPickedHistory, recentPickedPcSet, dedupeWindowMs, dedupeMaxCount);
   const pc = params.pc.trim();
   if (!pc) {
     badRequest('缺少图片参数');
@@ -271,7 +306,7 @@ export async function getRandom115PicFromParentMeta(params: { pc: string; userAg
     const buildMetaStartAt = Date.now();
     const meta = await buildRandomPicMetaFromFile(safeCurrentFile, params.userAgent, '当前目录没有其他图片可切换');
     const buildMetaMs = Date.now() - buildMetaStartAt;
-    rememberPickedPc(meta.pc, Date.now(), dedupeWindowMs, dedupeMaxCount);
+    rememberPickedPc(randomPickedHistory, meta.pc, Date.now(), dedupeWindowMs, dedupeMaxCount);
     log.info('[115-random] 同目录随机图片结果', {
       finalSource: 'parent-current-file',
       dedupeBypass: true,
@@ -296,7 +331,7 @@ export async function getRandom115PicFromParentMeta(params: { pc: string; userAg
   const buildMetaStartAt = Date.now();
   const meta = await buildRandomPicMetaFromFile(nextFile, params.userAgent);
   const buildMetaMs = Date.now() - buildMetaStartAt;
-  rememberPickedPc(meta.pc, Date.now(), dedupeWindowMs, dedupeMaxCount);
+  rememberPickedPc(randomPickedHistory, meta.pc, Date.now(), dedupeWindowMs, dedupeMaxCount);
   log.info('[115-random] 同目录随机图片结果', {
     finalSource: 'parent-sibling-file',
     dedupeBypass,

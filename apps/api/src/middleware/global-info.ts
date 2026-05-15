@@ -9,14 +9,18 @@ const getGlobalInfo = (): MyMiddleware => {
       return next();
     }
     const userInfo = await queryUser({ id: userId });
-    if (userInfo && userInfo.dataValues.id !== undefined && userInfo.dataValues.id !== null && userInfo.dataValues.email) {
+    if (
+      userInfo &&
+      userInfo.dataValues.id !== undefined &&
+      userInfo.dataValues.id !== null &&
+      userInfo.dataValues.email
+    ) {
       ctx.state.userInfo = {
         id: userInfo.dataValues.id,
         email: userInfo.dataValues.email,
         nickname: userInfo.dataValues.nickname,
         avatar: userInfo.dataValues.avatar,
         role: (userInfo.dataValues.role || UserRole.USER) as UserRole,
-        roleKey: userInfo.dataValues.role_key,
       };
     }
     next();

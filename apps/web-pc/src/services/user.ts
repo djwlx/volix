@@ -4,11 +4,8 @@ import type {
   AdminCreateUserPayload,
   AdminUpdateUserPayload,
   AccountConfigPlatform,
-  AssignUserRolePayload,
-  CreateRolePayload,
   LoginUserPayload,
   LoginUserResponse,
-  RoleInfoResponse,
   RegisterUserPayload,
   RegisterConfigResponse,
   SendRegisterCodePayload,
@@ -19,7 +16,6 @@ import type {
   TestAccountConfigResponse,
   UpdateSystemConfigPayload,
   UpdateAccountConfigPayload,
-  UpdateRolePayload,
   UpdateUserProfilePayload,
   UserInfoResponse,
   VerifyCurrentUserEmailPayload,
@@ -86,26 +82,6 @@ export const setUserRole = (data: SetUserRolePayload) => {
 
 export const updateCurrentUserProfile = (data: UpdateUserProfilePayload) => {
   return http.put<UserInfoResponse>('/user/profile', data);
-};
-
-export const getRoleList = () => {
-  return http.get<RoleInfoResponse[]>('/user/roles');
-};
-
-export const createRole = (data: CreateRolePayload) => {
-  return http.post<RoleInfoResponse>('/user/roles', data);
-};
-
-export const updateRoleInfo = (roleKey: string, data: UpdateRolePayload) => {
-  return http.put<RoleInfoResponse>(`/user/roles/${roleKey}`, data);
-};
-
-export const removeRole = (roleKey: string) => {
-  return http.delete<{ success: boolean }>(`/user/roles/${roleKey}`);
-};
-
-export const assignUserRole = (data: AssignUserRolePayload) => {
-  return http.put<UserInfoResponse>('/user/assign-role', data);
 };
 
 export const getUserDetail = (id: string | number) => {

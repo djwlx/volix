@@ -23,13 +23,12 @@ const EMPTY_VALUES: AccountConfigFormValues = {
 };
 
 function AccountConfigForm({ platform, title }: AccountConfigFormProps) {
-  const { user, requestNavigate, registerLeaveGuard } = useAppPageContext();
+  const { user, requestNavigate } = useAppPageContext();
   const [initialValues, setInitialValues] = useState<AccountConfigFormValues>(EMPTY_VALUES);
   const [formValues, setFormValues] = useState<AccountConfigFormValues>(EMPTY_VALUES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
 
   const isAdmin = user?.role === UserRole.ADMIN;
 
@@ -63,24 +62,6 @@ function AccountConfigForm({ platform, title }: AccountConfigFormProps) {
       });
   }, [user, isAdmin, platform, requestNavigate]);
 
-  useEffect(() => {
-    if (!isDirty) {
-      registerLeaveGuard(null);
-      return;
-    }
-    const confirmLeave = () => window.confirm('当前有未保存内容，确定离开吗？');
-    registerLeaveGuard(confirmLeave);
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => {
-      registerLeaveGuard(null);
-      window.removeEventListener('beforeunload', onBeforeUnload);
-    };
-  }, [isDirty, registerLeaveGuard]);
-
   const initialFingerprint = useMemo(() => JSON.stringify(initialValues), [initialValues]);
 
   const onSubmit = async (values: unknown) => {
@@ -95,7 +76,6 @@ function AccountConfigForm({ platform, title }: AccountConfigFormProps) {
           password: payload.password.trim(),
         },
       });
-      registerLeaveGuard(null);
       const nextValues = {
         baseUrl: payload.baseUrl.trim(),
         username: payload.username.trim(),
@@ -103,7 +83,6 @@ function AccountConfigForm({ platform, title }: AccountConfigFormProps) {
       };
       setInitialValues(nextValues);
       setFormValues(nextValues);
-      setIsDirty(false);
       Toast.success('配置保存成功');
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -150,12 +129,6 @@ function AccountConfigForm({ platform, title }: AccountConfigFormProps) {
                 password: next.password || '',
               };
               setFormValues(nextValues);
-              const nextFingerprint = JSON.stringify({
-                baseUrl: nextValues.baseUrl,
-                username: nextValues.username,
-                password: nextValues.password,
-              });
-              setIsDirty(nextFingerprint !== initialFingerprint);
             }}
             onSubmit={onSubmit}
           >

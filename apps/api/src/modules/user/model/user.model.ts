@@ -11,6 +11,9 @@ export type UserType = Model<{
   password: string;
   role?: UserRole;
   role_key?: string;
+  account_list?: string;
+  rss_config?: string;
+  settings_json?: string;
 }>;
 
 export const UserModel = sequelize.define<UserType>('volix_user', {
@@ -42,5 +45,20 @@ export const UserModel = sequelize.define<UserType>('volix_user', {
     type: DataTypes.STRING,
     allowNull: false,
     defaultValue: 'default',
+  },
+  account_list: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+    defaultValue: '{}',
+  },
+  rss_config: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+    defaultValue: '{}',
+  },
+  settings_json: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+    defaultValue: '{}',
   },
 });

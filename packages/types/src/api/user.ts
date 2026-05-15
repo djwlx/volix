@@ -35,6 +35,14 @@ export interface BangumiAccountConfigItem {
   accessToken: string;
 }
 
+export interface UserSettingsJson {
+  [key: string]: unknown;
+}
+
+export interface SystemSettingsJson {
+  [key: string]: unknown;
+}
+
 export interface AccountConfigMap {
   qbittorrent?: ServiceAccountConfigItem;
   openlist?: ServiceAccountConfigItem;
@@ -75,10 +83,15 @@ export interface VerifyCurrentUserEmailPayload {
 
 export interface SystemConfigResponse {
   registerEmailVerifyEnabled: boolean;
+  registerEmailVerifySmtp?: SmtpAccountConfigItem;
+  randomPicDefaultUserId?: string | number;
+  settings?: SystemSettingsJson;
 }
 
 export interface UpdateSystemConfigPayload {
   registerEmailVerifyEnabled: boolean;
+  registerEmailVerifySmtp?: SmtpAccountConfigItem;
+  randomPicDefaultUserId?: string | number;
 }
 
 export interface LoginUserPayload {
@@ -105,6 +118,7 @@ export interface UserInfoResponse {
   role: UserRole;
   roleKey?: string;
   featurePermissions: AppFeature[];
+  settings?: UserSettingsJson;
 }
 
 export interface SetUserRolePayload {

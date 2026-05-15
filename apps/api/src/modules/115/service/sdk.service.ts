@@ -1,12 +1,20 @@
 import { create115Sdk, Sdk115 } from '../../../sdk/115';
 import { AppConfigEnum } from '../../config/model/config.model';
 import { getConfig } from '../../config/service/config.service';
+import { getRequestActingUserId } from '../../../utils/request-context';
 
-let cloud115Sdk: Sdk115 | undefined;
+const cloud115SdkMap = new Map<string, Sdk115>();
+
+const get115SdkScopeUserId = () => {
+  return getRequestActingUserId() || 'public';
+};
 
 export async function initCloud115Sdk(params?: { cookie?: string }) {
+  const scopeUserId = get115SdkScopeUserId();
+  let cloud115Sdk = cloud115SdkMap.get(scopeUserId);
   if (!cloud115Sdk) {
     cloud115Sdk = create115Sdk();
+    cloud115SdkMap.set(scopeUserId, cloud115Sdk);
   }
 
   if (params?.cookie !== undefined) {
@@ -20,6 +28,8 @@ export async function initCloud115Sdk(params?: { cookie?: string }) {
 }
 
 export async function getCloud115Sdk() {
+  const scopeUserId = get115SdkScopeUserId();
+  const cloud115Sdk = cloud115SdkMap.get(scopeUserId);
   if (!cloud115Sdk) {
     return initCloud115Sdk();
   }

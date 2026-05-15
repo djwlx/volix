@@ -16,12 +16,11 @@ const EMPTY_VALUES: SmtpAccountConfigItem = {
 };
 
 function SettingConfigSmtpApp() {
-  const { user, requestNavigate, registerLeaveGuard } = useAppPageContext();
+  const { user, requestNavigate } = useAppPageContext();
   const [initialValues, setInitialValues] = useState<SmtpAccountConfigItem>(EMPTY_VALUES);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
   const [formValues, setFormValues] = useState<SmtpAccountConfigItem>(EMPTY_VALUES);
 
   const isAdmin = user?.role === UserRole.ADMIN;
@@ -58,24 +57,6 @@ function SettingConfigSmtpApp() {
       .finally(() => setLoading(false));
   }, [user, isAdmin, requestNavigate]);
 
-  useEffect(() => {
-    if (!isDirty) {
-      registerLeaveGuard(null);
-      return;
-    }
-    const confirmLeave = () => window.confirm('当前有未保存内容，确定离开吗？');
-    registerLeaveGuard(confirmLeave);
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => {
-      registerLeaveGuard(null);
-      window.removeEventListener('beforeunload', onBeforeUnload);
-    };
-  }, [isDirty, registerLeaveGuard]);
-
   const initialFingerprint = useMemo(() => JSON.stringify(initialValues), [initialValues]);
 
   const onSubmit = async (values: unknown) => {
@@ -94,10 +75,8 @@ function SettingConfigSmtpApp() {
         platform: AccountConfigPlatform.SMTP,
         config: nextData,
       });
-      registerLeaveGuard(null);
       setInitialValues(nextData);
       setFormValues(nextData);
-      setIsDirty(false);
       Toast.success('SMTP 配置保存成功');
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -150,15 +129,6 @@ function SettingConfigSmtpApp() {
                 fromEmail: (next.fromEmail || '').trim(),
               };
               setFormValues(nextValues);
-              const nextFingerprint = JSON.stringify({
-                host: nextValues.host,
-                port: nextValues.port,
-                secure: nextValues.secure,
-                username: nextValues.username,
-                password: nextValues.password,
-                fromEmail: nextValues.fromEmail,
-              });
-              setIsDirty(nextFingerprint !== initialFingerprint);
             }}
             onSubmit={onSubmit}
           >

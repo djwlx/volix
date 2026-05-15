@@ -23,11 +23,14 @@ function AppShell() {
 
   const resolvedHandle = useMemo(() => {
     const matchedHandles = matches.map(match => match.handle as AppRouteHandle | undefined).filter(Boolean);
+    const settingMatch = matches.find(match => match.pathname === '/setting');
+    const settingHeader = (settingMatch?.handle as AppRouteHandle | undefined)?.appHeader;
+    const isSettingPage = matches.some(match => match.pathname.startsWith('/setting'));
 
     const headerOwner = [...matchedHandles]
       .reverse()
       .find(item => Object.prototype.hasOwnProperty.call(item ?? {}, 'appHeader'));
-    const appHeader = headerOwner?.appHeader;
+    const appHeader = isSettingPage ? settingHeader : headerOwner?.appHeader;
     const requiresAuth = matchedHandles.some(item => item?.requiresAuth);
     const contentSpacingOwner = [...matchedHandles]
       .reverse()

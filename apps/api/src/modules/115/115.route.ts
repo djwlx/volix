@@ -21,10 +21,13 @@ import {
   set115PicInfo,
   set115PicRandomCacheConfig,
 } from './index';
+import { resolve115ActingUser } from './middleware/resolve-acting-user';
 
 const router = new Router({
   prefix: '/115',
 });
+
+router.use(resolve115ActingUser());
 
 router
   .get('/pic', http(getRandom115Pic))

@@ -19,13 +19,9 @@ function My115App() {
             <FileTree />
           </Space>
         ) : (
-          <Empty
-            title="尚未登录115账号"
-            description="请先前往 设置 > 账号配置 > 115 完成登录"
-            style={{ marginTop: 60 }}
-          >
+          <Empty title="尚未登录115账号" description="请先前往 设置 > 随机图片配置 完成登录" style={{ marginTop: 60 }}>
             <Button type="primary" onClick={() => navigate('/setting/config/115')}>
-              前往115配置
+              前往随机图片配置
             </Button>
           </Empty>
         )}

@@ -1,44 +1,39 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Button, Card, Empty, Space, Toast } from '@douyinfe/semi-ui';
-import { adminUpdateUser, getRoleList, getUserDetail } from '@/services/user';
+import { adminUpdateUser, getUserDetail } from '@/services/user';
 import { uploadLocalFile } from '@/services/file';
 import { AppForm } from '@/components';
 import { useParams } from 'react-router';
 import { useAppPageContext } from '@/hooks';
 import { UserRole } from '@volix/types';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
-import type { RoleInfoResponse, UserInfoResponse } from '@volix/types';
+import type { UserInfoResponse } from '@volix/types';
 
 interface UserEditFormValues {
   email: string;
   nickname: string;
   avatar: string;
   role: UserRole;
-  roleKey: string;
 }
 
 function SettingUserEditApp() {
-  const { user, isAdmin, requestNavigate, registerLeaveGuard } = useAppPageContext();
+  const { user, isAdmin, requestNavigate } = useAppPageContext();
   const { id = '' } = useParams();
-  const [roleList, setRoleList] = useState<RoleInfoResponse[]>([]);
   const [origin, setOrigin] = useState<UserInfoResponse>();
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formApi, setFormApi] = useState<FormApi<Record<string, unknown>>>();
   const [formInitValues, setFormInitValues] = useState<UserEditFormValues>();
-  const [isDirty, setIsDirty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = async () => {
-    const [roleRes, userRes] = await Promise.all([getRoleList(), getUserDetail(id)]);
-    setRoleList(roleRes.data);
+    const userRes = await getUserDetail(id);
     setOrigin(userRes.data);
     setFormInitValues({
       email: userRes.data.email || '',
       nickname: userRes.data.nickname || '',
       avatar: userRes.data.avatar || '',
       role: userRes.data.role,
-      roleKey: userRes.data.roleKey || 'default',
     });
   };
 
@@ -53,24 +48,6 @@ function SettingUserEditApp() {
     loadData().catch(() => Toast.error('获取用户信息失败'));
   }, [user, isAdmin, id, requestNavigate]);
 
-  useEffect(() => {
-    if (!isDirty) {
-      registerLeaveGuard(null);
-      return;
-    }
-    const confirmLeave = () => window.confirm('当前有未保存内容，确定离开吗？');
-    registerLeaveGuard(confirmLeave);
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', onBeforeUnload);
-    return () => {
-      registerLeaveGuard(null);
-      window.removeEventListener('beforeunload', onBeforeUnload);
-    };
-  }, [isDirty, registerLeaveGuard]);
-
   const onSubmit = async (values: unknown) => {
     const payload = values as UserEditFormValues;
     try {
@@ -79,9 +56,7 @@ function SettingUserEditApp() {
         nickname: payload.nickname,
         avatar: payload.avatar,
         role: payload.role,
-        roleKey: payload.roleKey,
       });
-      registerLeaveGuard(null);
       Toast.success('用户信息已更新');
       requestNavigate('/setting/user');
     } catch (error) {
@@ -127,16 +102,6 @@ function SettingUserEditApp() {
           labelPosition="top"
           initValues={formInitValues}
           getFormApi={setFormApi}
-          onValueChange={values => {
-            const next = values as UserEditFormValues;
-            const dirty = Boolean(
-              (origin.nickname || '') !== (next.nickname || '') ||
-                (origin.avatar || '') !== (next.avatar || '') ||
-                origin.role !== next.role ||
-                (origin.roleKey || 'default') !== (next.roleKey || 'default')
-            );
-            setIsDirty(dirty);
-          }}
           onSubmit={onSubmit}
         >
           <AppForm.Input field="email" label="邮箱" disabled />
@@ -150,16 +115,8 @@ function SettingUserEditApp() {
               { label: '管理员', value: UserRole.ADMIN },
             ]}
           />
-          <AppForm.Select
-            field="roleKey"
-            label="角色组"
-            optionList={roleList.map(item => ({
-              label: item.roleName,
-              value: item.roleKey,
-            }))}
-          />
         </AppForm>
-        <Space>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'flex-start', alignItems: 'center' }}>
           <Button loading={uploading} onClick={() => fileInputRef.current?.click()}>
             上传头像
           </Button>
@@ -170,13 +127,11 @@ function SettingUserEditApp() {
             style={{ display: 'none' }}
             onChange={onUploadAvatar}
           />
-        </Space>
-        <Space>
           <Button type="primary" loading={saving} onClick={() => formApi?.submitForm()}>
             保存修改
           </Button>
           <Button onClick={() => requestNavigate('/setting/user')}>取消</Button>
-        </Space>
+        </div>
       </Space>
     </Card>
   );

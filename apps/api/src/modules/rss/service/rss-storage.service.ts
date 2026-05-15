@@ -17,7 +17,7 @@ import { mapWithConcurrencyLimited, rewriteRssItemResourcesStrict } from './rss-
 import { prunePendingTasksBySubscriptions } from './rss-storage-queue-guard.service';
 import { clearRssStorageInternal, clearRssSubscriptionStorageInternal } from './rss-storage-cleanup.service';
 import { UserRssFeedItemModel } from '../model/rss-feed-item.model';
-import { UserRssSettingModel } from '../model/rss-setting.model';
+import { queryUser } from '../../user/service/user.service';
 import {
   countUserRssFeedItemsByRoutes,
   getUserRssFeedState,
@@ -34,6 +34,7 @@ import {
   normalizeIsoTime,
   parseRefreshIntervalMinutes,
 } from './rss-storage-status-utils.service';
+import { parseUserRssConfig } from './rss-user-config.service';
 
 interface PendingFeedTask {
   userId: string;
@@ -422,10 +423,8 @@ export const getRssStorageStatus = async (userId: string): Promise<RssStorageSta
     ),
     listUserRssSubscriptionStates(normalizedUserId),
     readTaskRouteMeta(RSS_PENDING_DIR, normalizedUserId),
-    UserRssSettingModel.findOne({
-      where: {
-        user_id: normalizedUserId,
-      },
+    queryUser({
+      id: normalizedUserId,
     }),
   ]);
 
@@ -450,7 +449,8 @@ export const getRssStorageStatus = async (userId: string): Promise<RssStorageSta
   const routeList = Array.from(routeToNameMap.keys());
   const itemCountList = await countUserRssFeedItemsByRoutes(normalizedUserId, routeList);
   const itemCountMap = new Map(itemCountList.map(item => [item.route, item.itemCount]));
-  const refreshIntervalMinutes = parseRefreshIntervalMinutes(userSetting?.dataValues.refresh_interval_minutes);
+  const userRssConfig = parseUserRssConfig(userSetting?.dataValues.rss_config);
+  const refreshIntervalMinutes = parseRefreshIntervalMinutes(userRssConfig.refreshIntervalMinutes);
 
   const routes = await Promise.all(
     routeList.map(async route => {

@@ -18,17 +18,11 @@ import AuthApp from '@/apps/auth';
 import SettingApp from '@/apps/setting';
 import SettingInfoApp from '@/apps/setting/pages/info';
 import SettingUserApp from '@/apps/setting/pages/user';
-import SettingRoleApp from '@/apps/setting/pages/role';
-import SettingRoleAddApp from '@/apps/setting/pages/role/add';
-import SettingRoleEditApp from '@/apps/setting/pages/role/edit';
 import SettingUserAddApp from '@/apps/setting/pages/user/add';
 import SettingUserEditApp from '@/apps/setting/pages/user/edit';
 import SettingConfig115App from '@/apps/setting/pages/config/config-115';
-import SettingConfigQbittorrentApp from '@/apps/setting/pages/config/config-qbittorrent';
-import SettingConfigOpenlistApp from '@/apps/setting/pages/config/config-openlist';
-import SettingConfigSmtpApp from '@/apps/setting/pages/config/config-smtp';
-import SettingConfigBangumiApp from '@/apps/setting/pages/config/config-bangumi';
 import SettingConfigRsshubApp from '@/apps/setting/pages/config/config-rsshub';
+import SettingConfigAccountCenterApp from '@/apps/setting/pages/config/config-account-center';
 import SettingSystemApp from '@/apps/setting/pages/system';
 import RedirectToSetting from './redirect-to-setting';
 import AppErrorBoundary from './error-boundary';
@@ -179,17 +173,14 @@ export const router = createBrowserRouter([
           },
           { path: 'user/add', Component: SettingUserAddApp },
           { path: 'user/edit/:id', Component: SettingUserEditApp },
-          { path: 'role', Component: SettingRoleApp },
-          { path: 'role/add', Component: SettingRoleAddApp },
-          { path: 'role/edit/:roleKey', Component: SettingRoleEditApp },
           { path: 'system', Component: SettingSystemApp },
           {
             path: 'config/115',
             Component: SettingConfig115App,
             handle: routeHandle({
               appHeader: {
-                title: '115 配置',
-                description: '管理 115 账号和能力配置',
+                title: '随机图片配置',
+                description: '管理随机图片来源、缓存目录与 115 登录状态',
                 logo: (
                   <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)' }}>
                     <IconCloudStroked style={{ fontSize: 20 }} />
@@ -198,17 +189,14 @@ export const router = createBrowserRouter([
               },
             }),
           },
-          { path: 'config/bangumi', Component: SettingConfigBangumiApp },
           { path: 'config/rsshub', Component: SettingConfigRsshubApp },
-          { path: 'config/qbittorrent', Component: SettingConfigQbittorrentApp },
-          { path: 'config/openlist', Component: SettingConfigOpenlistApp },
           {
-            path: 'config/smtp',
-            Component: SettingConfigSmtpApp,
+            path: 'config/account',
+            Component: SettingConfigAccountCenterApp,
             handle: routeHandle({
               appHeader: {
-                title: 'SMTP 配置',
-                description: '配置邮件发送服务',
+                title: '账号管理',
+                description: '',
                 logo: (
                   <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #ea580c 0%, #f59e0b 100%)' }}>
                     <IconMailStroked style={{ fontSize: 20 }} />

@@ -1,22 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Avatar, Button, Card, Empty, Space, Table, Tag, Toast } from '@douyinfe/semi-ui';
-import { getRoleList, getUserList } from '@/services/user';
+import { getUserList } from '@/services/user';
 import { useAppPageContext } from '@/hooks';
-import type { RoleInfoResponse, UserInfoResponse } from '@volix/types';
+import type { UserInfoResponse } from '@volix/types';
 
 function SettingUserApp() {
   const { isAdmin, requestNavigate } = useAppPageContext();
   const [userList, setUserList] = useState<UserInfoResponse[]>([]);
-  const [roleList, setRoleList] = useState<RoleInfoResponse[]>([]);
-  const tableMinWidth = 'max(100%, 1208px)';
+  const tableMinWidth = 'max(100%, 980px)';
 
   const loadData = async () => {
     if (!isAdmin) {
       return;
     }
-    const [usersRes, rolesRes] = await Promise.all([getUserList(), getRoleList()]);
+    const usersRes = await getUserList();
     setUserList(usersRes.data);
-    setRoleList(rolesRes.data);
   };
 
   useEffect(() => {
@@ -97,17 +95,6 @@ function SettingUserApp() {
               key: 'role',
               width: 120,
               render: (value: UserInfoResponse['role']) => (value === 'admin' ? '管理员' : '普通用户'),
-            },
-            {
-              title: '角色组',
-              dataIndex: 'roleKey',
-              key: 'roleKey',
-              width: 220,
-              ellipsis: {
-                showTitle: true,
-              },
-              render: (value: string | undefined) =>
-                roleList.find(item => item.roleKey === value)?.roleName || value || 'default',
             },
             {
               title: '操作',

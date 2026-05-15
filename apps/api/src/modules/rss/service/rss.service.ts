@@ -6,7 +6,7 @@ import {
   parseResourceCacheSizeMb,
   parseResourceProxyBaseUrl,
 } from '../../shared/service/resource-proxy-cache.service';
-import { UserRssSettingModel } from '../model/rss-setting.model';
+import { queryUser, updateUser } from '../../user/service/user.service';
 import { parseRssFeedItemsFromXml } from './rss-feed-item-parser.service';
 import {
   listUserRssSubscriptionStates,
@@ -35,6 +35,7 @@ import type {
   UserRssSubscriptionItem,
 } from '../types/rss.types';
 import type { AxiosError, AxiosResponse } from 'axios';
+import { parseUserRssConfig } from './rss-user-config.service';
 const DEFAULT_RSS_HUB = 'https://rsshub.app';
 const DEFAULT_RESOURCE_PROXY_BASE_URL = '';
 const DEFAULT_RESOURCE_CACHE_SIZE_MB = 0;
@@ -136,16 +137,17 @@ const mapSubscriptionItem = (row: UserRssSubscriptionStateRow): UserRssSubscript
 };
 export async function getUserRssSetting(userId: string | number | undefined): Promise<UserRssSettingPayload> {
   const normalizedUserId = getCurrentUserId(userId);
-  const setting = await UserRssSettingModel.findOne({
-    where: {
-      user_id: normalizedUserId,
-    },
+  const setting = await queryUser({
+    id: normalizedUserId,
   });
+  const rssConfig = parseUserRssConfig(setting?.dataValues.rss_config);
   return {
-    host: setting?.dataValues.host || DEFAULT_RSS_HUB,
-    resourceProxyBaseUrl: String(setting?.dataValues.resource_proxy_base_url || DEFAULT_RESOURCE_PROXY_BASE_URL),
-    resourceCacheMaxSizeMb: normalizeResourceCacheSizeMb(Number(setting?.dataValues.resource_cache_max_size_mb || 0)),
-    refreshIntervalMinutes: normalizeRefreshIntervalMinutes(Number(setting?.dataValues.refresh_interval_minutes || 0)),
+    host: normalizeHost(String(rssConfig.host || DEFAULT_RSS_HUB)),
+    resourceProxyBaseUrl: normalizeResourceProxyBaseUrl(
+      String(rssConfig.resourceProxyBaseUrl || DEFAULT_RESOURCE_PROXY_BASE_URL)
+    ),
+    resourceCacheMaxSizeMb: normalizeResourceCacheSizeMb(Number(rssConfig.resourceCacheMaxSizeMb || 0)),
+    refreshIntervalMinutes: normalizeRefreshIntervalMinutes(Number(rssConfig.refreshIntervalMinutes || 0)),
   };
 }
 export async function updateUserRssSetting(
@@ -157,29 +159,20 @@ export async function updateUserRssSetting(
   const resourceProxyBaseUrl = normalizeResourceProxyBaseUrl(payload?.resourceProxyBaseUrl || '');
   const resourceCacheMaxSizeMb = normalizeResourceCacheSizeMb(payload?.resourceCacheMaxSizeMb);
   const refreshIntervalMinutes = normalizeRefreshIntervalMinutes(payload?.refreshIntervalMinutes);
-  const current = await UserRssSettingModel.findOne({
-    where: {
-      user_id: normalizedUserId,
-    },
-  });
-  if (current) {
-    await current.update({
+  await updateUser(normalizedUserId, {
+    rss_config: JSON.stringify({
       host,
-      resource_proxy_base_url: resourceProxyBaseUrl,
-      resource_cache_max_size_mb: resourceCacheMaxSizeMb,
-      refresh_interval_minutes: refreshIntervalMinutes,
-    });
-    await current.save();
-    return { host, resourceProxyBaseUrl, resourceCacheMaxSizeMb, refreshIntervalMinutes };
-  }
-  await UserRssSettingModel.create({
-    user_id: normalizedUserId,
-    host,
-    resource_proxy_base_url: resourceProxyBaseUrl,
-    resource_cache_max_size_mb: resourceCacheMaxSizeMb,
-    refresh_interval_minutes: refreshIntervalMinutes,
+      resourceProxyBaseUrl,
+      resourceCacheMaxSizeMb,
+      refreshIntervalMinutes,
+    }),
   });
-  return { host, resourceProxyBaseUrl, resourceCacheMaxSizeMb, refreshIntervalMinutes };
+  return {
+    host,
+    resourceProxyBaseUrl,
+    resourceCacheMaxSizeMb,
+    refreshIntervalMinutes,
+  };
 }
 export async function listUserRssSubscriptions(
   userId: string | number | undefined
