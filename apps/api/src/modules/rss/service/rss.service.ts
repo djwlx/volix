@@ -200,16 +200,13 @@ export async function createUserRssSubscription(
   let name = normalizeSubscriptionName(String(payload?.name || ''));
   if (!name) {
     try {
-      const previewFeed = await fetchRssFeed(
-        {
-          route,
-          force: false,
-        },
-        normalizedUserId
-      );
+      const previewFeed = await fetchRssFeedFromUpstream({
+        feedUrl,
+        setting,
+      });
       const parsed = parseRssFeedItemsFromXml(previewFeed.xml);
-      const previewTitle = normalizeSubscriptionName(String(previewFeed.title || parsed.title || ''));
-      name = previewTitle === 'RSS 正在处理' ? '' : previewTitle;
+      const previewTitle = normalizeSubscriptionName(String(parsed.title || ''));
+      name = previewTitle;
     } catch (error) {
       log.warn('[rss-subscription] 自动读取订阅标题失败', {
         userId: normalizedUserId,

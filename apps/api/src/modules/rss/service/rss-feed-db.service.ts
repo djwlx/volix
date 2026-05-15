@@ -4,6 +4,7 @@ import { UserRssFeedItemModel } from '../model/rss-feed-item.model';
 import { UserRssFeedStateModel } from '../model/rss-feed-state.model';
 import type { RssFeedItem } from '../types/rss.types';
 import { readRssItemHtmlFileByKey, writeRssItemHtmlFile } from './rss-feed-item-html-file.service';
+import { buildFeedItemPersistPayload, buildItemSourceHash, mapFeedItemRow } from './rss-feed-item-persist.service';
 
 interface MergeUserRssFeedItemsParams {
   userId: string;
@@ -39,50 +40,6 @@ export interface UserRssSubscriptionStateRow {
   createdAt?: string;
   updatedAt?: string;
 }
-
-const safeJsonParse = <T>(value: string, fallback: T): T => {
-  try {
-    return JSON.parse(value) as T;
-  } catch {
-    return fallback;
-  }
-};
-
-const buildItemSourceHash = (item: RssFeedItem, resourceCount: number) => {
-  return crypto
-    .createHash('sha256')
-    .update(
-      JSON.stringify({
-        id: item.id,
-        title: item.title,
-        link: item.link,
-        description: item.description,
-        descriptionHtml: item.descriptionHtml,
-        imageUrls: item.imageUrls,
-        author: item.author,
-        publishedAt: item.publishedAt,
-        resourceCount,
-      })
-    )
-    .digest('hex');
-};
-
-const mapFeedItemRow = async (row: { dataValues: Record<string, any> }): Promise<RssFeedItem> => {
-  const imageUrls = safeJsonParse<string[]>(String(row.dataValues.image_urls || '[]'), []);
-  const htmlFileKey = String(row.dataValues.description_html_file_key || '').trim();
-  const fileHtml = htmlFileKey ? await readRssItemHtmlFileByKey(htmlFileKey) : '';
-  const descriptionHtml = fileHtml || String(row.dataValues.description_html || '');
-  return {
-    id: String(row.dataValues.item_id || ''),
-    title: String(row.dataValues.title || ''),
-    link: String(row.dataValues.link || ''),
-    description: String(row.dataValues.description || ''),
-    descriptionHtml,
-    imageUrls: Array.isArray(imageUrls) ? imageUrls.map(item => String(item || '')).filter(Boolean) : [],
-    author: String(row.dataValues.author || ''),
-    publishedAt: String(row.dataValues.published_at || ''),
-  };
-};
 
 export const mergeUserRssFeedItems = async (params: MergeUserRssFeedItemsParams) => {
   const route = String(params.route || '').trim();
@@ -132,18 +89,7 @@ export const mergeUserRssFeedItems = async (params: MergeUserRssFeedItemsParams)
         user_id: userId,
         route,
         item_key: itemKey,
-        item_id: String(item.itemId || item.id || ''),
-        title: item.title,
-        link: item.link,
-        description: item.description,
-        description_html: htmlFileKey ? '' : String(item.descriptionHtml || ''),
-        description_html_file_key: htmlFileKey || undefined,
-        image_urls: JSON.stringify(item.imageUrls || []),
-        author: item.author,
-        published_at: item.publishedAt,
-        source_hash: sourceHash,
-        resource_count: resourceCount,
-        fetched_at: fetchedAt,
+        ...buildFeedItemPersistPayload(item, htmlFileKey || null, sourceHash, fetchedAt),
       });
       inserted += 1;
       continue;
@@ -163,18 +109,7 @@ export const mergeUserRssFeedItems = async (params: MergeUserRssFeedItemsParams)
       html: item.descriptionHtml,
     });
     await existing.update({
-      item_id: String(item.itemId || item.id || ''),
-      title: item.title,
-      link: item.link,
-      description: item.description,
-      description_html: htmlFileKey ? '' : String(item.descriptionHtml || ''),
-      description_html_file_key: htmlFileKey || undefined,
-      image_urls: JSON.stringify(item.imageUrls || []),
-      author: item.author,
-      published_at: item.publishedAt,
-      source_hash: sourceHash,
-      resource_count: resourceCount,
-      fetched_at: fetchedAt,
+      ...buildFeedItemPersistPayload(item, htmlFileKey || null, sourceHash, fetchedAt),
     });
     await existing.save();
     updated += 1;

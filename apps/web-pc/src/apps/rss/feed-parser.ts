@@ -9,6 +9,17 @@ export interface ReaderItem {
   imageUrls: string[];
   author: string;
   publishedAt: string;
+  guid?: string;
+  category?: string[];
+  updated?: string;
+  enclosureUrl?: string;
+  enclosureLength?: number;
+  enclosureType?: string;
+  comments?: number;
+  upvotes?: number;
+  downvotes?: number;
+  media?: Record<string, unknown>;
+  doi?: string;
 }
 
 export interface ReaderFeed {
@@ -53,6 +64,49 @@ const getTagText = (element: Element, tags: string[]): string => {
   return '';
 };
 
+const getTagTexts = (element: Element, tags: string[]): string[] => {
+  const values: string[] = [];
+  tags.forEach(tag => {
+    const list = Array.from(element.getElementsByTagName(tag));
+    list.forEach(node => {
+      const text = String(node.textContent || '').trim();
+      if (text) {
+        values.push(text);
+      }
+    });
+  });
+  return values;
+};
+
+const parseIntSafe = (value: string): number | undefined => {
+  const parsed = Number(String(value || '').trim());
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const getCategories = (element: Element): string[] => {
+  const categories = new Set<string>();
+  getTagTexts(element, ['category']).forEach(item => categories.add(item));
+  Array.from(element.getElementsByTagName('category')).forEach(item => {
+    const term = String(item.getAttribute('term') || '').trim();
+    if (term) {
+      categories.add(term);
+    }
+  });
+  return Array.from(categories);
+};
+
+const getRssEnclosure = (element: Element) => {
+  const enclosure = element.getElementsByTagName('enclosure')[0];
+  if (!enclosure) {
+    return {};
+  }
+  return {
+    enclosureUrl: String(enclosure.getAttribute('url') || '').trim() || undefined,
+    enclosureLength: parseIntSafe(String(enclosure.getAttribute('length') || '')),
+    enclosureType: String(enclosure.getAttribute('type') || '').trim() || undefined,
+  };
+};
+
 const getAtomEntryLink = (entry: Element): string => {
   const links = Array.from(entry.getElementsByTagName('link'));
   const altLink = links.find(link => (link.getAttribute('rel') || '').toLowerCase() === 'alternate');
@@ -66,6 +120,19 @@ const getAtomEntryLink = (entry: Element): string => {
   }
 
   return '';
+};
+
+const getAtomEnclosure = (entry: Element) => {
+  const links = Array.from(entry.getElementsByTagName('link'));
+  const enclosure = links.find(link => String(link.getAttribute('rel') || '').toLowerCase() === 'enclosure');
+  if (!enclosure) {
+    return {};
+  }
+  return {
+    enclosureUrl: String(enclosure.getAttribute('href') || '').trim() || undefined,
+    enclosureLength: parseIntSafe(String(enclosure.getAttribute('length') || '')),
+    enclosureType: String(enclosure.getAttribute('type') || '').trim() || undefined,
+  };
 };
 
 const stripHtml = (value: string): string => {
@@ -213,6 +280,17 @@ export const parseFeed = (rawFeed: RssReaderRawFeed): ReaderFeed => {
             : extractImageUrls(normalizedHtml),
           author: String(item.author || ''),
           publishedAt: String(item.publishedAt || ''),
+          guid: String(item.guid || '').trim() || undefined,
+          category: Array.isArray(item.category) ? item.category.map(i => String(i || '').trim()).filter(Boolean) : [],
+          updated: String(item.updated || '').trim() || undefined,
+          enclosureUrl: String(item.enclosureUrl || '').trim() || undefined,
+          enclosureLength: Number.isFinite(Number(item.enclosureLength)) ? Number(item.enclosureLength) : undefined,
+          enclosureType: String(item.enclosureType || '').trim() || undefined,
+          comments: Number.isFinite(Number(item.comments)) ? Number(item.comments) : undefined,
+          upvotes: Number.isFinite(Number(item.upvotes)) ? Number(item.upvotes) : undefined,
+          downvotes: Number.isFinite(Number(item.downvotes)) ? Number(item.downvotes) : undefined,
+          media: item.media && typeof item.media === 'object' ? item.media : undefined,
+          doi: String(item.doi || '').trim() || undefined,
         };
       }),
     };
@@ -238,9 +316,15 @@ export const parseFeed = (rawFeed: RssReaderRawFeed): ReaderFeed => {
         const sanitizedDescriptionHtml = sanitizeHtml(itemDescription);
         const itemAuthor = getTagText(item, ['author', 'dc:creator']);
         const itemPublishedAt = getTagText(item, ['pubDate', 'published', 'updated']);
+        const itemGuid = getTagText(item, ['guid']);
+        const itemCategories = getCategories(item);
+        const itemUpdated = getTagText(item, ['updated']);
+        const itemComments = parseIntSafe(getTagText(item, ['slash:comments']));
+        const itemDoi = getTagText(item, ['doi', 'dc:identifier']);
+        const enclosure = getRssEnclosure(item);
 
         return {
-          id: getTagText(item, ['guid']) || itemLink || `${itemTitle}-${index}`,
+          id: itemGuid || itemLink || `${itemTitle}-${index}`,
           title: itemTitle,
           link: itemLink,
           description: stripHtml(sanitizedDescriptionHtml),
@@ -248,6 +332,14 @@ export const parseFeed = (rawFeed: RssReaderRawFeed): ReaderFeed => {
           imageUrls: extractImageUrls(sanitizedDescriptionHtml),
           author: itemAuthor,
           publishedAt: itemPublishedAt,
+          guid: itemGuid || undefined,
+          category: itemCategories,
+          updated: itemUpdated || undefined,
+          enclosureUrl: enclosure.enclosureUrl,
+          enclosureLength: enclosure.enclosureLength,
+          enclosureType: enclosure.enclosureType,
+          comments: itemComments,
+          doi: itemDoi || undefined,
         };
       })
       .filter(item => item.title || item.link || item.description);
@@ -275,9 +367,17 @@ export const parseFeed = (rawFeed: RssReaderRawFeed): ReaderFeed => {
         const sanitizedDescriptionHtml = sanitizeHtml(itemDescription);
         const itemAuthor = getTagText(entry, ['author', 'name']);
         const itemPublishedAt = getTagText(entry, ['published', 'updated']);
+        const itemUpdated = getTagText(entry, ['updated']);
+        const itemCategories = getCategories(entry);
+        const itemComments = parseIntSafe(getTagText(entry, ['comments']));
+        const itemUpvotes = parseIntSafe(getTagText(entry, ['upvotes', 'activity:upvotes']));
+        const itemDownvotes = parseIntSafe(getTagText(entry, ['downvotes', 'activity:downvotes']));
+        const itemDoi = getTagText(entry, ['doi']);
+        const enclosure = getAtomEnclosure(entry);
+        const itemId = getTagText(entry, ['id']) || itemLink || `${itemTitle}-${index}`;
 
         return {
-          id: getTagText(entry, ['id']) || itemLink || `${itemTitle}-${index}`,
+          id: itemId,
           title: itemTitle,
           link: itemLink,
           description: stripHtml(sanitizedDescriptionHtml),
@@ -285,6 +385,16 @@ export const parseFeed = (rawFeed: RssReaderRawFeed): ReaderFeed => {
           imageUrls: extractImageUrls(sanitizedDescriptionHtml),
           author: itemAuthor,
           publishedAt: itemPublishedAt,
+          guid: itemId || undefined,
+          category: itemCategories,
+          updated: itemUpdated || undefined,
+          enclosureUrl: enclosure.enclosureUrl,
+          enclosureLength: enclosure.enclosureLength,
+          enclosureType: enclosure.enclosureType,
+          comments: itemComments,
+          upvotes: itemUpvotes,
+          downvotes: itemDownvotes,
+          doi: itemDoi || undefined,
         };
       })
       .filter(item => item.title || item.link || item.description);

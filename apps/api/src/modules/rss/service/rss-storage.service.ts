@@ -8,6 +8,7 @@ import { badRequest } from '../../shared/http-handler';
 import type {
   ClearRssStoragePayload,
   RssFeedPayload,
+  RssFeedItem,
   RssPathUsageStat,
   RssStorageStatusPayload,
   UserRssSettingPayload,
@@ -106,7 +107,6 @@ const readPendingTask = async (filePath: string): Promise<PendingFeedTask | null
 const writePendingTask = async (filePath: string, task: PendingFeedTask) => {
   await fs.promises.writeFile(filePath, JSON.stringify(task), 'utf-8');
 };
-
 const processSingleTask = async (taskFilePath: string) => {
   const task = await readPendingTask(taskFilePath);
   if (!task) {
@@ -126,22 +126,16 @@ const processSingleTask = async (taskFilePath: string) => {
     );
     const itemKeys = keyedItems.map(item => String(item.id || '')).filter(Boolean);
     const existingRows =
-      itemKeys.length > 0
-        ? await UserRssFeedItemModel.findAll({
+      itemKeys.length === 0
+        ? []
+        : await UserRssFeedItemModel.findAll({
             attributes: ['item_key'],
-            where: {
-              user_id: task.userId,
-              route: task.route,
-              item_key: {
-                [Op.in]: itemKeys,
-              },
-            },
-          })
-        : [];
+            where: { user_id: task.userId, route: task.route, item_key: { [Op.in]: itemKeys } },
+          });
     const existingKeySet = new Set(existingRows.map(item => String(item.dataValues.item_key || '')));
     const newItems = keyedItems.filter(item => !existingKeySet.has(String(item.id || '')));
-
-    const rewrittenItems = await mapWithConcurrencyLimited(newItems, 3, async item => {
+    let insertedCount = 0;
+    await mapWithConcurrencyLimited(newItems, 3, async item => {
       const originalItemId = String(item.itemId || item.id || '');
       const rewritten = await rewriteRssItemResourcesStrict(item, {
         requestProxyUrl: task.requestProxyUrl,
@@ -149,36 +143,24 @@ const processSingleTask = async (taskFilePath: string) => {
         route: task.route,
         itemKey: String(item.id || ''),
       });
-      return {
+      const upsertItem: RssFeedItem & { resourceCount: number; itemId?: string } = {
         ...rewritten.item,
-        itemId: originalItemId,
         id: String(item.id || ''),
+        itemId: originalItemId,
         resourceCount: rewritten.resourceCount,
       };
+      const merged = await mergeUserRssFeedItems({
+        userId: task.userId,
+        route: task.route,
+        fetchedAt: task.fetchedAt,
+        items: [upsertItem],
+      });
+      insertedCount += Number(merged.inserted || 0);
     });
-
-    const merged = await mergeUserRssFeedItems({
-      userId: task.userId,
-      route: task.route,
-      fetchedAt: task.fetchedAt,
-      items: rewrittenItems.map(item => ({
-        id: item.id,
-        itemId: item.itemId,
-        title: item.title,
-        link: item.link,
-        description: item.description,
-        descriptionHtml: item.descriptionHtml,
-        imageUrls: item.imageUrls,
-        author: item.author,
-        publishedAt: item.publishedAt,
-        resourceCount: item.resourceCount,
-      })),
-    });
-
     await upsertUserRssFeedState({
       userId: task.userId,
       route: task.route,
-      name: task.routeName,
+      name: String(task.routeName || '').trim() || String(parsed.title || '').trim() || task.route,
       feedUrl: task.feedUrl,
       title: parsed.title,
       description: parsed.description,
@@ -187,13 +169,8 @@ const processSingleTask = async (taskFilePath: string) => {
     });
     await writeRssFeedSubscriptionMeta(
       { userId: task.userId, route: task.route },
-      {
-        lastUpdatedAt: new Date().toISOString(),
-        lastFetchedAt: task.fetchedAt,
-        lastNewCount: Number(merged.inserted || 0),
-      }
+      { lastUpdatedAt: new Date().toISOString(), lastFetchedAt: task.fetchedAt, lastNewCount: insertedCount }
     );
-
     await fs.promises.rm(taskFilePath, { force: true }).catch(() => undefined);
   } catch (error) {
     const retries = task.retries + 1;

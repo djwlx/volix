@@ -15,6 +15,17 @@ export interface UserRssFeedItemEntity {
   image_urls?: string;
   author?: string;
   published_at?: string;
+  guid?: string;
+  category?: string;
+  updated_at_text?: string;
+  enclosure_url?: string;
+  enclosure_length?: number;
+  enclosure_type?: string;
+  comments_count?: number;
+  upvotes_count?: number;
+  downvotes_count?: number;
+  media_json?: string;
+  doi?: string;
   source_hash?: string;
   resource_count?: number;
   is_read?: boolean;
@@ -72,6 +83,50 @@ export const UserRssFeedItemModel = sequelize.define<UserRssFeedItemModelType>('
     allowNull: true,
   },
   published_at: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  guid: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  category: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  updated_at_text: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  enclosure_url: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  enclosure_length: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  enclosure_type: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  comments_count: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  upvotes_count: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  downvotes_count: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  media_json: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  doi: {
     type: DataTypes.STRING,
     allowNull: true,
   },

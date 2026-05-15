@@ -76,6 +76,71 @@ const getTagText = (source: string, tagNames: string[]): string => {
   return '';
 };
 
+const getTagTexts = (source: string, tagNames: string[]): string[] => {
+  const normalizedSource = String(source || '');
+  const values: string[] = [];
+  for (const tagName of tagNames) {
+    const escapedTagName = tagName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const matchedList = normalizedSource.matchAll(
+      new RegExp(`<${escapedTagName}\\b[^>]*>([\\s\\S]*?)<\\/${escapedTagName}>`, 'gi')
+    );
+    for (const matched of matchedList) {
+      const value = unwrapXmlValue(String(matched?.[1] || ''));
+      if (value) {
+        values.push(value);
+      }
+    }
+  }
+  return values;
+};
+
+const parseTagAttributes = (tagText: string): Record<string, string> => {
+  const attrs: Record<string, string> = {};
+  const normalized = String(tagText || '');
+  const attrMatched = normalized.matchAll(/([a-zA-Z_:][\w:.-]*)\s*=\s*(["'])([\s\S]*?)\2/g);
+  for (const item of attrMatched) {
+    const key = String(item[1] || '').trim();
+    const value = unwrapXmlValue(String(item[3] || '')).trim();
+    if (key && value) {
+      attrs[key] = value;
+    }
+  }
+  return attrs;
+};
+
+const getFirstTagAttributes = (source: string, tagNames: string[]): Record<string, string> => {
+  const normalizedSource = String(source || '');
+  for (const tagName of tagNames) {
+    const escapedTagName = tagName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const matched = normalizedSource.match(new RegExp(`<${escapedTagName}\\b([\\s\\S]*?)\\/?>`, 'i'));
+    if (!matched) {
+      continue;
+    }
+    const attrs = parseTagAttributes(String(matched[0] || ''));
+    if (Object.keys(attrs).length > 0) {
+      return attrs;
+    }
+  }
+  return {};
+};
+
+const normalizeInt = (value: string): number | undefined => {
+  const parsed = Number(String(value || '').trim());
+  if (!Number.isFinite(parsed)) {
+    return undefined;
+  }
+  const normalized = Math.max(0, Math.round(parsed));
+  return normalized;
+};
+
+const normalizeDoi = (value: string): string => {
+  const text = String(value || '').trim();
+  if (!text) {
+    return '';
+  }
+  return /^10\.\S+\/\S+$/i.test(text) ? text : '';
+};
+
 const getAtomEntryLink = (source: string): string => {
   const linkTags = source.match(/<link\b[\s\S]*?>/gi) || [];
 
@@ -109,6 +174,28 @@ const getAtomEntryLink = (source: string): string => {
   return getTagText(source, ['link']);
 };
 
+const getAtomEnclosure = (
+  source: string
+): {
+  enclosureUrl?: string;
+  enclosureLength?: number;
+  enclosureType?: string;
+} => {
+  const linkTags = source.match(/<link\b[\s\S]*?>/gi) || [];
+  for (const tagText of linkTags) {
+    const attrs = parseTagAttributes(tagText);
+    if (String(attrs.rel || '').toLowerCase() !== 'enclosure') {
+      continue;
+    }
+    return {
+      enclosureUrl: attrs.href || undefined,
+      enclosureLength: normalizeInt(attrs.length || ''),
+      enclosureType: attrs.type || undefined,
+    };
+  }
+  return {};
+};
+
 const extractImageUrls = (html: string): string[] => {
   const urls = new Set<string>();
   const pattern = /<img\b[^>]*\bsrc\s*=\s*(["'])(.*?)\1/gi;
@@ -129,6 +216,53 @@ const extractImageUrls = (html: string): string[] => {
   return Array.from(urls);
 };
 
+const getCategories = (source: string): string[] => {
+  const categories = new Set<string>();
+  getTagTexts(source, ['category']).forEach(item => {
+    const normalized = item.trim();
+    if (normalized) {
+      categories.add(normalized);
+    }
+  });
+  const categoryTags = source.match(/<category\b[\s\S]*?\/?>/gi) || [];
+  categoryTags.forEach(tagText => {
+    const attrs = parseTagAttributes(tagText);
+    const term = String(attrs.term || '').trim();
+    if (term) {
+      categories.add(term);
+    }
+  });
+  return Array.from(categories);
+};
+
+const getEnclosure = (
+  source: string
+): {
+  enclosureUrl?: string;
+  enclosureLength?: number;
+  enclosureType?: string;
+} => {
+  const attrs = getFirstTagAttributes(source, ['enclosure']);
+  return {
+    enclosureUrl: attrs.url || undefined,
+    enclosureLength: normalizeInt(attrs.length || ''),
+    enclosureType: attrs.type || undefined,
+  };
+};
+
+const getMedia = (source: string): Record<string, unknown> | undefined => {
+  const mediaContent = getFirstTagAttributes(source, ['media:content']);
+  const mediaThumbnail = getFirstTagAttributes(source, ['media:thumbnail']);
+  const payload: Record<string, unknown> = {};
+  if (Object.keys(mediaContent).length > 0) {
+    payload.content = mediaContent;
+  }
+  if (Object.keys(mediaThumbnail).length > 0) {
+    payload.thumbnail = mediaThumbnail;
+  }
+  return Object.keys(payload).length > 0 ? payload : undefined;
+};
+
 const toRssItem = (source: string, index: number): RssFeedItem | null => {
   const title = getTagText(source, ['title']) || `未命名条目 #${index + 1}`;
   const link = getTagText(source, ['link', 'guid']);
@@ -137,6 +271,15 @@ const toRssItem = (source: string, index: number): RssFeedItem | null => {
   const description = stripHtml(descriptionHtml);
   const author = getTagText(source, ['author', 'dc:creator']);
   const publishedAt = getTagText(source, ['pubDate', 'published', 'updated']);
+  const guid = getTagText(source, ['guid']);
+  const category = getCategories(source);
+  const updated = getTagText(source, ['updated']);
+  const enclosure = getEnclosure(source);
+  const comments = normalizeInt(getTagText(source, ['slash:comments']));
+  const upvotes = normalizeInt(getTagText(source, ['upvotes', 'activity:upvotes']));
+  const downvotes = normalizeInt(getTagText(source, ['downvotes', 'activity:downvotes']));
+  const doi = normalizeDoi(getTagText(source, ['doi', 'dc:identifier']));
+  const media = getMedia(source);
   const id = getTagText(source, ['guid']) || link || `${title}-${index}`;
 
   if (!title && !link && !description) {
@@ -152,6 +295,17 @@ const toRssItem = (source: string, index: number): RssFeedItem | null => {
     imageUrls: extractImageUrls(descriptionHtml),
     author,
     publishedAt,
+    guid: guid || undefined,
+    category,
+    updated: updated || undefined,
+    enclosureUrl: enclosure.enclosureUrl,
+    enclosureLength: enclosure.enclosureLength,
+    enclosureType: enclosure.enclosureType,
+    comments,
+    upvotes,
+    downvotes,
+    media,
+    doi: doi || undefined,
   };
 };
 
@@ -163,6 +317,14 @@ const toAtomItem = (source: string, index: number): RssFeedItem | null => {
   const description = stripHtml(descriptionHtml);
   const author = getTagText(source, ['author', 'name']);
   const publishedAt = getTagText(source, ['published', 'updated']);
+  const updated = getTagText(source, ['updated']);
+  const category = getCategories(source);
+  const enclosure = getAtomEnclosure(source);
+  const comments = normalizeInt(getTagText(source, ['comments']));
+  const upvotes = normalizeInt(getTagText(source, ['upvotes', 'activity:upvotes']));
+  const downvotes = normalizeInt(getTagText(source, ['downvotes', 'activity:downvotes']));
+  const doi = normalizeDoi(getTagText(source, ['doi']));
+  const media = getMedia(source);
   const id = getTagText(source, ['id']) || link || `${title}-${index}`;
 
   if (!title && !link && !description) {
@@ -178,6 +340,17 @@ const toAtomItem = (source: string, index: number): RssFeedItem | null => {
     imageUrls: extractImageUrls(descriptionHtml),
     author,
     publishedAt,
+    guid: id || undefined,
+    category,
+    updated: updated || undefined,
+    enclosureUrl: enclosure.enclosureUrl,
+    enclosureLength: enclosure.enclosureLength,
+    enclosureType: enclosure.enclosureType,
+    comments,
+    upvotes,
+    downvotes,
+    media,
+    doi: doi || undefined,
   };
 };
 

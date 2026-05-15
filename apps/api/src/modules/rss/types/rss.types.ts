@@ -14,6 +14,17 @@ export interface RssFeedItem {
   imageUrls: string[];
   author: string;
   publishedAt: string;
+  guid?: string;
+  category?: string[];
+  updated?: string;
+  enclosureUrl?: string;
+  enclosureLength?: number;
+  enclosureType?: string;
+  comments?: number;
+  upvotes?: number;
+  downvotes?: number;
+  media?: Record<string, unknown>;
+  doi?: string;
 }
 
 export interface RssFeedPayload {

@@ -222,6 +222,35 @@ function RssApp() {
           {activeItem.author ? ` · ${activeItem.author}` : ''}
           {activeItem.feedTitle ? ` · ${activeItem.feedTitle}` : ''}
         </div>
+        {activeItem.guid ? <div className={styles.detailMeta}>GUID: {activeItem.guid}</div> : null}
+        {activeItem.updated ? (
+          <div className={styles.detailMeta}>更新时间: {formatFeedDate(activeItem.updated)}</div>
+        ) : null}
+        {activeItem.category && activeItem.category.length > 0 ? (
+          <div className={styles.detailMeta}>分类: {activeItem.category.join(' / ')}</div>
+        ) : null}
+        {activeItem.doi ? <div className={styles.detailMeta}>DOI: {activeItem.doi}</div> : null}
+        {typeof activeItem.comments === 'number' ||
+        typeof activeItem.upvotes === 'number' ||
+        typeof activeItem.downvotes === 'number' ? (
+          <div className={styles.detailMeta}>
+            {typeof activeItem.comments === 'number' ? `评论 ${activeItem.comments}` : ''}
+            {typeof activeItem.upvotes === 'number'
+              ? `${typeof activeItem.comments === 'number' ? ' · ' : ''}赞 ${activeItem.upvotes}`
+              : ''}
+            {typeof activeItem.downvotes === 'number'
+              ? `${typeof activeItem.comments === 'number' || typeof activeItem.upvotes === 'number' ? ' · ' : ''}踩 ${
+                  activeItem.downvotes
+                }`
+              : ''}
+          </div>
+        ) : null}
+        {activeItem.enclosureUrl ? (
+          <div className={styles.detailMeta}>
+            附件: {activeItem.enclosureType || 'unknown'}
+            {typeof activeItem.enclosureLength === 'number' ? ` · ${activeItem.enclosureLength} bytes` : ''}
+          </div>
+        ) : null}
         <div className={styles.detailBody}>
           {activeItem.descriptionHtml ? (
             <div dangerouslySetInnerHTML={{ __html: activeItem.descriptionHtml }} />
@@ -233,6 +262,11 @@ function RssApp() {
           {activeItem.link ? (
             <Button type="primary" theme="solid" onClick={() => window.open(activeItem.link, '_blank')}>
               打开原文
+            </Button>
+          ) : null}
+          {activeItem.enclosureUrl ? (
+            <Button theme="light" onClick={() => window.open(activeItem.enclosureUrl, '_blank')}>
+              打开附件
             </Button>
           ) : null}
           <Button theme="borderless" onClick={() => navigate('/setting/config/rsshub')}>
