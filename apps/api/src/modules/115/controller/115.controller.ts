@@ -15,8 +15,19 @@ import { resSuccess } from '../../../utils/response';
 import { badRequest } from '../../shared/http-handler';
 import { get115FileData, get115FileListData } from '../service/file.service';
 import { getFile115ByPc } from '../service/file-db.service';
-import { getLocalRandomPicCacheByPc, getRandomCacheConfig } from '../service/picture/picture-cache-random-core';
+import { getLocalRandomPicCacheByPc } from '../service/picture/picture-cache-random-core';
 import { ensureRandomLocalPicCacheByFile } from '../service/picture/picture-cache-fs-folder';
+import {
+  buildRemoteEndpointUrl,
+  buildRemoteParentRandomEndpoint,
+  buildRemotePicPathEndpoint,
+  getConfiguredRandomPicOptions,
+  getRemoteRandomPicMeta,
+  isEnabledQueryFlag,
+  isSelfReferencingRandomPicEndpoint,
+  parseRemotePicPathPayload,
+  toRandomPicResponseUrl,
+} from './115-random-proxy';
 import {
   clear115PicData,
   getLiked115PicListData,
@@ -34,151 +45,6 @@ import {
 import { get115QrCodeData, get115QrCodeStatusData } from '../service/qrcode.service';
 import { exit115AndClearCookie, login115WithAppAndSaveCookie } from '../service/session.service';
 import { get115UserInfoData } from '../service/user.service';
-
-const isEnabledQueryFlag = (value: unknown) => {
-  const text = String(value || '')
-    .trim()
-    .toLowerCase();
-  return text === '1' || text === 'true' || text === 'yes' || text === 'on';
-};
-
-const toRandomPicResponseUrl = (rawUrl: string, pc: string, preferProxy: boolean) => {
-  if (!preferProxy) {
-    return rawUrl;
-  }
-  if (rawUrl.startsWith('/api/115/pic/')) {
-    return rawUrl;
-  }
-  return `/api/115/pic/cache/${encodeURIComponent(pc)}`;
-};
-
-const toAbsoluteRemoteUrl = (value: string) => {
-  const text = String(value || '').trim();
-  if (!/^https?:\/\//i.test(text)) {
-    return '';
-  }
-  try {
-    const url = new URL(text);
-    const normalizedPath = String(url.pathname || '').trim();
-    if (!normalizedPath || normalizedPath === '/') {
-      url.pathname = '/api/115/pic';
-    }
-    return url.toString();
-  } catch {
-    return '';
-  }
-};
-
-const buildRemoteEndpointUrl = (endpoint: string, params: Record<string, string | undefined>) => {
-  const url = new URL(endpoint);
-  Object.entries(params).forEach(([key, value]) => {
-    if (value === undefined) {
-      return;
-    }
-    url.searchParams.set(key, value);
-  });
-  return url.toString();
-};
-
-const buildRemoteParentRandomEndpoint = (endpoint: string) => {
-  const url = new URL(endpoint);
-  if (url.pathname.endsWith('/pic/parent-random')) {
-    return url.toString();
-  }
-  if (url.pathname.endsWith('/pic')) {
-    url.pathname = `${url.pathname}/parent-random`;
-  } else if (url.pathname.endsWith('/pic/')) {
-    url.pathname = `${url.pathname}parent-random`;
-  }
-  return url.toString();
-};
-
-const isSelfReferencingRandomPicEndpoint = (
-  ctx: {
-    request?: {
-      headers?: Record<string, unknown>;
-    };
-  },
-  endpoint: string
-) => {
-  const host = String(ctx.request?.headers?.host || '')
-    .trim()
-    .toLowerCase();
-  if (!host) {
-    return false;
-  }
-  try {
-    const url = new URL(endpoint);
-    const endpointHost = String(url.host || '')
-      .trim()
-      .toLowerCase();
-    const endpointPath = String(url.pathname || '').trim();
-    if (!endpointHost || endpointHost !== host) {
-      return false;
-    }
-    return endpointPath === '/api/115/pic' || endpointPath === '/api/115/pic/parent-random';
-  } catch {
-    return false;
-  }
-};
-
-const parseRemoteRandomPicPayload = (payload: unknown) => {
-  const wrapped = payload as { data?: unknown } | undefined;
-  const data = wrapped && typeof wrapped === 'object' && 'data' in wrapped ? wrapped.data : payload;
-  const item = (data || {}) as Record<string, unknown>;
-  const url = String(item.url || '').trim();
-  if (!url) {
-    return null;
-  }
-  const fileName = String(item.fileName || '').trim() || 'unknown.jpg';
-  const cid = String(item.cid || '').trim();
-  const pc = String(item.pc || '').trim();
-  const path = String(item.path || '').trim();
-  const parentPath = String(item.parentPath || '').trim();
-  const liked = Boolean(item.liked);
-  const noticeText = String(item.notice || '').trim();
-  return {
-    url,
-    fileName,
-    cid,
-    pc,
-    path,
-    parentPath,
-    liked,
-    notice: noticeText || undefined,
-  };
-};
-
-const getConfiguredRandomPicOptions = async () => {
-  const config = await getRandomCacheConfig();
-  return {
-    endpoint: toAbsoluteRemoteUrl(config.randomPicEndpoint || ''),
-    localProxyEnabled: Boolean(config.localProxyEnabled),
-  };
-};
-
-const getRemoteRandomPicMeta = async (endpoint: string, userAgent: string) => {
-  const result = await request.get(endpoint, {
-    headers: {
-      'User-Agent': userAgent,
-    },
-  });
-  const parsed = parseRemoteRandomPicPayload(result.data);
-  if (!parsed) {
-    badRequest('随机图片端点返回数据无效');
-    return {
-      url: '',
-      fileName: 'unknown.jpg',
-      cid: '',
-      pc: '',
-      path: '',
-      parentPath: '',
-      liked: false,
-      notice: undefined,
-    };
-  }
-  return parsed;
-};
 
 const ensureLocalProxyUrlByPc = async (pc: string, userAgent: string) => {
   const normalizedPc = String(pc || '').trim();
@@ -241,7 +107,10 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
     const remoteMeta = await getRemoteRandomPicMeta(remoteJsonUrl, String(ua || ''));
 
     if (isJson) {
-      return remoteMeta;
+      return {
+        ...remoteMeta,
+        remoteSource: true,
+      };
     }
 
     const setuHtml = `${PATH.root}/src/views/setu.ejs`;
@@ -301,6 +170,7 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
       parentPath,
       liked,
       notice,
+      remoteSource: false,
     };
   }
 
@@ -335,7 +205,11 @@ export const getRandom115PicByParent: MyMiddleware = async ctx => {
       pc,
       proxy: preferProxy || randomPicOptions.localProxyEnabled ? '1' : undefined,
     });
-    return getRemoteRandomPicMeta(remoteParentUrl, String(ua || ''));
+    const remoteMeta = await getRemoteRandomPicMeta(remoteParentUrl, String(ua || ''));
+    return {
+      ...remoteMeta,
+      remoteSource: true,
+    };
   }
 
   const result = await getRandom115PicFromParentMeta({
@@ -349,11 +223,33 @@ export const getRandom115PicByParent: MyMiddleware = async ctx => {
   return {
     ...result,
     url: responseUrl,
+    remoteSource: false,
   };
 };
 
 export const get115PicPathByPc: MyMiddleware = async ctx => {
   const pc = String(ctx.query?.pc || '');
+  const randomPicOptions = await getConfiguredRandomPicOptions();
+  const remoteEndpoint = randomPicOptions.endpoint;
+  if (remoteEndpoint) {
+    if (isSelfReferencingRandomPicEndpoint(ctx, remoteEndpoint)) {
+      badRequest('随机图片端点不能指向当前服务随机图接口');
+    }
+    const remotePathEndpoint = buildRemotePicPathEndpoint(remoteEndpoint);
+    const remotePathUrl = buildRemoteEndpointUrl(remotePathEndpoint, {
+      pc,
+    });
+    const remoteResult = await request.get(remotePathUrl, {
+      headers: {
+        'User-Agent': ctx.request.headers['user-agent'],
+      },
+    });
+    const parsed = parseRemotePicPathPayload(remoteResult.data);
+    if (!parsed) {
+      badRequest('随机图片端点路径返回无效');
+    }
+    return parsed as NonNullable<typeof parsed>;
+  }
   return get115PicPathByPcData(pc);
 };
 

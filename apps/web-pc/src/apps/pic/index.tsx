@@ -14,6 +14,7 @@ interface PicMeta {
   pc: string;
   fileName: string;
   liked: boolean;
+  remoteSource: boolean;
 }
 
 function PicApp() {
@@ -32,6 +33,7 @@ function PicApp() {
         pc: data.pc,
         fileName: data.fileName || '',
         liked: Boolean(data.liked),
+        remoteSource: Boolean(data.remoteSource),
       });
       setPicPath(data.path || '');
 
@@ -144,7 +146,7 @@ function PicApp() {
   }, []);
 
   useEffect(() => {
-    if (!isAdmin || !picMeta?.pc) {
+    if (!isAdmin || !picMeta?.pc || picPath) {
       return;
     }
 
@@ -164,7 +166,7 @@ function PicApp() {
     return () => {
       cancelled = true;
     };
-  }, [isAdmin, picMeta?.pc, picMeta?.cid, picMeta?.fileName]);
+  }, [isAdmin, picMeta?.pc, picMeta?.cid, picMeta?.fileName, picPath]);
 
   if (loading) {
     return <Loading type="page" />;
@@ -212,7 +214,7 @@ function PicApp() {
               </Button>
             </span>
           )}
-          {user ? (
+          {user && !picMeta.remoteSource ? (
             <Button theme="solid" type="primary" loading={liking} onClick={onLike}>
               {picMeta.liked ? '取消喜欢' : '喜欢'}
             </Button>

@@ -70,6 +70,7 @@ export interface Random115PicResponse {
   parentPath: string;
   liked: boolean;
   notice?: string;
+  remoteSource?: boolean;
 }
 
 export interface PicPathByPcResponse {
