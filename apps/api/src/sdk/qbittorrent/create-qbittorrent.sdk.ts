@@ -1,6 +1,6 @@
 import FormData from 'form-data';
 import type { AxiosError, AxiosRequestConfig } from 'axios';
-import request, { getCookieValue } from '../../utils/request';
+import request from '../../utils/request';
 
 export interface CreateQbittorrentSdkOptions {
   apiHost: string;
@@ -23,6 +23,7 @@ export interface QbittorrentAddTorrentParams {
   category?: string;
   tags?: string[];
   paused?: boolean;
+  stopped?: boolean;
   skipChecking?: boolean;
   savepath?: string;
 }
@@ -46,7 +47,7 @@ export function createQbittorrentSdk(options: CreateQbittorrentSdkOptions) {
   const { apiHost, username, password } = options;
   const normalizedHost = apiHost.replace(/\/+$/, '');
   const hostOrigin = new URL(normalizedHost).origin;
-  let cookie: string | null = null;
+  let authCookie: { name: string; value: string } | null = null;
 
   const toFormData = (data: Record<string, string | number | boolean>) => {
     return new URLSearchParams(
@@ -75,17 +76,37 @@ export function createQbittorrentSdk(options: CreateQbittorrentSdkOptions) {
     return values.join('|');
   };
 
-  const getSidFromHeaders = (setCookieHeader: string | string[] | undefined) => {
-    if (Array.isArray(setCookieHeader)) {
-      for (const item of setCookieHeader) {
-        const sid = getCookieValue(item, 'SID');
-        if (sid) {
-          return sid;
-        }
-      }
+  const parseCookieFromHeader = (cookieHeader: string) => {
+    const target = cookieHeader.split(';', 1)[0];
+    const index = target.indexOf('=');
+    if (index <= 0) {
       return null;
     }
-    return setCookieHeader ? getCookieValue(setCookieHeader, 'SID') : null;
+    const name = target.slice(0, index).trim();
+    const value = target.slice(index + 1).trim();
+    if (!name || !value) {
+      return null;
+    }
+    return { name, value };
+  };
+
+  const getAuthCookieFromHeaders = (setCookieHeader: string | string[] | undefined) => {
+    const items = Array.isArray(setCookieHeader) ? setCookieHeader : setCookieHeader ? [setCookieHeader] : [];
+    const parsed = items
+      .map(item => parseCookieFromHeader(item))
+      .filter((item): item is { name: string; value: string } => Boolean(item));
+
+    const qbtSessionCookie = parsed.find(item => item.name.startsWith('QBT_SID_'));
+    if (qbtSessionCookie) {
+      return qbtSessionCookie;
+    }
+
+    const legacySessionCookie = parsed.find(item => item.name === 'SID');
+    if (legacySessionCookie) {
+      return legacySessionCookie;
+    }
+
+    return null;
   };
 
   const login = async () => {
@@ -103,9 +124,9 @@ export function createQbittorrentSdk(options: CreateQbittorrentSdkOptions) {
         },
       }
     );
-    cookie = getSidFromHeaders(result.headers['set-cookie']);
-    if (!cookie) {
-      throw new Error('qBittorrent 登录失败，未获取到 SID');
+    authCookie = getAuthCookieFromHeaders(result.headers['set-cookie']);
+    if (!authCookie) {
+      throw new Error('qBittorrent 登录失败，未获取到会话 Cookie');
     }
   };
 
@@ -115,8 +136,11 @@ export function createQbittorrentSdk(options: CreateQbittorrentSdkOptions) {
   };
 
   const qbitRequest = async <T = unknown>(params: AxiosRequestConfig<unknown>, retryOnAuthError = true) => {
-    if (!cookie) {
+    if (!authCookie) {
       await login();
+    }
+    if (!authCookie) {
+      throw new Error('qBittorrent 鉴权失败，未获取到会话 Cookie');
     }
 
     try {
@@ -124,7 +148,7 @@ export function createQbittorrentSdk(options: CreateQbittorrentSdkOptions) {
         ...params,
         baseURL: normalizedHost,
         headers: {
-          Cookie: `SID=${cookie}`,
+          Cookie: `${authCookie.name}=${authCookie.value}`,
           Referer: normalizedHost,
           Origin: hostOrigin,
           ...(params.data ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
@@ -184,8 +208,10 @@ export function createQbittorrentSdk(options: CreateQbittorrentSdkOptions) {
     if (tags.length > 0) {
       form.append('tags', tags.join(','));
     }
-    if (params.paused !== undefined) {
-      form.append('paused', String(params.paused));
+    const stopped = params.stopped ?? params.paused;
+    if (stopped !== undefined) {
+      form.append('paused', String(stopped));
+      form.append('stopped', String(stopped));
     }
     if (params.skipChecking !== undefined) {
       form.append('skip_checking', String(params.skipChecking));
