@@ -10,6 +10,7 @@ import { getFile115ByPc, getFile115CachedParentCidSetByRootCid } from '../file-d
 import { getCloud115Sdk } from '../sdk.service';
 import {
   type Cloud115FileListItem,
+  getLocalRandomPicCacheByPc,
   type RandomLocalCacheItem,
   type RandomMemoryCacheItem,
   DEFAULT_FILE_NAME,
@@ -18,7 +19,6 @@ import {
 } from './picture-cache-random-core';
 import {
   getCacheQueueRunner,
-  getLocalPicCacheByFile,
   getPicCacheFolders,
   nowIso,
   parse115FileMeta,
@@ -79,24 +79,19 @@ export const buildRandomPicMetaFromFile = async (
   userAgent: string,
   notice?: string
 ): Promise<RandomPicMeta> => {
-  const localCache = await getLocalPicCacheByFile({
-    pc: file.pc,
-    localCacheFileName: file.localCacheFileName,
-  });
+  const localCache = await getLocalRandomPicCacheByPc(file.pc);
 
   if (localCache) {
-    const fileName = localCache.fileName || (file.fullPath ? path.posix.basename(file.fullPath) : DEFAULT_FILE_NAME);
-
     return {
       url: localCache.url,
-      fileName,
+      fileName: localCache.fileName || (file.fullPath ? path.posix.basename(file.fullPath) : DEFAULT_FILE_NAME),
       cid: file.cid,
       pc: file.pc,
       path: file.fullPath || '',
       parentPath: file.fullPath ? path.posix.dirname(file.fullPath) : '',
       liked: Boolean(file.isLiked),
       localCacheFilePath: localCache.filePath,
-      localCacheMimeType: localCache.mimeType,
+      localCacheMimeType: typeof localCache.mimeType === 'string' ? localCache.mimeType : DEFAULT_MIME_TYPE,
       notice,
     };
   }

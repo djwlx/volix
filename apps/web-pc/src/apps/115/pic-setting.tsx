@@ -17,6 +17,14 @@ interface RandomCacheFormValues {
   localMaxSizeMb: number;
   randomNoRepeatWindowMinutes: number;
   randomNoRepeatMaxCount: number;
+  randomPicEndpoint: string;
+  localProxyEnabled: boolean;
+}
+
+interface RandomPicEndpointItem {
+  key: string;
+  label: string;
+  url: string;
 }
 
 const RANDOM_CACHE_FIELDS: Array<keyof RandomCacheFormValues> = [
@@ -25,6 +33,8 @@ const RANDOM_CACHE_FIELDS: Array<keyof RandomCacheFormValues> = [
   'localMaxSizeMb',
   'randomNoRepeatWindowMinutes',
   'randomNoRepeatMaxCount',
+  'randomPicEndpoint',
+  'localProxyEnabled',
 ];
 
 const DEFAULT_RANDOM_CACHE_FORM_VALUES: RandomCacheFormValues = {
@@ -33,7 +43,11 @@ const DEFAULT_RANDOM_CACHE_FORM_VALUES: RandomCacheFormValues = {
   localMaxSizeMb: 2048,
   randomNoRepeatWindowMinutes: 5,
   randomNoRepeatMaxCount: 50,
+  randomPicEndpoint: '',
+  localProxyEnabled: false,
 };
+
+const RANDOM_CACHE_FIELD_WIDTH = 430;
 
 export function PicSetting() {
   const [count, setCount] = useState(0);
@@ -49,6 +63,28 @@ export function PicSetting() {
     return RANDOM_CACHE_FIELDS.some(field => Boolean(randomCacheFormApiRef.current?.getTouched(field)));
   };
 
+  const randomPicEndpointList = useMemo<RandomPicEndpointItem[]>(() => {
+    const origin = typeof window === 'undefined' ? '' : window.location.origin;
+    const withOrigin = (path: string) => `${origin}${path}`;
+    return [
+      {
+        key: 'json',
+        label: '随机图片 JSON',
+        url: withOrigin('/api/115/pic?mode=json'),
+      },
+      {
+        key: 'json-proxy',
+        label: '随机图片 JSON（本地中转）',
+        url: withOrigin('/api/115/pic?mode=json&proxy=1'),
+      },
+      {
+        key: 'direct',
+        label: '随机图片直出',
+        url: withOrigin('/api/115/pic?mode=direct'),
+      },
+    ];
+  }, []);
+
   const syncRandomCacheFormValues = (
     randomCacheConfig:
       | {
@@ -59,6 +95,8 @@ export function PicSetting() {
           localMaxSizeMb?: number;
           randomNoRepeatWindowMinutes?: number;
           randomNoRepeatMaxCount?: number;
+          randomPicEndpoint?: string;
+          localProxyEnabled?: boolean;
         }
       | null
       | undefined,
@@ -73,6 +111,12 @@ export function PicSetting() {
       ),
       randomNoRepeatMaxCount: Number(
         randomCacheConfig?.randomNoRepeatMaxCount ?? DEFAULT_RANDOM_CACHE_FORM_VALUES.randomNoRepeatMaxCount
+      ),
+      randomPicEndpoint: String(
+        randomCacheConfig?.randomPicEndpoint ?? DEFAULT_RANDOM_CACHE_FORM_VALUES.randomPicEndpoint
+      ).trim(),
+      localProxyEnabled: Boolean(
+        randomCacheConfig?.localProxyEnabled ?? DEFAULT_RANDOM_CACHE_FORM_VALUES.localProxyEnabled
       ),
     };
     randomCacheFormApiRef.current?.setValues(nextValues);
@@ -154,6 +198,8 @@ export function PicSetting() {
       localMaxSizeMb: Number(values.localMaxSizeMb || 100),
       randomNoRepeatWindowMinutes: Number(values.randomNoRepeatWindowMinutes || 0),
       randomNoRepeatMaxCount: Number(values.randomNoRepeatMaxCount || 50),
+      randomPicEndpoint: String(values.randomPicEndpoint || '').trim(),
+      localProxyEnabled: Boolean(values.localProxyEnabled),
     };
     const sum = payload.localWeight + payload.cloudWeight;
     if (sum !== 100) {
@@ -171,6 +217,8 @@ export function PicSetting() {
         localMaxSizeMb: payload.localMaxSizeMb,
         randomNoRepeatWindowMinutes: payload.randomNoRepeatWindowMinutes,
         randomNoRepeatMaxCount: payload.randomNoRepeatMaxCount,
+        randomPicEndpoint: payload.randomPicEndpoint,
+        localProxyEnabled: payload.localProxyEnabled,
       });
       await fetch(true);
       Toast.success('随机缓存配置已保存');
@@ -178,6 +226,15 @@ export function PicSetting() {
       Toast.error(getHttpErrorMessage(error, '保存随机缓存配置失败'));
     } finally {
       setSavingRandomCacheConfig(false);
+    }
+  };
+
+  const onCopyEndpoint = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      Toast.success('端点已复制');
+    } catch {
+      Toast.error('复制失败');
     }
   };
 
@@ -226,6 +283,20 @@ export function PicSetting() {
         </Popconfirm>
       </div>
       <Descriptions data={data} />
+      <Text strong>随机图片端点</Text>
+      <Space vertical spacing={8} style={{ width: '100%' }}>
+        {randomPicEndpointList.map(item => (
+          <Space key={item.key} align="center" style={{ width: '100%' }}>
+            <Text style={{ minWidth: 170 }}>{item.label}</Text>
+            <Text ellipsis style={{ flex: 1, minWidth: 0 }}>
+              {item.url}
+            </Text>
+            <Button size="small" theme="borderless" type="primary" onClick={() => onCopyEndpoint(item.url)}>
+              复制
+            </Button>
+          </Space>
+        ))}
+      </Space>
       <Text strong>随机图片本地缓存</Text>
       <Form<RandomCacheFormValues>
         labelPosition="top"
@@ -240,17 +311,56 @@ export function PicSetting() {
 
           return (
             <Space vertical spacing={12} style={{ width: '100%' }}>
-              <Form.InputNumber field="localWeight" label="本地文件来源权重（%）" min={0} max={100} />
-              <Form.InputNumber field="cloudWeight" label="115云来源权重（%）" min={0} max={100} />
+              <Form.InputNumber
+                field="localWeight"
+                label="本地文件来源权重（%）"
+                min={0}
+                max={100}
+                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+              />
+              <Form.InputNumber
+                field="cloudWeight"
+                label="115云来源权重（%）"
+                min={0}
+                max={100}
+                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+              />
               <Text type={totalWeight === 100 ? 'secondary' : 'danger'}>
                 当前权重总和：{totalWeight}（必须等于100）
               </Text>
-              <Form.InputNumber field="localMaxSizeMb" label="本地缓存上限（MB）" min={100} max={102400} />
-              <Form.InputNumber field="randomNoRepeatWindowMinutes" label="随机去重窗口（分钟）" min={0} max={1440} />
+              <Form.InputNumber
+                field="localMaxSizeMb"
+                label="本地缓存上限（MB）"
+                min={100}
+                max={102400}
+                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+              />
+              <Form.Input
+                field="randomPicEndpoint"
+                label="随机图片端点（配置后优先使用）"
+                placeholder="https://your-domain/api/115/pic?mode=json&proxy=1"
+                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+              />
+              <div style={{ width: RANDOM_CACHE_FIELD_WIDTH }}>
+                <Form.Switch field="localProxyEnabled" label="启用本地代理（随机图返回前强制本地下载）" />
+              </div>
+              <Form.InputNumber
+                field="randomNoRepeatWindowMinutes"
+                label="随机去重窗口（分钟）"
+                min={0}
+                max={1440}
+                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+              />
               <Text type="tertiary" size="small">
                 设为 0 表示关闭不重复限制
               </Text>
-              <Form.InputNumber field="randomNoRepeatMaxCount" label="随机去重次数上限" min={1} max={10000} />
+              <Form.InputNumber
+                field="randomNoRepeatMaxCount"
+                label="随机去重次数上限"
+                min={1}
+                max={10000}
+                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+              />
               <Button
                 type="primary"
                 loading={savingRandomCacheConfig}

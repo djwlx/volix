@@ -17,6 +17,7 @@ import {
   getFile115CachedFolderPathList,
   getFile115CountByCid,
   getFile115Len,
+  getLikedFile115Count,
   getFile115RootCidListByCidList,
   getFile115RootCidListByFolderPathList,
 } from '../file-db.service';
@@ -27,7 +28,6 @@ import {
   setRandomCacheConfig,
 } from './picture-cache-random-core';
 import {
-  getLocalPicCacheFileList,
   getPicCacheFolders,
   normalizeFolderPaths,
   normalizePaths,
@@ -45,7 +45,7 @@ export async function get115PicInfoData() {
     count,
     cachedCids,
     cachedFolderPaths,
-    localCacheList,
+    likedCount,
     randomCacheConfig,
     randomCacheList,
   ] = await Promise.all([
@@ -55,7 +55,7 @@ export async function get115PicInfoData() {
     getFile115Len(),
     getFile115CachedCidList(),
     getFile115CachedFolderPathList(),
-    getLocalPicCacheFileList(),
+    getLikedFile115Count(),
     getRandomCacheConfig(),
     getLocalRandomPicCacheFileList(),
   ]);
@@ -63,7 +63,7 @@ export async function get115PicInfoData() {
 
   return {
     count,
-    likedCount: localCacheList.length,
+    likedCount,
     folders: folders.map(item => ({
       ...item,
       count: cidCountMap[item.cid] || 0,

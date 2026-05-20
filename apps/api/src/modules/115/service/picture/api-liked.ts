@@ -4,7 +4,13 @@ import mime from 'mime-types';
 import { badRequest } from '../../../shared/http-handler';
 import type { Cloud115DbFileItem } from '../../types/115.types';
 import { get115FileData } from '../file.service';
-import { getFile115ByPc, getFile115PathByPc, setFile115LikedByPc } from '../file-db.service';
+import {
+  getFile115ByPc,
+  getFile115PathByPc,
+  getLikedFile115Count,
+  getLikedFile115List,
+  setFile115LikedByPc,
+} from '../file-db.service';
 import {
   DEFAULT_115_DOWNLOAD_UA,
   DEFAULT_FILE_NAME,
@@ -13,13 +19,11 @@ import {
   sanitizeCacheFileName,
 } from './picture-cache-random-core';
 import {
-  clearLocalPicCacheByPc,
   clearLocalPicCacheByPcFromFs,
   ensureLocalPicCacheByFileAsync,
   getLocalPicCacheByFile,
   getLocalPicCacheByPc,
   getLocalPicCacheByPcFromFs,
-  getLocalPicCacheFileList,
   parse115FileMeta,
 } from './picture-cache-fs-folder';
 
@@ -61,9 +65,6 @@ export async function like115PicData(params: Like115PicParams, userAgent: string
     if (!localCache) {
       void ensureLocalPicCacheByFileAsync(safeFile, userAgent);
     }
-  } else {
-    void clearLocalPicCacheByPc(pc);
-    void clearLocalPicCacheByPcFromFs(pc);
   }
 
   return {
@@ -80,19 +81,25 @@ export async function like115PicData(params: Like115PicParams, userAgent: string
 export async function getLiked115PicListData(params?: { offset?: number; pageSize?: number }, _userAgent = '') {
   const offset = Math.max(0, Number(params?.offset || 0));
   const pageSize = Math.min(200, Math.max(1, Number(params?.pageSize || 50)));
-  const localCacheList = (await getLocalPicCacheFileList()).sort((a, b) => b.updatedAtMs - a.updatedAtMs);
-  const count = localCacheList.length;
-  const pageData = localCacheList.slice(offset, offset + pageSize);
-  const data = pageData.map(item => ({
-    pc: item.pc,
-    cid: '',
-    path: '',
-    parentPath: '',
-    fileName: item.fileName,
-    liked: true,
-    cached: true,
-    url: item.url,
-  }));
+  const [count, likedList] = await Promise.all([getLikedFile115Count(), getLikedFile115List(offset, pageSize)]);
+  const data = await Promise.all(
+    likedList.map(async item => {
+      const cache = await getLocalPicCacheByFile({
+        pc: item.pc,
+        localCacheFileName: item.localCacheFileName,
+      });
+      return {
+        pc: item.pc,
+        cid: item.cid,
+        path: item.fullPath || '',
+        parentPath: item.fullPath ? path.posix.dirname(item.fullPath) : '',
+        fileName: cache?.fileName || (item.fullPath ? path.posix.basename(item.fullPath) : DEFAULT_FILE_NAME),
+        liked: true,
+        cached: Boolean(cache),
+        url: cache?.url || '',
+      };
+    })
+  );
 
   return {
     count,

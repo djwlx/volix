@@ -225,9 +225,6 @@ export const getAllFile115LocalCacheFileNameList = async () => {
     where: {
       [Op.and]: [
         {
-          isLiked: false,
-        },
-        {
           localCacheFileName: {
             [Op.not]: null,
           },
@@ -254,9 +251,6 @@ export const getFile115LocalCacheFileNameListByCidList = async (cidList: string[
     attributes: ['localCacheFileName'],
     where: {
       [Op.and]: [
-        {
-          isLiked: false,
-        },
         {
           [Op.or]: [
             {
@@ -322,9 +316,6 @@ export const getFile115LocalCacheFileNameListByFolderPathList = async (folderPat
           pc: {
             [Op.in]: targetPcList,
           },
-        },
-        {
-          isLiked: false,
         },
         {
           localCacheFileName: {

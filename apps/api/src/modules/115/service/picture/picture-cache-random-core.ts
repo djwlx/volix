@@ -14,8 +14,9 @@ export type Cloud115FileListItem = FileListDataItem & {
 };
 
 const get115ScopeDirName = () => String(getRequestActingUserId() || 'public').replace(/[^\w.-]/g, '_');
-export const getLikedPicCacheDir = () => path.join(PATH.cache, '115-liked-picture', get115ScopeDirName());
-export const getRandomPicCacheDir = () => path.join(PATH.cache, '115-random-picture', get115ScopeDirName());
+export const getFilePicCacheDir = () => path.join(PATH.cache, '115-file', get115ScopeDirName());
+export const getLikedPicCacheDir = () => getFilePicCacheDir();
+export const getRandomPicCacheDir = () => getFilePicCacheDir();
 export const getRandomPicCacheMetaFile = () => path.join(getRandomPicCacheDir(), 'meta.random-picture.json');
 export const DEFAULT_FILE_NAME = 'unknown.jpg';
 export const DEFAULT_MIME_TYPE = 'application/octet-stream';
@@ -29,6 +30,8 @@ export const DEFAULT_RANDOM_CACHE_CONFIG: PicRandomCacheConfig = {
   localMaxSizeMb: 2048,
   randomNoRepeatWindowMinutes: 5,
   randomNoRepeatMaxCount: 50,
+  randomPicEndpoint: '',
+  localProxyEnabled: false,
 };
 export const MIN_RANDOM_CACHE_SIZE_MB = 100;
 export const MAX_RANDOM_CACHE_SIZE_MB = 102400;
@@ -133,6 +136,11 @@ export const normalizeRandomCacheConfig = (input?: Partial<PicRandomCacheConfig>
     typeof safeInput?.randomNoRepeatMaxCount === 'number' && Number.isFinite(safeInput.randomNoRepeatMaxCount)
       ? safeInput.randomNoRepeatMaxCount
       : DEFAULT_RANDOM_CACHE_CONFIG.randomNoRepeatMaxCount;
+  const randomPicEndpoint =
+    typeof safeInput?.randomPicEndpoint === 'string'
+      ? safeInput.randomPicEndpoint.trim()
+      : DEFAULT_RANDOM_CACHE_CONFIG.randomPicEndpoint;
+  const localProxyEnabled = Boolean(safeInput?.localProxyEnabled);
 
   // Memory random cache is removed. Keep old payloads compatible by redistributing
   // local/cloud weights to sum 100 while forcing memory to 0.
@@ -173,6 +181,8 @@ export const normalizeRandomCacheConfig = (input?: Partial<PicRandomCacheConfig>
       MAX_RANDOM_NO_REPEAT_MAX_COUNT,
       Math.max(MIN_RANDOM_NO_REPEAT_MAX_COUNT, Math.round(randomNoRepeatMaxCountRaw))
     ),
+    randomPicEndpoint,
+    localProxyEnabled,
   };
 };
 
@@ -214,6 +224,10 @@ export const setRandomCacheConfig = async (params: SetPicRandomCacheConfigParams
       typeof params.randomNoRepeatMaxCount === 'number'
         ? params.randomNoRepeatMaxCount
         : current.randomNoRepeatMaxCount,
+    randomPicEndpoint:
+      typeof params.randomPicEndpoint === 'string' ? params.randomPicEndpoint : current.randomPicEndpoint,
+    localProxyEnabled:
+      typeof params.localProxyEnabled === 'boolean' ? params.localProxyEnabled : current.localProxyEnabled,
   });
 
   await setConfig(AppConfigEnum.picture_115_random_weights, JSON.stringify(next));

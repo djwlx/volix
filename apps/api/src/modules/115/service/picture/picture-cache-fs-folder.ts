@@ -28,8 +28,10 @@ import {
   getPicCacheFilePath,
   getPicCachePublicUrl,
   getRandomCacheConfig,
+  getRandomPicCacheMetaFile,
   getRandomPicCacheDir,
   getRandomPicCacheFilePath,
+  getRandomPicCachePublicUrl,
   likeCacheDownloadJobMap,
   parsePcFromLocalCacheFileName,
   randomCacheDownloadJobMap,
@@ -38,6 +40,7 @@ import {
 } from './picture-cache-random-core';
 
 export const getLocalPicCacheFileList = async () => {
+  const randomCacheMetaFileName = path.basename(getRandomPicCacheMetaFile());
   try {
     const entries = await fs.promises.readdir(getLikedPicCacheDir(), {
       withFileTypes: true,
@@ -48,6 +51,13 @@ export const getLocalPicCacheFileList = async () => {
         .filter(entry => entry.isFile())
         .map(async entry => {
           const localCacheFileName = String(entry.name || '').trim();
+          if (
+            !localCacheFileName ||
+            localCacheFileName === randomCacheMetaFileName ||
+            localCacheFileName.endsWith('.tmp')
+          ) {
+            return undefined;
+          }
           const pc = parsePcFromLocalCacheFileName(localCacheFileName);
           if (!pc) {
             return undefined;
@@ -364,25 +374,33 @@ export const ensureLocalPicCacheByFileAsync = (file: Cloud115DbFileItem, userAge
   return job;
 };
 
-export const ensureRandomLocalPicCacheByFile = async (file: Cloud115DbFileItem, userAgent: string) => {
+export const ensureRandomLocalPicCacheByFile = async (
+  file: Cloud115DbFileItem,
+  userAgent: string,
+  options?: {
+    force?: boolean;
+  }
+) => {
+  const force = Boolean(options?.force);
   const config = await getRandomCacheConfig();
 
   const existedCache = await getLocalRandomPicCacheByPc(file.pc);
   if (existedCache) {
-    return;
+    await setFile115LocalCacheFileNameByPc(file.pc, existedCache.localCacheFileName);
+    return existedCache;
   }
 
   const maxSizeBytes = config.localMaxSizeMb * 1024 * 1024;
   const currentLocalList = await getLocalRandomPicCacheFileList();
   const currentLocalTotalSizeBytes = currentLocalList.reduce((acc, item) => acc + item.sizeBytes, 0);
-  if (currentLocalTotalSizeBytes >= maxSizeBytes) {
-    return;
+  if (!force && currentLocalTotalSizeBytes >= maxSizeBytes) {
+    return undefined;
   }
 
   const result = await get115FileData(file.pc, userAgent || DEFAULT_115_DOWNLOAD_UA);
   const { url, fileName } = parse115FileMeta(result);
   if (!url) {
-    return;
+    return undefined;
   }
 
   await fs.promises.mkdir(getRandomPicCacheDir(), { recursive: true });
@@ -405,9 +423,9 @@ export const ensureRandomLocalPicCacheByFile = async (file: Cloud115DbFileItem, 
     const tempSizeBytes = Number(stat.size || 0);
     const projectedSizeBytes = currentLocalTotalSizeBytes + tempSizeBytes;
 
-    if (projectedSizeBytes > maxSizeBytes) {
+    if (!force && projectedSizeBytes > maxSizeBytes) {
       await fs.promises.unlink(tempPath).catch(() => undefined);
-      return;
+      return undefined;
     }
 
     await fs.promises.rename(tempPath, targetPath);
@@ -422,6 +440,17 @@ export const ensureRandomLocalPicCacheByFile = async (file: Cloud115DbFileItem, 
       localCacheFileName: targetFileName,
       updatedAtMs: Date.now(),
     });
+    await setFile115LocalCacheFileNameByPc(file.pc, targetFileName);
+    return {
+      pc: file.pc,
+      localCacheFileName: targetFileName,
+      filePath: targetPath,
+      fileName: sanitizeCacheFileName(fileName),
+      mimeType: String(mime.lookup(fileName) || DEFAULT_MIME_TYPE),
+      updatedAtMs: Date.now(),
+      sizeBytes: tempSizeBytes,
+      url: getRandomPicCachePublicUrl(targetFileName),
+    };
   } catch (error) {
     await fs.promises.unlink(tempPath).catch(() => undefined);
     throw error;
