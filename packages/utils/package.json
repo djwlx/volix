@@ -1,6 +1,6 @@
 {
   "name": "@volix/utils",
-  "version": "0.0.47",
+  "version": "1.0.26",
   "private": true,
   "type": "module",
   "exports": {
