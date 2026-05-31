@@ -256,7 +256,11 @@ export const get115PicPathByPc: MyMiddleware = async ctx => {
 export const get115PicCacheFileByPc: MyMiddleware = async ctx => {
   const pc = String(ctx.params?.pc || '');
   const ua = ctx.request.headers['user-agent'];
-  const source = await get115PicCacheFileByPcData(pc, String(ua || ''));
+  const format = String(ctx.query?.format || '');
+  const source = await get115PicCacheFileByPcData(pc, String(ua || ''), format, {
+    width: String(ctx.query?.w || ''),
+    quality: String(ctx.query?.q || ''),
+  });
 
   if (source.kind === 'local') {
     ctx.set('Content-Type', source.mimeType || 'application/octet-stream');

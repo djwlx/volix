@@ -23,6 +23,7 @@ import {
 } from './picture-cache-random-core';
 import {
   clearLocalPicCacheByPcFromFs,
+  ensureLocalPicCacheByFile,
   ensureRandomLocalPicCacheByFile,
   ensureLocalPicCacheByFileAsync,
   getLocalPicCacheByFile,
@@ -30,6 +31,12 @@ import {
   getLocalPicCacheByPcFromFs,
   parse115FileMeta,
 } from './picture-cache-fs-folder';
+import {
+  clearWebpCacheByPc,
+  normalizePicCacheFormat,
+  normalizePicCacheFormatOptions,
+  resolvePicCacheByFormat,
+} from './picture-cache-format';
 
 export async function like115PicData(params: Like115PicParams, userAgent: string) {
   const pc = params.pc?.trim() || '';
@@ -41,7 +48,8 @@ export async function like115PicData(params: Like115PicParams, userAgent: string
   if (!file) {
     if (params.liked === false) {
       const removed = await clearLocalPicCacheByPcFromFs(pc);
-      if (!removed) {
+      const removedWebp = await clearWebpCacheByPc(pc);
+      if (!removed && !removedWebp) {
         badRequest('未找到当前图片');
       }
       return {
@@ -201,20 +209,43 @@ export async function get115RandomPicCacheFileData(cacheFileName: string, userAg
   };
 }
 
-export async function get115PicCacheFileByPcData(pc: string, userAgent = '') {
+export async function get115PicCacheFileByPcData(
+  pc: string,
+  userAgent = '',
+  format?: string,
+  options?: {
+    width?: string;
+    quality?: string;
+  }
+) {
   const normalizedPc = String(pc || '').trim();
   if (!normalizedPc) {
     badRequest('缺少图片参数');
   }
+  const cacheFormat = normalizePicCacheFormat(format);
+  const formatOptions = normalizePicCacheFormatOptions({
+    width: options?.width,
+    quality: options?.quality,
+  });
 
   const localFsCache = await getLocalPicCacheByPcFromFs(normalizedPc);
   if (localFsCache) {
+    const formattedCache = await resolvePicCacheByFormat({
+      format: cacheFormat,
+      options: formatOptions,
+      source: {
+        pc: localFsCache.pc,
+        filePath: localFsCache.filePath,
+        fileName: localFsCache.fileName,
+        mimeType: localFsCache.mimeType,
+      },
+    });
     return {
       kind: 'local' as const,
       pc: localFsCache.pc,
-      filePath: localFsCache.filePath,
-      fileName: localFsCache.fileName,
-      mimeType: localFsCache.mimeType,
+      filePath: formattedCache.filePath,
+      fileName: formattedCache.fileName,
+      mimeType: formattedCache.mimeType,
       url: localFsCache.url,
     };
   }
@@ -230,9 +261,44 @@ export async function get115PicCacheFileByPcData(pc: string, userAgent = '') {
     localCacheFileName: safeFile.localCacheFileName,
   });
   if (cache) {
+    const formattedCache = await resolvePicCacheByFormat({
+      format: cacheFormat,
+      options: formatOptions,
+      source: {
+        pc: cache.pc,
+        filePath: cache.filePath,
+        fileName: cache.fileName,
+        mimeType: cache.mimeType,
+      },
+    });
     return {
       kind: 'local' as const,
       ...cache,
+      filePath: formattedCache.filePath,
+      fileName: formattedCache.fileName,
+      mimeType: formattedCache.mimeType,
+    };
+  }
+
+  if (cacheFormat === 'webp') {
+    const builtCache = await ensureLocalPicCacheByFile(safeFile, userAgent || DEFAULT_115_DOWNLOAD_UA);
+    const formattedCache = await resolvePicCacheByFormat({
+      format: cacheFormat,
+      options: formatOptions,
+      source: {
+        pc: builtCache.pc,
+        filePath: builtCache.filePath,
+        fileName: builtCache.fileName,
+        mimeType: builtCache.mimeType,
+      },
+    });
+    return {
+      kind: 'local' as const,
+      pc: builtCache.pc,
+      filePath: formattedCache.filePath,
+      fileName: formattedCache.fileName,
+      mimeType: formattedCache.mimeType,
+      url: builtCache.url,
     };
   }
 
