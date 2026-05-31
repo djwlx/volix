@@ -279,12 +279,26 @@ export const get115PicCacheFileByPc: MyMiddleware = async ctx => {
 
 export const get115RandomPicCacheFile: MyMiddleware = async ctx => {
   const cacheFileName = String(ctx.params?.cacheFileName || '');
-  const source = await get115RandomPicCacheFileData(cacheFileName);
+  const ua = ctx.request.headers['user-agent'];
+  const source = await get115RandomPicCacheFileData(cacheFileName, String(ua || ''));
 
-  ctx.set('Content-Type', source.mimeType || 'application/octet-stream');
-  ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(source.fileName)}"`);
+  if (source.kind === 'local') {
+    ctx.set('Content-Type', source.mimeType || 'application/octet-stream');
+    ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(source.fileName)}"`);
+    ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
+    ctx.body = fs.createReadStream(source.filePath);
+    return;
+  }
+
+  const streamResult = await request.get(source.url, {
+    responseType: 'stream',
+    headers: {
+      'User-Agent': ua,
+    },
+  });
+  ctx.set('Content-Type', source.mimeType || mime.lookup(source.fileName) || 'image/png');
   ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
-  ctx.body = fs.createReadStream(source.filePath);
+  ctx.body = streamResult.data;
 };
 
 export const get115LikedPicList: MyMiddleware = async ctx => {

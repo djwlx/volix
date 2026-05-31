@@ -9,6 +9,7 @@ const getFile115ByCidIndexMock = vi.fn();
 const getFile115ByPcMock = vi.fn();
 const getFile115ByCidAndParentCidMock = vi.fn();
 const getFile115CachedParentCidSetByRootCidMock = vi.fn();
+const getFile115RandomByCidListExcludePcMock = vi.fn();
 const getFile115RandomByCidListMock = vi.fn();
 const getFile115LenMock = vi.fn();
 const getFile115CountByCidMock = vi.fn();
@@ -55,6 +56,7 @@ vi.mock('../../apps/api/src/modules/115/service/file-db.service', () => ({
   getFile115ByPc: getFile115ByPcMock,
   getFile115ByCidAndParentCid: getFile115ByCidAndParentCidMock,
   getFile115CachedParentCidSetByRootCid: getFile115CachedParentCidSetByRootCidMock,
+  getFile115RandomByCidListExcludePc: getFile115RandomByCidListExcludePcMock,
   getFile115RandomByCidList: getFile115RandomByCidListMock,
 }));
 
@@ -89,6 +91,7 @@ describe('115 picture service random meta', () => {
     getFile115LocalCacheFileNameListByCidListMock.mockResolvedValue([]);
     getFile115LocalCacheFileNameListByFolderPathListMock.mockResolvedValue([]);
     getFile115CachedParentCidSetByRootCidMock.mockResolvedValue(new Set());
+    getFile115RandomByCidListExcludePcMock.mockResolvedValue(undefined);
     getFile115RandomByCidListMock.mockResolvedValue(undefined);
   });
 

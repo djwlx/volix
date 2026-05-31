@@ -15,11 +15,15 @@ import {
   DEFAULT_115_DOWNLOAD_UA,
   DEFAULT_FILE_NAME,
   DEFAULT_MIME_TYPE,
+  getLocalRandomPicCacheByPc,
   getLocalRandomPicCacheByFileName,
+  getPicCachePublicUrl,
+  parsePcFromLocalCacheFileName,
   sanitizeCacheFileName,
 } from './picture-cache-random-core';
 import {
   clearLocalPicCacheByPcFromFs,
+  ensureRandomLocalPicCacheByFile,
   ensureLocalPicCacheByFileAsync,
   getLocalPicCacheByFile,
   getLocalPicCacheByPc,
@@ -78,7 +82,7 @@ export async function like115PicData(params: Like115PicParams, userAgent: string
   };
 }
 
-export async function getLiked115PicListData(params?: { offset?: number; pageSize?: number }, _userAgent = '') {
+export async function getLiked115PicListData(params?: { offset?: number; pageSize?: number }, userAgent = '') {
   const offset = Math.max(0, Number(params?.offset || 0));
   const pageSize = Math.min(200, Math.max(1, Number(params?.pageSize || 50)));
   const [count, likedList] = await Promise.all([getLikedFile115Count(), getLikedFile115List(offset, pageSize)]);
@@ -88,6 +92,9 @@ export async function getLiked115PicListData(params?: { offset?: number; pageSiz
         pc: item.pc,
         localCacheFileName: item.localCacheFileName,
       });
+      if (!cache) {
+        void ensureLocalPicCacheByFileAsync(item, userAgent || DEFAULT_115_DOWNLOAD_UA);
+      }
       return {
         pc: item.pc,
         cid: item.cid,
@@ -96,7 +103,7 @@ export async function getLiked115PicListData(params?: { offset?: number; pageSiz
         fileName: cache?.fileName || (item.fullPath ? path.posix.basename(item.fullPath) : DEFAULT_FILE_NAME),
         liked: true,
         cached: Boolean(cache),
-        url: cache?.url || '',
+        url: cache?.url || getPicCachePublicUrl(item.pc),
       };
     })
   );
@@ -131,25 +138,66 @@ export async function get115PicPathByPcData(pc: string) {
   };
 }
 
-export async function get115RandomPicCacheFileData(cacheFileName: string) {
+export async function get115RandomPicCacheFileData(cacheFileName: string, userAgent = '') {
   const safeName = sanitizeCacheFileName(String(cacheFileName || '').trim());
   if (!safeName) {
     badRequest('缺少缓存文件参数');
   }
 
   const cache = await getLocalRandomPicCacheByFileName(safeName);
-  if (!cache) {
+  if (cache) {
+    const safeCache = cache as NonNullable<typeof cache>;
+
+    return {
+      kind: 'local' as const,
+      pc: safeCache.pc,
+      filePath: safeCache.filePath,
+      fileName: safeCache.fileName,
+      mimeType: safeCache.mimeType,
+      url: safeCache.url,
+    };
+  }
+
+  const pc = parsePcFromLocalCacheFileName(safeName);
+  if (!pc) {
     badRequest('未找到本地随机缓存文件');
   }
-  const safeCache = cache as NonNullable<typeof cache>;
+
+  const file = await getFile115ByPc(pc);
+  if (!file) {
+    badRequest('未找到本地随机缓存文件');
+  }
+  const safeFile = file as Cloud115DbFileItem;
+
+  try {
+    await ensureRandomLocalPicCacheByFile(safeFile, userAgent || DEFAULT_115_DOWNLOAD_UA, { force: true });
+  } catch {
+    // ignore
+  }
+
+  const rebuiltCache = await getLocalRandomPicCacheByPc(pc);
+  if (rebuiltCache) {
+    return {
+      kind: 'local' as const,
+      pc: rebuiltCache.pc,
+      filePath: rebuiltCache.filePath,
+      fileName: rebuiltCache.fileName,
+      mimeType: rebuiltCache.mimeType,
+      url: rebuiltCache.url,
+    };
+  }
+
+  const meta = parse115FileMeta(await get115FileData(safeFile.pc, userAgent || DEFAULT_115_DOWNLOAD_UA));
+  if (!meta.url) {
+    badRequest('未找到本地随机缓存文件');
+  }
 
   return {
-    kind: 'local' as const,
-    pc: safeCache.pc,
-    filePath: safeCache.filePath,
-    fileName: safeCache.fileName,
-    mimeType: safeCache.mimeType,
-    url: safeCache.url,
+    kind: 'remote' as const,
+    pc: safeFile.pc,
+    url: meta.url,
+    fileName: meta.fileName || (safeFile.fullPath ? path.posix.basename(safeFile.fullPath) : DEFAULT_FILE_NAME),
+    mimeType: mime.lookup(meta.fileName || '') || DEFAULT_MIME_TYPE,
   };
 }
 
