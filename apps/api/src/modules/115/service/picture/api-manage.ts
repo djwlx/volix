@@ -25,8 +25,10 @@ import {
   getLocalRandomPicCacheFileList,
   getRandomCacheConfig,
   getRandomCacheStats,
+  toFixedMb,
   setRandomCacheConfig,
 } from './picture-cache-random-core';
+import { getUnifiedPicCacheUsage } from './picture-cache-unified';
 import {
   getPicCacheFolders,
   normalizeFolderPaths,
@@ -60,6 +62,14 @@ export async function get115PicInfoData() {
     getLocalRandomPicCacheFileList(),
   ]);
   const randomCacheStats: PicRandomCacheStats = getRandomCacheStats(randomCacheConfig, randomCacheList);
+  const unifiedUsage = await getUnifiedPicCacheUsage();
+  const unifiedRandomCacheStats: PicRandomCacheStats = {
+    ...randomCacheStats,
+    localFileCount: unifiedUsage.totalFileCount,
+    localTotalSizeBytes: unifiedUsage.totalSizeBytes,
+    localTotalSizeMb: toFixedMb(unifiedUsage.totalSizeBytes),
+    localLimitExceeded: unifiedUsage.totalSizeBytes > randomCacheConfig.localMaxSizeMb * 1024 * 1024,
+  };
 
   return {
     count,
@@ -72,7 +82,7 @@ export async function get115PicInfoData() {
     cachedCids,
     cachedFolderPaths,
     randomCacheConfig,
-    randomCacheStats,
+    randomCacheStats: unifiedRandomCacheStats,
   };
 }
 

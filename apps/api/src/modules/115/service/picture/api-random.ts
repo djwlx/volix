@@ -14,8 +14,10 @@ import {
   getRandomCacheLimitNotice,
   getRandomCacheStats,
   pickRandomSourceByWeights,
+  toFixedMb,
 } from './picture-cache-random-core';
 import { ensureRandomLocalPicCacheByFileAsync, getPicCacheFolders } from './picture-cache-fs-folder';
+import { getUnifiedPicCacheUsage } from './picture-cache-unified';
 import {
   buildRandomMetaFromRandomLocalCacheItem,
   buildRandomPicMetaFromFile,
@@ -141,7 +143,15 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
     .filter(item => item.status === 'cached' || item.status === 'caching')
     .map(item => item.cid);
   const randomCacheStats: PicRandomCacheStats = getRandomCacheStats(randomCacheConfig, randomCacheList);
-  const limitNotice = getRandomCacheLimitNotice(randomCacheStats, randomCacheConfig);
+  const unifiedUsage = await getUnifiedPicCacheUsage();
+  const mergedRandomCacheStats: PicRandomCacheStats = {
+    ...randomCacheStats,
+    localFileCount: unifiedUsage.totalFileCount,
+    localTotalSizeBytes: unifiedUsage.totalSizeBytes,
+    localTotalSizeMb: toFixedMb(unifiedUsage.totalSizeBytes),
+    localLimitExceeded: unifiedUsage.totalSizeBytes > randomCacheConfig.localMaxSizeMb * 1024 * 1024,
+  };
+  const limitNotice = getRandomCacheLimitNotice(mergedRandomCacheStats, randomCacheConfig);
 
   if (availableRootCids.length === 0) {
     log.warn('[115-random] 随机图片失败', {
@@ -204,8 +214,8 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
             dedupeBypass: false,
             targetPc: meta.pc,
             targetCid: meta.cid,
-            randomCacheMemoryCount: randomCacheStats.memoryFileCount,
-            randomCacheLocalCount: randomCacheStats.localFileCount,
+            randomCacheMemoryCount: mergedRandomCacheStats.memoryFileCount,
+            randomCacheLocalCount: mergedRandomCacheStats.localFileCount,
             timingsMs: {
               loadConfigMs,
               localFlowMs,
@@ -251,10 +261,10 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
     targetCid: safeSelectedFile.cid,
     targetParentCid: safeSelectedFile.parentCid,
     sourceUnavailableNotice: sourceUnavailableNotice.length > 0 ? sourceUnavailableNotice : undefined,
-    randomCacheMemoryCount: randomCacheStats.memoryFileCount,
-    randomCacheMemorySizeMb: randomCacheStats.memoryTotalSizeMb,
-    randomCacheLocalCount: randomCacheStats.localFileCount,
-    randomCacheLocalSizeMb: randomCacheStats.localTotalSizeMb,
+    randomCacheMemoryCount: mergedRandomCacheStats.memoryFileCount,
+    randomCacheMemorySizeMb: mergedRandomCacheStats.memoryTotalSizeMb,
+    randomCacheLocalCount: mergedRandomCacheStats.localFileCount,
+    randomCacheLocalSizeMb: mergedRandomCacheStats.localTotalSizeMb,
     timingsMs: {
       loadConfigMs,
       pickFileMs,

@@ -38,6 +38,7 @@ import {
   sanitizeCacheFileName,
   setRandomCacheMetaByPc,
 } from './picture-cache-random-core';
+import { evictUnifiedPicCacheToFit, getUnifiedPicCacheUsage } from './picture-cache-unified';
 
 export const getLocalPicCacheFileList = async () => {
   const randomCacheMetaFileName = path.basename(getRandomPicCacheMetaFile());
@@ -334,11 +335,10 @@ export const ensureLocalPicCacheByFile = async (file: Cloud115DbFileItem, userAg
     await fs.promises.rename(tempPath, targetPath);
     await setFile115LocalCacheFileNameByPc(file.pc, targetFileName);
   } catch (error) {
-    try {
-      await fs.promises.unlink(tempPath);
-    } catch {
-      // ignore
-    }
+    await fs.promises
+      .access(tempPath, fs.constants.F_OK)
+      .then(() => fs.promises.unlink(tempPath))
+      .catch(() => undefined);
     throw error;
   }
 
@@ -391,10 +391,17 @@ export const ensureRandomLocalPicCacheByFile = async (
   }
 
   const maxSizeBytes = config.localMaxSizeMb * 1024 * 1024;
-  const currentLocalList = await getLocalRandomPicCacheFileList();
-  const currentLocalTotalSizeBytes = currentLocalList.reduce((acc, item) => acc + item.sizeBytes, 0);
-  if (!force && currentLocalTotalSizeBytes >= maxSizeBytes) {
-    return undefined;
+  if (!force) {
+    const usageBeforeDownload = await getUnifiedPicCacheUsage();
+    if (usageBeforeDownload.totalSizeBytes >= maxSizeBytes) {
+      const usageAfterEvict = await evictUnifiedPicCacheToFit({
+        maxSizeBytes,
+        keepPc: file.pc,
+      });
+      if (usageAfterEvict.totalSizeBytes >= maxSizeBytes) {
+        return undefined;
+      }
+    }
   }
 
   const result = await get115FileData(file.pc, userAgent || DEFAULT_115_DOWNLOAD_UA);
@@ -421,11 +428,16 @@ export const ensureRandomLocalPicCacheByFile = async (
     await pipeline(response.data, fs.createWriteStream(tempPath));
     const stat = await fs.promises.stat(tempPath);
     const tempSizeBytes = Number(stat.size || 0);
-    const projectedSizeBytes = currentLocalTotalSizeBytes + tempSizeBytes;
-
-    if (!force && projectedSizeBytes > maxSizeBytes) {
-      await fs.promises.unlink(tempPath).catch(() => undefined);
-      return undefined;
+    if (!force) {
+      const usageAfterEvict = await evictUnifiedPicCacheToFit({
+        maxSizeBytes,
+        reserveSizeBytes: tempSizeBytes,
+        keepPc: file.pc,
+      });
+      if (usageAfterEvict.totalSizeBytes + tempSizeBytes > maxSizeBytes) {
+        await fs.promises.unlink(tempPath).catch(() => undefined);
+        return undefined;
+      }
     }
 
     await fs.promises.rename(tempPath, targetPath);
@@ -452,7 +464,10 @@ export const ensureRandomLocalPicCacheByFile = async (
       url: getRandomPicCachePublicUrl(targetFileName),
     };
   } catch (error) {
-    await fs.promises.unlink(tempPath).catch(() => undefined);
+    await fs.promises
+      .access(tempPath, fs.constants.F_OK)
+      .then(() => fs.promises.unlink(tempPath))
+      .catch(() => undefined);
     throw error;
   }
 };

@@ -57,3 +57,37 @@ export const getFile115RandomByCidListExcludePc = async (cidList: string[], excl
 
   return normalizeCloud115DbFileItem(result?.dataValues);
 };
+
+export const getFile115CachePolicyByPcList = async (pcList: string[]) => {
+  const normalizedPcList = Array.from(new Set(pcList.map(item => String(item || '').trim()).filter(Boolean)));
+  if (normalizedPcList.length === 0) {
+    return [] as Array<{
+      pc: string;
+      isLiked: boolean;
+      localCacheFileName: string;
+      updatedAtMs: number;
+    }>;
+  }
+
+  const rows = (await File115Model.findAll({
+    attributes: ['pc', 'isLiked', 'localCacheFileName', 'updatedAt'],
+    where: {
+      pc: {
+        [Op.in]: normalizedPcList,
+      },
+    },
+    raw: true,
+  })) as unknown as Array<{
+    pc: string;
+    isLiked: boolean | number | null;
+    localCacheFileName: string | null;
+    updatedAt: string | Date | null;
+  }>;
+
+  return rows.map(item => ({
+    pc: String(item.pc || '').trim(),
+    isLiked: Boolean(item.isLiked),
+    localCacheFileName: String(item.localCacheFileName || '').trim(),
+    updatedAtMs: item.updatedAt ? new Date(item.updatedAt).getTime() || 0 : 0,
+  }));
+};

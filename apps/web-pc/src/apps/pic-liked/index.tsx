@@ -1,14 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { IconHeartStroked, IconInfoCircle } from '@douyinfe/semi-icons';
-import { Button, Empty, ImagePreview, Toast, Tooltip } from '@douyinfe/semi-ui';
+import { Button, Empty, ImagePreview, Skeleton, Toast, Tooltip } from '@douyinfe/semi-ui';
 import type { Liked115PicItem } from '@volix/types';
 import { get115LikedPics, like115Pic } from '@/services/115';
-import { Loading } from '@/components';
 import { getHttpErrorMessage } from '@/utils/error';
 import styles from './index.module.scss';
 
-interface LikedPicCard extends Liked115PicItem {}
+type LikedPicCard = Liked115PicItem;
 
+interface LikedPicWallItemProps {
+  item: LikedPicCard;
+  failed: boolean;
+  previewIndexByPc: Map<string, number>;
+  onOpenPreview: (pc: string) => void;
+  onUnlike: (pc: string) => void;
+  onImageError: (pc: string) => void;
+}
+
+const LIST_PAGE_SIZE = 40;
 const LIST_WEBP_WIDTH = 420;
 const LIST_WEBP_QUALITY = 72;
 
@@ -28,12 +37,135 @@ const appendWebpFormat = (rawUrl: string) => {
   return hashPart ? `${withQuery}#${hashPart}` : withQuery;
 };
 
+function LikedPicWallItem({
+  item,
+  failed,
+  previewIndexByPc,
+  onOpenPreview,
+  onUnlike,
+  onImageError,
+}: LikedPicWallItemProps) {
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setLoaded(false);
+  }, [item.pc, item.url]);
+
+  useEffect(() => {
+    if (!item.url || shouldLoad) {
+      return;
+    }
+
+    const target = wrapRef.current;
+    if (!target) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0]?.isIntersecting) {
+          setShouldLoad(true);
+          observer.disconnect();
+        }
+      },
+      {
+        root: null,
+        rootMargin: '300px 0px',
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [item.url, shouldLoad]);
+
+  const canOpenPreview = Boolean(item.url) && !failed;
+  const showSkeleton = Boolean(item.url) && !failed && (!shouldLoad || !loaded);
+  const showFallbackText = !item.url || failed;
+  const wrapClassName = `${styles.wallImageWrap}${
+    showSkeleton || showFallbackText ? ` ${styles.wallImageWrapLoading}` : ''
+  }`;
+
+  return (
+    <div className={styles.wallItem}>
+      <div
+        ref={wrapRef}
+        className={wrapClassName}
+        onClick={() => {
+          if (!canOpenPreview) {
+            return;
+          }
+          if (!previewIndexByPc.has(item.pc)) {
+            return;
+          }
+          onOpenPreview(item.pc);
+        }}
+      >
+        {item.url && !failed && shouldLoad ? (
+          <img
+            className={styles.wallImageEl}
+            src={appendWebpFormat(item.url)}
+            alt={item.fileName || item.pc}
+            decoding="async"
+            draggable={false}
+            onLoad={() => setLoaded(true)}
+            onError={() => onImageError(item.pc)}
+          />
+        ) : null}
+
+        {showSkeleton ? (
+          <div className={styles.wallSkeletonLayer}>
+            <Skeleton.Image className={styles.wallSkeletonImage} />
+          </div>
+        ) : null}
+
+        {showFallbackText ? <div className={styles.wallPlaceholder}>{failed ? '加载失败' : '缓存中...'}</div> : null}
+
+        <div className={styles.overlayActions}>
+          <Tooltip
+            content={<div className={styles.pathTooltip}>{item.path || item.fileName || item.pc}</div>}
+            position="leftTop"
+          >
+            <Button
+              theme="borderless"
+              className={styles.overlayIconBtn}
+              icon={<IconInfoCircle />}
+              aria-label="查看路径"
+              onClick={event => {
+                event.stopPropagation();
+              }}
+            />
+          </Tooltip>
+          <Button
+            theme="borderless"
+            type="danger"
+            className={styles.overlayIconBtn}
+            icon={<IconHeartStroked />}
+            aria-label="取消喜欢"
+            onClick={event => {
+              event.stopPropagation();
+              onUnlike(item.pc);
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PicLikedApp() {
-  const [loading, setLoading] = useState(true);
   const [list, setList] = useState<LikedPicCard[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [failedPcSet, setFailedPcSet] = useState<Set<string>>(new Set());
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
+  const loadingRef = useRef(false);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const previewSrcList = useMemo(() => list.map(item => item.url).filter(Boolean), [list]);
   const previewIndexByPc = useMemo(() => {
@@ -48,44 +180,170 @@ function PicLikedApp() {
     return mapping;
   }, [list]);
 
-  const refresh = async () => {
-    setLoading(true);
+  const hasMore = list.length < total;
+
+  const fetchPage = useCallback(async (nextOffset: number, append: boolean) => {
+    if (loadingRef.current) {
+      return;
+    }
+
+    loadingRef.current = true;
+    if (append) {
+      setLoadingMore(true);
+    }
+
     try {
       const res = await get115LikedPics({
-        offset: 0,
-        pageSize: 100,
+        offset: nextOffset,
+        pageSize: LIST_PAGE_SIZE,
       });
-      const likedList = res.data.data || [];
 
-      setList(likedList as LikedPicCard[]);
-      setFailedPcSet(new Set());
+      const likedList = (res.data.data || []) as LikedPicCard[];
+      const nextTotal = Math.max(0, Number(res.data.count || 0));
+      const nextOffsetValue = nextOffset + likedList.length;
+
+      setTotal(nextTotal);
+      setOffset(nextOffsetValue);
+
+      setList(prev => {
+        if (!append) {
+          return likedList;
+        }
+        if (likedList.length === 0) {
+          return prev;
+        }
+
+        const existing = new Set(prev.map(item => item.pc));
+        const merged = [...prev];
+        for (const item of likedList) {
+          if (!existing.has(item.pc)) {
+            merged.push(item);
+          }
+        }
+        return merged;
+      });
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '加载我的喜欢失败'));
-      setList([]);
+      Toast.error(getHttpErrorMessage(error, append ? '加载更多失败' : '加载我的喜欢失败'));
+      if (!append) {
+        setList([]);
+        setTotal(0);
+        setOffset(0);
+      }
     } finally {
-      setLoading(false);
+      loadingRef.current = false;
+      setInitialLoading(false);
+      if (append) {
+        setLoadingMore(false);
+      }
     }
-  };
+  }, []);
 
-  const onUnlike = async (pc: string) => {
+  const refresh = useCallback(async () => {
+    setInitialLoading(true);
+    setFailedPcSet(new Set());
+    await fetchPage(0, false);
+  }, [fetchPage]);
+
+  const loadMore = useCallback(async () => {
+    if (!hasMore || initialLoading || loadingRef.current) {
+      return;
+    }
+
+    await fetchPage(offset, true);
+  }, [fetchPage, hasMore, initialLoading, offset]);
+
+  const onUnlike = useCallback(async (pc: string) => {
     try {
       await like115Pic({
         pc,
         liked: false,
       });
       setList(prev => prev.filter(item => item.pc !== pc));
+      setTotal(prev => Math.max(0, prev - 1));
+      setFailedPcSet(prev => {
+        if (!prev.has(pc)) {
+          return prev;
+        }
+        const next = new Set(prev);
+        next.delete(pc);
+        return next;
+      });
       Toast.success('已取消喜欢');
     } catch (error) {
       Toast.error(getHttpErrorMessage(error, '取消喜欢失败'));
     }
-  };
+  }, []);
+
+  const onImageError = useCallback((pc: string) => {
+    setFailedPcSet(prev => {
+      if (prev.has(pc)) {
+        return prev;
+      }
+      const next = new Set(prev);
+      next.add(pc);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     refresh().catch(() => undefined);
-  }, []);
+  }, [refresh]);
 
-  if (loading) {
-    return <Loading type="page" />;
+  useEffect(() => {
+    if (!hasMore || initialLoading) {
+      return;
+    }
+
+    const target = loadMoreRef.current;
+    if (!target) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0]?.isIntersecting) {
+          void loadMore();
+        }
+      },
+      {
+        root: null,
+        rootMargin: '500px 0px',
+        threshold: 0,
+      }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMore, initialLoading, loadMore]);
+
+  const openPreviewByPc = useCallback(
+    (pc: string) => {
+      const nextIndex = previewIndexByPc.get(pc);
+      if (typeof nextIndex !== 'number') {
+        return;
+      }
+      setPreviewIndex(nextIndex);
+      setPreviewVisible(true);
+    },
+    [previewIndexByPc]
+  );
+
+  if (initialLoading && list.length === 0) {
+    return (
+      <div className={styles.page}>
+        <div className={styles.wall}>
+          {Array.from({ length: 10 }).map((_, index) => (
+            <div key={`skeleton-${index}`} className={styles.wallItem}>
+              <div className={styles.wallImageWrap}>
+                <div className={styles.wallSkeletonLayer}>
+                  <Skeleton.Image className={styles.wallSkeletonImage} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -93,76 +351,37 @@ function PicLikedApp() {
       {list.length === 0 ? (
         <Empty title="还没有喜欢的图片" description="在随机图片页点击喜欢后，会出现在这里。" />
       ) : (
-        <div className={styles.wall}>
-          {list.map(item => (
-            <div key={item.pc} className={styles.wallItem}>
-              <div
-                className={styles.wallImageWrap}
-                onClick={() => {
-                  if (!item.url) {
-                    return;
-                  }
-                  const nextIndex = previewIndexByPc.get(item.pc);
-                  setPreviewIndex(typeof nextIndex === 'number' ? nextIndex : 0);
-                  setPreviewVisible(true);
+        <>
+          <div className={styles.wall}>
+            {list.map(item => (
+              <LikedPicWallItem
+                key={item.pc}
+                item={item}
+                failed={failedPcSet.has(item.pc)}
+                previewIndexByPc={previewIndexByPc}
+                onOpenPreview={openPreviewByPc}
+                onUnlike={pc => {
+                  void onUnlike(pc);
                 }}
-              >
-                {item.url ? (
-                  failedPcSet.has(item.pc) ? (
-                    <div className={styles.wallPlaceholder}>加载失败</div>
-                  ) : (
-                    <img
-                      className={styles.wallImageEl}
-                      src={appendWebpFormat(item.url)}
-                      alt={item.fileName || item.pc}
-                      decoding="async"
-                      draggable={false}
-                      onError={() => {
-                        setFailedPcSet(prev => {
-                          if (prev.has(item.pc)) {
-                            return prev;
-                          }
-                          const next = new Set(prev);
-                          next.add(item.pc);
-                          return next;
-                        });
-                      }}
-                    />
-                  )
-                ) : (
-                  <div className={styles.wallPlaceholder}>缓存中...</div>
-                )}
-                <div className={styles.overlayActions}>
-                  <Tooltip
-                    content={<div className={styles.pathTooltip}>{item.path || item.fileName || item.pc}</div>}
-                    position="leftTop"
-                  >
-                    <Button
-                      theme="borderless"
-                      className={styles.overlayIconBtn}
-                      icon={<IconInfoCircle />}
-                      aria-label="查看路径"
-                      onClick={event => {
-                        event.stopPropagation();
-                      }}
-                    />
-                  </Tooltip>
-                  <Button
-                    theme="borderless"
-                    type="danger"
-                    className={styles.overlayIconBtn}
-                    icon={<IconHeartStroked />}
-                    aria-label="取消喜欢"
-                    onClick={event => {
-                      event.stopPropagation();
-                      void onUnlike(item.pc);
-                    }}
-                  />
+                onImageError={onImageError}
+              />
+            ))}
+          </div>
+          <div ref={loadMoreRef} className={styles.loadMoreSentinel} aria-hidden="true" />
+          {loadingMore ? (
+            <div className={styles.loadMoreSkeletons}>
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={`append-skeleton-${index}`} className={styles.wallItem}>
+                  <div className={styles.wallImageWrap}>
+                    <div className={styles.wallSkeletonLayer}>
+                      <Skeleton.Image className={styles.wallSkeletonImage} />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          ) : null}
+        </>
       )}
 
       <ImagePreview

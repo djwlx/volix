@@ -25,9 +25,14 @@
   position: relative;
   width: 100%;
   overflow: hidden;
-  background: #111827;
+  background: #fff;
   display: block;
   cursor: zoom-in;
+}
+
+.wallImageWrapLoading {
+  min-height: 220px;
+  background: #111827;
 }
 
 .wallImageEl {
@@ -37,20 +42,41 @@
   object-fit: cover;
   user-select: none;
   -webkit-user-drag: none;
-  transition: transform 0.22s ease;
+  transition: opacity 0.2s ease, transform 0.22s ease;
 }
 
 .wallImageWrap:hover .wallImageEl {
   transform: scale(1.02);
 }
 
+.wallSkeletonLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.wallSkeletonImage {
+  width: 100%;
+  height: 100%;
+}
+
 .wallPlaceholder {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   color: #a8afbd;
   font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  text-align: center;
 }
 
 .overlayActions {
   position: absolute;
+  z-index: 3;
   top: 8px;
   right: 8px;
   display: flex;
@@ -87,18 +113,38 @@
   line-height: 1.45;
 }
 
+.loadMoreSentinel {
+  width: 100%;
+  height: 1px;
+}
+
+.loadMoreSkeletons {
+  margin-top: 6px;
+  column-width: 220px;
+  column-gap: 16px;
+}
+
 @media (max-width: 768px) {
   .page {
     padding: 12px;
   }
 
-  .wall {
+  .wall,
+  .loadMoreSkeletons {
     column-width: 160px;
     column-gap: 10px;
   }
 
   .wallItem {
     margin-bottom: 10px;
+  }
+
+  .wallImageWrap {
+    min-height: 0;
+  }
+
+  .wallImageWrapLoading {
+    min-height: 160px;
   }
 
   .overlayActions {
