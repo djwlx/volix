@@ -23,7 +23,6 @@ import {
 } from './picture-cache-random-core';
 import {
   clearLocalPicCacheByPcFromFs,
-  ensureLocalPicCacheByFile,
   ensureRandomLocalPicCacheByFile,
   ensureLocalPicCacheByFileAsync,
   getLocalPicCacheByFile,
@@ -255,6 +254,28 @@ export async function get115PicCacheFileByPcData(
     badRequest('未找到当前图片');
   }
   const safeFile = file as Cloud115DbFileItem;
+  const normalizedUserAgent = userAgent || DEFAULT_115_DOWNLOAD_UA;
+
+  const prewarmWebpCacheByFileAsync = (targetFile: Cloud115DbFileItem) => {
+    void ensureLocalPicCacheByFileAsync(targetFile, normalizedUserAgent)
+      .then(async () => {
+        const latestCache = await getLocalPicCacheByPc(targetFile.pc);
+        if (!latestCache) {
+          return;
+        }
+        await resolvePicCacheByFormat({
+          format: 'webp',
+          options: formatOptions,
+          source: {
+            pc: latestCache.pc,
+            filePath: latestCache.filePath,
+            fileName: latestCache.fileName,
+            mimeType: latestCache.mimeType,
+          },
+        });
+      })
+      .catch(() => undefined);
+  };
 
   const cache = await getLocalPicCacheByFile({
     pc: safeFile.pc,
@@ -281,32 +302,26 @@ export async function get115PicCacheFileByPcData(
   }
 
   if (cacheFormat === 'webp') {
-    const builtCache = await ensureLocalPicCacheByFile(safeFile, userAgent || DEFAULT_115_DOWNLOAD_UA);
-    const formattedCache = await resolvePicCacheByFormat({
-      format: cacheFormat,
-      options: formatOptions,
-      source: {
-        pc: builtCache.pc,
-        filePath: builtCache.filePath,
-        fileName: builtCache.fileName,
-        mimeType: builtCache.mimeType,
-      },
-    });
+    prewarmWebpCacheByFileAsync(safeFile);
+    const meta = parse115FileMeta(await get115FileData(safeFile.pc, normalizedUserAgent));
+    if (!meta.url) {
+      badRequest('图片地址获取失败');
+    }
+
     return {
-      kind: 'local' as const,
-      pc: builtCache.pc,
-      filePath: formattedCache.filePath,
-      fileName: formattedCache.fileName,
-      mimeType: formattedCache.mimeType,
-      url: builtCache.url,
+      kind: 'remote' as const,
+      pc: safeFile.pc,
+      url: meta.url,
+      fileName: meta.fileName || (safeFile.fullPath ? path.posix.basename(safeFile.fullPath) : DEFAULT_FILE_NAME),
+      mimeType: mime.lookup(meta.fileName || '') || DEFAULT_MIME_TYPE,
     };
   }
 
   if (safeFile.isLiked) {
-    void ensureLocalPicCacheByFileAsync(safeFile, userAgent);
+    void ensureLocalPicCacheByFileAsync(safeFile, normalizedUserAgent);
   }
 
-  const meta = parse115FileMeta(await get115FileData(safeFile.pc, userAgent || DEFAULT_115_DOWNLOAD_UA));
+  const meta = parse115FileMeta(await get115FileData(safeFile.pc, normalizedUserAgent));
   if (!meta.url) {
     badRequest('图片地址获取失败');
   }
