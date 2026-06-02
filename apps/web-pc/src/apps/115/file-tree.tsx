@@ -7,6 +7,7 @@ import type { PicCacheFolderItem, PicCacheFolderStatus } from '@volix/types';
 import { clear115Pic, get115PicInfo, set115PicInfo } from '@/services/115';
 import { getHttpErrorMessage } from '@/utils/error';
 import { renderPicCacheStatusTag } from './pic-cache-status';
+import { useI18n } from '@/i18n';
 
 type PicTreeNodeData = TreeNodeData & {
   dir?: string;
@@ -25,6 +26,7 @@ const normalizeFolderPath = (folderPath: string) => {
 };
 
 export function FileTree() {
+  const { t } = useI18n();
   const [fileTree, setFileTree] = useState<PicTreeNodeData[]>([]);
   const { fileTree: treeData, loadMore, moreLoading, unDoneMap } = useFileList();
   const [loadingMoreDir, setLoadingMoreDir] = useState('');
@@ -56,9 +58,9 @@ export function FileTree() {
   const onCopyCid = async (cid: string) => {
     try {
       await navigator.clipboard.writeText(cid);
-      Toast.success('CID 已复制');
+      Toast.success(t('pic115.fileTree.copyCidSuccess'));
     } catch {
-      Toast.error('复制失败');
+      Toast.error(t('common.action.copyFailed'));
     }
   };
 
@@ -66,14 +68,14 @@ export function FileTree() {
     try {
       await set115PicInfo({ paths: [cid] });
       await fetchPicInfo();
-      Toast.success('已加入缓存队列');
+      Toast.success(t('pic115.fileTree.addCacheSuccess'));
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '加入缓存失败'));
+      Toast.error(getHttpErrorMessage(error, t('pic115.fileTree.addCacheFailed')));
     }
   };
 
   const onRemoveCache = async (cid: string, folderPath?: string) => {
-    const confirmed = window.confirm('确定删除该目录缓存？此修改将不可逆');
+    const confirmed = window.confirm(t('pic115.fileTree.removeConfirm'));
     if (!confirmed) {
       return;
     }
@@ -85,9 +87,9 @@ export function FileTree() {
       };
       await clear115Pic(payload);
       await fetchPicInfo();
-      Toast.success('已删除该目录缓存');
+      Toast.success(t('pic115.fileTree.removeSuccess'));
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '删除缓存失败'));
+      Toast.error(getHttpErrorMessage(error, t('pic115.fileTree.removeFailed')));
     }
   };
 
@@ -153,7 +155,7 @@ export function FileTree() {
                         void onCopyCid(item.dir);
                       }}
                     >
-                      复制 CID
+                      {t('pic115.fileTree.action.copyCid')}
                     </Dropdown.Item>
                     <Dropdown.Item
                       disabled={!canAddCache}
@@ -162,7 +164,13 @@ export function FileTree() {
                         void onAddCache(item.dir);
                       }}
                     >
-                      {displayStatus === 'partial' ? '补全缓存' : canAddCache ? '加入缓存' : '已加入缓存'}
+                      {t(
+                        displayStatus === 'partial'
+                          ? 'pic115.fileTree.action.completeCache'
+                          : canAddCache
+                          ? 'pic115.fileTree.action.addCache'
+                          : 'pic115.fileTree.action.cached'
+                      )}
                     </Dropdown.Item>
                     <Dropdown.Item
                       disabled={!canRemoveCache}
@@ -171,7 +179,7 @@ export function FileTree() {
                         void onRemoveCache(item.dir, fullPath);
                       }}
                     >
-                      去掉缓存
+                      {t('pic115.fileTree.action.removeCache')}
                     </Dropdown.Item>
                   </Dropdown.Menu>
                 }
@@ -201,7 +209,7 @@ export function FileTree() {
       treeData.push({
         label:
           loadingMoreDir === dir ? (
-            <div>加载中</div>
+            <div>{t('common.status.loading')}</div>
           ) : (
             <div
               onClick={() => {
@@ -209,7 +217,7 @@ export function FileTree() {
                 loadMore(dir);
               }}
             >
-              加载更多
+              {t('common.action.loadMore')}
             </div>
           ),
         icon: <IconMore />,

@@ -12,6 +12,7 @@ import {
 import fs from 'fs';
 import mime from 'mime-types';
 import { badRequest } from '../../shared/http-handler';
+import { t } from '../../../utils/i18n';
 import { readRssItemResourceFile } from '../service/rss-feed-item-html-file.service';
 import type {
   ClearRssStoragePayload,
@@ -76,7 +77,7 @@ export const getRssItemResource: MyMiddleware = async ctx => {
     fileName,
   });
   if (!resource) {
-    badRequest('缓存资源不存在');
+    badRequest(t('rssApi.resourceNotFound'));
     return;
   }
   const contentType = String(mime.lookup(resource.fileName) || 'application/octet-stream');

@@ -1,5 +1,6 @@
 import type { ResponseData } from '@volix/types';
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios';
+import { getStoredLocale } from '@/i18n';
 import { getAuthToken, getTokenHeaderKey, clearAuthToken } from './auth';
 
 const instance: AxiosInstance = axios.create({
@@ -8,10 +9,16 @@ const instance: AxiosInstance = axios.create({
 
 instance.interceptors.request.use(config => {
   const token = getAuthToken();
+  const locale = getStoredLocale();
+
+  config.headers = config.headers || {};
+
   if (token) {
-    config.headers = config.headers || {};
     (config.headers as Record<string, string>)[getTokenHeaderKey()] = token;
   }
+
+  (config.headers as Record<string, string>)['volix-language'] = locale;
+
   return config;
 });
 

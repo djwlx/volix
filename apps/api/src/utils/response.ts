@@ -1,4 +1,5 @@
 import { Context } from 'koa';
+import { t } from './i18n';
 
 export const resSuccess = (
   ctx: Context,
@@ -11,7 +12,7 @@ export const resSuccess = (
   const { data, code, message } = params || {};
   ctx.body = {
     code: code ?? 0,
-    message: message || 'success',
+    message: message || t({ id: 'common.message.success', defaultMessage: '成功' }),
     data: data ?? {},
   };
 };

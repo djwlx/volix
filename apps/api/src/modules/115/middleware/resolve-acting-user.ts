@@ -6,6 +6,7 @@ import { queryUser } from '../../user';
 import { UserRole } from '@volix/types';
 import { setRequestContext } from '../../../utils/request-context';
 import { getSystemRandomPicDefaultUserId } from '../../user/service/system-setting.service';
+import { t } from '../../../utils/i18n';
 
 const GUEST_ALLOWED_PATHS = [
   '/api/115/pic',
@@ -30,7 +31,7 @@ export const resolve115ActingUser = (): MyMiddleware => {
         if (!userInfo) {
           resError(ctx, {
             code: 401,
-            message: '用户不存在',
+            message: t('auth.user.notFound'),
           });
           return;
         }
@@ -45,7 +46,7 @@ export const resolve115ActingUser = (): MyMiddleware => {
       } catch {
         resError(ctx, {
           code: 401,
-          message: '权限认证错误',
+          message: t('auth.middleware.invalidAuth'),
         });
         return;
       }
@@ -63,7 +64,7 @@ export const resolve115ActingUser = (): MyMiddleware => {
     if (!isGuestPath) {
       resError(ctx, {
         code: 401,
-        message: '未进行权限认证',
+        message: t('auth.middleware.missingAuth'),
       });
       return;
     }
@@ -72,7 +73,7 @@ export const resolve115ActingUser = (): MyMiddleware => {
     if (!defaultUserId) {
       resError(ctx, {
         code: 400,
-        message: '系统未配置随机图默认用户',
+        message: t('pic115Api.defaultUserMissing'),
       });
       return;
     }
@@ -81,7 +82,7 @@ export const resolve115ActingUser = (): MyMiddleware => {
     if (!user) {
       resError(ctx, {
         code: 400,
-        message: '随机图默认用户不存在',
+        message: t('setting.system.randomPicUser.notFound'),
       });
       return;
     }

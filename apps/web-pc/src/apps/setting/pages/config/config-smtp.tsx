@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Space, Toast } from '@douyinfe/semi-ui';
 import { AppForm, Loading } from '@/components';
+import { useI18n } from '@/i18n';
 import { getAccountConfigs, testAccountConfig, updateAccountConfig } from '@/services/user';
 import { useAppPageContext } from '@/hooks';
 import { AccountConfigPlatform, UserRole } from '@volix/types';
@@ -16,6 +17,7 @@ const EMPTY_VALUES: SmtpAccountConfigItem = {
 };
 
 function SettingConfigSmtpApp() {
+  const { t } = useI18n();
   const { user, requestNavigate } = useAppPageContext();
   const [initialValues, setInitialValues] = useState<SmtpAccountConfigItem>(EMPTY_VALUES);
   const [loading, setLoading] = useState(true);
@@ -53,7 +55,7 @@ function SettingConfigSmtpApp() {
         setInitialValues(nextValues);
         setFormValues(nextValues);
       })
-      .catch(() => Toast.error('加载 SMTP 配置失败'))
+      .catch(() => Toast.error(t({ id: 'setting.smtp.loadFailed', defaultMessage: '加载 SMTP 配置失败' })))
       .finally(() => setLoading(false));
   }, [user, isAdmin, requestNavigate]);
 
@@ -77,10 +79,10 @@ function SettingConfigSmtpApp() {
       });
       setInitialValues(nextData);
       setFormValues(nextData);
-      Toast.success('SMTP 配置保存成功');
+      Toast.success(t({ id: 'setting.smtp.saveSuccess', defaultMessage: 'SMTP 配置保存成功' }));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '保存失败');
+      Toast.error(message || t({ id: 'common.action.saveFailed', defaultMessage: '保存失败' }));
     } finally {
       setSaving(false);
     }
@@ -100,10 +102,10 @@ function SettingConfigSmtpApp() {
           fromEmail: formValues.fromEmail.trim(),
         },
       });
-      Toast.success(res.data?.message || 'SMTP 联通成功');
+      Toast.success(res.data?.message || t({ id: 'setting.smtp.connectionSuccess', defaultMessage: 'SMTP 联通成功' }));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || 'SMTP 联通失败');
+      Toast.error(message || t({ id: 'setting.smtp.connectionFailed', defaultMessage: 'SMTP 联通失败' }));
     } finally {
       setTesting(false);
     }
@@ -132,21 +134,49 @@ function SettingConfigSmtpApp() {
             }}
             onSubmit={onSubmit}
           >
-            <AppForm.Input field="host" label="SMTP Host" placeholder="如 smtp.gmail.com" />
-            <AppForm.Input field="port" label="SMTP Port" placeholder="如 465 / 587" />
-            <AppForm.RadioGroup field="secure" label="连接方式" type="button">
+            <AppForm.Input
+              field="host"
+              label="SMTP Host"
+              placeholder={t({ id: 'setting.smtp.host.placeholder', defaultMessage: '如 smtp.gmail.com' })}
+            />
+            <AppForm.Input
+              field="port"
+              label="SMTP Port"
+              placeholder={t({ id: 'setting.smtp.port.placeholder', defaultMessage: '如 465 / 587' })}
+            />
+            <AppForm.RadioGroup
+              field="secure"
+              label={t({ id: 'setting.smtp.secure', defaultMessage: '连接方式' })}
+              type="button"
+            >
               <AppForm.Radio value={true}>SSL/TLS</AppForm.Radio>
               <AppForm.Radio value={false}>STARTTLS/Plain</AppForm.Radio>
             </AppForm.RadioGroup>
-            <AppForm.Input field="username" label="SMTP 用户名" placeholder="请输入 SMTP 用户名" />
-            <AppForm.Input field="password" mode="password" label="SMTP 密码" placeholder="请输入 SMTP 密码" />
-            <AppForm.Input field="fromEmail" label="发件邮箱" placeholder="验证码邮件显示的发件人邮箱" />
+            <AppForm.Input
+              field="username"
+              label={t({ id: 'setting.smtp.username', defaultMessage: 'SMTP 用户名' })}
+              placeholder={t({ id: 'setting.smtp.username.placeholder', defaultMessage: '请输入 SMTP 用户名' })}
+            />
+            <AppForm.Input
+              field="password"
+              mode="password"
+              label={t({ id: 'setting.smtp.password', defaultMessage: 'SMTP 密码' })}
+              placeholder={t({ id: 'setting.smtp.password.placeholder', defaultMessage: '请输入 SMTP 密码' })}
+            />
+            <AppForm.Input
+              field="fromEmail"
+              label={t({ id: 'setting.smtp.fromEmail', defaultMessage: '发件邮箱' })}
+              placeholder={t({
+                id: 'setting.smtp.fromEmail.placeholder',
+                defaultMessage: '验证码邮件显示的发件人邮箱',
+              })}
+            />
             <Space>
               <Button type="primary" htmlType="submit" loading={saving}>
-                保存配置
+                {t({ id: 'common.action.saveConfig', defaultMessage: '保存配置' })}
               </Button>
               <Button loading={testing} onClick={onTestConnection}>
-                测试联通性
+                {t({ id: 'setting.account.testConnection', defaultMessage: '测试联通性' })}
               </Button>
             </Space>
           </AppForm>

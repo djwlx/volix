@@ -2,6 +2,7 @@ import { AccountConfigPlatform } from '@volix/types';
 import type { AccountConfigMap, TestAccountConfigPayload, UpdateAccountConfigPayload } from '@volix/types';
 import { badRequest, unauthorized } from '../../shared/http-handler';
 import { createBangumiSdk, createOpenlistSdk, createQbittorrentSdk } from '../../../sdk';
+import { t } from '../../../utils/i18n';
 import {
   getUserAccountConfigs,
   normalizeBangumiAccountConfig,
@@ -12,14 +13,14 @@ import {
 const ensureLoginUserId = (ctx: any) => {
   const userId = ctx.state.userInfo?.id;
   if (!userId) {
-    unauthorized('未登录');
+    unauthorized(t('auth.unauthorized'));
   }
   return userId as string | number;
 };
 
 const ensureSupportedPlatform = (platform?: AccountConfigPlatform) => {
   if (!platform || !Object.values(AccountConfigPlatform).includes(platform)) {
-    badRequest('platform 参数错误');
+    badRequest(t('accountConfig.platform.invalid'));
   }
 };
 
@@ -61,7 +62,7 @@ export const testAccountConfig: MyMiddleware = async ctx => {
 
       return {
         success: true,
-        message: 'qBittorrent 联通成功',
+        message: t('accountConfig.test.qbittorrentSuccess'),
       };
     }
 
@@ -76,12 +77,12 @@ export const testAccountConfig: MyMiddleware = async ctx => {
 
       return {
         success: true,
-        message: `OpenList 联通成功，当前账号：${me.username}`,
+        message: t('accountConfig.test.openlistSuccess', { username: me.username }),
       };
     }
 
     if (platform === AccountConfigPlatform.SMTP) {
-      badRequest('SMTP 已迁移到系统配置，不再支持个人账号配置');
+      badRequest(t('accountConfig.smtp.migrated'));
     }
 
     if (platform === AccountConfigPlatform.BANGUMI) {
@@ -95,18 +96,18 @@ export const testAccountConfig: MyMiddleware = async ctx => {
 
       return {
         success: true,
-        message: `Bangumi 联通成功，当前用户：${me.nickname || me.username || 'unknown'}`,
+        message: t('accountConfig.test.bangumiSuccess', { username: me.nickname || me.username || 'unknown' }),
       };
     }
 
-    badRequest('当前平台暂不支持联通性测试');
+    badRequest(t('accountConfig.test.unsupported'));
   } catch (error) {
     const message =
       (error as { response?: { data?: { error?: { message?: string }; message?: string } }; message?: string })
         ?.response?.data?.error?.message ||
       (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
       (error as Error)?.message ||
-      '联通失败';
+      t('setting.account.connectionFailed');
 
     const platformLabelMap: Record<AccountConfigPlatform, string> = {
       [AccountConfigPlatform.QBITTORRENT]: 'qBittorrent',
@@ -115,6 +116,11 @@ export const testAccountConfig: MyMiddleware = async ctx => {
       [AccountConfigPlatform.BANGUMI]: 'Bangumi',
     };
 
-    badRequest(`${platformLabelMap[platform] || '服务'}联通失败: ${message}`);
+    badRequest(
+      t('accountConfig.test.failed', {
+        service: platformLabelMap[platform] || t('accountConfig.service.default'),
+        message,
+      })
+    );
   }
 };

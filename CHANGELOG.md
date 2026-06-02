@@ -5,9 +5,11 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Changed
-- Add a pre-commit changelog check to require updating `CHANGELOG.md` for code changes.
 - For `GET /api/115/pic/cache/:pc?format=webp`, return the remote original image on cache miss and prewarm local/WebP cache asynchronously to avoid blocking first paint.
+- Add a documentation redesign spec for splitting the README into bilingual entry points and dedicated Docker guides.
+- Add bilingual README entry points, deployment notes, and dedicated Docker usage guides with published registry references for English and Chinese documentation.
+- Add shared `zh-CN`/`en-US` i18n resources for web and API, wire frontend language switching and `volix-language` request propagation, and localize core settings, RSS, SQLite admin, and 115 user-facing copy.
 
 ### Fixed
 - Fix garbled Chinese error message text in 115 liked-picture cache fallback path.
-
+- Fix repeated settings data requests caused by unstable i18n hook dependencies, and restore missing translated status labels in the 115 cache UI.

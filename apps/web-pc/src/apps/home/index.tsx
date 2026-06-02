@@ -1,5 +1,6 @@
 import { AppCard } from './components';
 import { IconStar, IconTabsStroked } from '@douyinfe/semi-icons';
+import { useI18n } from '@/i18n';
 import { isAuthenticated } from '@/utils';
 import { useUser } from '@/hooks';
 import { UserRole } from '@volix/types';
@@ -21,6 +22,7 @@ const moduleIconStyle = {
 };
 
 function HomeApp() {
+  const { t } = useI18n();
   const { user } = useUser();
   const authed = isAuthenticated();
   const isAdmin = user?.role === UserRole.ADMIN;
@@ -29,25 +31,30 @@ function HomeApp() {
     <div className={styles.page}>
       <div className={styles.content}>
         <div className={styles.sectionBlock}>
-          <div className={styles.sectionLabel}>常用工具</div>
+          <div className={styles.sectionLabel}>{t('home.section.tools')}</div>
           <div className={styles.cardGrid}>
             <AppCard
-              title="智能格式化"
-              description="JSON / XML / Base64 一站式处理，适合调试复杂结构。"
+              title={t('home.card.formatter.title')}
+              description={t('home.card.formatter.description')}
               icon={formatterIcon}
               link="/formatter"
             />
             <AppCard
-              title="取色器"
-              description="从网页或图片中提取颜色，快速拿到 HEX、RGB、HSL。"
+              title={t('home.card.colorPicker.title')}
+              description={t('home.card.colorPicker.description')}
               link="/color-picker"
               icon={colorPickerIcon}
             />
-            <AppCard title="随机图片" description="快速切换一张随机图片。" icon={picIcon} link="/pic" />
+            <AppCard
+              title={t('home.card.pic.title')}
+              description={t('home.card.pic.description')}
+              icon={picIcon}
+              link="/pic"
+            />
             {authed ? (
               <AppCard
-                title="我的喜欢"
-                description="查看和管理你收藏的随机图片。"
+                title={t('home.card.likes.title')}
+                description={t('home.card.likes.description')}
                 link="/pic/likes"
                 icon={
                   <div style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #dc2626 0%, #f97316 100%)' }}>
@@ -57,8 +64,8 @@ function HomeApp() {
               />
             ) : null}
             <AppCard
-              title="RSS 阅读器"
-              description="对接 RSSHub，按订阅源浏览最新内容。"
+              title={t('home.card.rss.title')}
+              description={t('home.card.rss.description')}
               link="/rss"
               icon={
                 <div style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #0284c7 0%, #14b8a6 100%)' }}>
@@ -71,18 +78,18 @@ function HomeApp() {
 
         {authed ? (
           <div className={styles.sectionBlock}>
-            <div className={styles.sectionLabel}>管理与配置</div>
+            <div className={styles.sectionLabel}>{t('home.section.admin')}</div>
             <div className={styles.cardGrid}>
               <AppCard
-                title="设置"
-                description="进入配置中心管理账号与系统设置。"
+                title={t('home.card.setting.title')}
+                description={t('home.card.setting.description')}
                 icon={adminIcon}
                 link="/setting/info"
               />
               {isAdmin ? (
                 <AppCard
-                  title="SQLite 数据管理"
-                  description="直接查看并编辑当前应用数据库里的表数据。"
+                  title={t('home.card.sqlite.title')}
+                  description={t('home.card.sqlite.description')}
                   link="/sqlite-admin"
                   icon={
                     <div

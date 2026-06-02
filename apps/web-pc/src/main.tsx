@@ -3,6 +3,7 @@ import '@/styles/global.css';
 import { useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router/dom';
+import { ensureI18n, I18nProvider } from '@/i18n';
 import { router } from '@/layouts/router';
 import { formatTime } from '@volix/utils';
 import { initializeTheme } from '@/utils/theme';
@@ -31,4 +32,10 @@ function AppRoot() {
   return <RouterProvider router={router} />;
 }
 
-createRoot(document.getElementById('root')!).render(<AppRoot />);
+void ensureI18n().then(() => {
+  createRoot(document.getElementById('root')!).render(
+    <I18nProvider>
+      <AppRoot />
+    </I18nProvider>
+  );
+});

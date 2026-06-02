@@ -38,6 +38,7 @@ import {
   withFolderConfigLock,
 } from './picture-cache-fs-folder';
 import { ensure115PicQueueRunning } from './picture-cache-random-meta-queue';
+import { t } from '../../../../utils/i18n';
 
 export async function get115PicInfoData() {
   const [
@@ -89,7 +90,7 @@ export async function get115PicInfoData() {
 export async function set115PicInfoData(params: PicInfoParams) {
   const normalizedPaths = normalizePaths(params.paths);
   if (normalizedPaths.length === 0) {
-    badRequest('参数错误');
+    badRequest(t('common.validation.invalidParams'));
   }
 
   await withFolderConfigLock(async () => {
@@ -136,7 +137,7 @@ export async function clear115PicData(params?: ClearPicInfoParams) {
 
   if (normalizedCidList.length === 0 && normalizedFolderPathList.length === 0) {
     if (lightLocks.is115PictureCaching) {
-      badRequest('正在缓存中，请稍后再试');
+      badRequest(t('pic115Api.cachingInProgress'));
     }
     await clearAllFile115();
     await clearConfig([
@@ -164,7 +165,7 @@ export async function clear115PicData(params?: ClearPicInfoParams) {
       item => blockedCidSet.has(item.cid) && (item.status === 'pending' || item.status === 'caching')
     );
     if (activeFolders.length > 0) {
-      badRequest('请等待该缓存任务完成后再删除');
+      badRequest(t('pic115Api.waitForCacheCompletion'));
     }
 
     const remainFolders = folders.filter(item => !normalizedCidList.includes(item.cid));
@@ -195,7 +196,7 @@ export async function clear115PicData(params?: ClearPicInfoParams) {
 export async function retry115PicData(params: RetryPicInfoParams) {
   const normalizedPaths = normalizePaths(params.paths);
   if (normalizedPaths.length === 0) {
-    badRequest('参数错误');
+    badRequest(t('common.validation.invalidParams'));
   }
 
   await withFolderConfigLock(async () => {
@@ -212,7 +213,7 @@ export async function retry115PicData(params: RetryPicInfoParams) {
     });
 
     if (!changed) {
-      badRequest('未找到可重试的缓存目录');
+      badRequest(t('pic115Api.retryTargetNotFound'));
     }
 
     await savePicCacheFolders(folders);

@@ -14,6 +14,7 @@ import {
   type SqliteAdminTableData,
   type SqliteAdminTableSummary,
 } from '@volix/types';
+import { useI18n } from '@/i18n';
 import { IconDelete, IconEdit, IconPlus, IconRefresh } from '@douyinfe/semi-icons';
 import { Button, Card, Empty, Input, Modal, Space, Table, Tag, TextArea, Toast } from '@douyinfe/semi-ui';
 import styles from './index.module.scss';
@@ -90,6 +91,7 @@ const renderCellValue = (value: unknown) => {
 };
 
 function SqliteAdminApp() {
+  const { t } = useI18n();
   const { user, loading } = useUser();
   const [tables, setTables] = useState<SqliteAdminTableSummary[]>([]);
   const [tablesLoading, setTablesLoading] = useState(false);
@@ -129,7 +131,7 @@ function SqliteAdminApp() {
         setSelectedTable(items[0].name);
       }
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '获取数据表失败'));
+      Toast.error(getHttpErrorMessage(error, t('sqliteAdmin.error.loadTablesFailed')));
     } finally {
       setTablesLoading(false);
     }
@@ -151,7 +153,7 @@ function SqliteAdminApp() {
       }
     } catch (error) {
       if (requestSeq === tableDetailRequestSeqRef.current) {
-        Toast.error(getHttpErrorMessage(error, '获取表数据失败'));
+        Toast.error(getHttpErrorMessage(error, t('sqliteAdmin.error.loadTableDataFailed')));
       }
     } finally {
       if (requestSeq === tableDetailRequestSeqRef.current) {
@@ -247,7 +249,7 @@ function SqliteAdminApp() {
         await createSqliteAdminRow(selectedTable, {
           values: parsedValues,
         });
-        Toast.success('新增成功');
+        Toast.success(t('sqliteAdmin.createSuccess'));
       } else {
         await updateSqliteAdminRow(selectedTable, {
           identity: {
@@ -255,13 +257,18 @@ function SqliteAdminApp() {
           },
           values: parsedValues,
         });
-        Toast.success('更新成功');
+        Toast.success(t('sqliteAdmin.updateSuccess'));
       }
 
       closeEditor();
       await Promise.all([loadTables(), loadTableDetail(selectedTable)]);
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, editor.mode === 'create' ? '新增失败' : '更新失败'));
+      Toast.error(
+        getHttpErrorMessage(
+          error,
+          t(editor.mode === 'create' ? 'sqliteAdmin.error.createFailed' : 'sqliteAdmin.error.updateFailed')
+        )
+      );
     } finally {
       setSaving(false);
     }
@@ -273,8 +280,8 @@ function SqliteAdminApp() {
     }
 
     Modal.confirm({
-      title: '删除这条记录？',
-      content: '删除后无法恢复，请确认这是你想要的操作。',
+      title: t('sqliteAdmin.deleteConfirm.title'),
+      content: t('sqliteAdmin.deleteConfirm.description'),
       okButtonProps: {
         type: 'danger',
       },
@@ -283,17 +290,17 @@ function SqliteAdminApp() {
           await deleteSqliteAdminRow(selectedTable, {
             identity: buildIdentity(row, identityColumns),
           });
-          Toast.success('删除成功');
+          Toast.success(t('sqliteAdmin.deleteSuccess'));
           await Promise.all([loadTables(), loadTableDetail(selectedTable)]);
         } catch (error) {
-          Toast.error(getHttpErrorMessage(error, '删除失败'));
+          Toast.error(getHttpErrorMessage(error, t('sqliteAdmin.error.deleteFailed')));
         }
       },
     });
   };
 
   if (loading) {
-    return <div style={{ padding: 24 }}>加载中...</div>;
+    return <div style={{ padding: 24 }}>{t('common.status.loading')}</div>;
   }
 
   if (!isAdmin) {
@@ -301,7 +308,10 @@ function SqliteAdminApp() {
       <div className={styles.page}>
         <div className={styles.content}>
           <Card className={styles.mainCard}>
-            <Empty title="暂无权限" description="只有管理员可以直接编辑 SQLite 表数据。" />
+            <Empty
+              title={t('sqliteAdmin.empty.noPermission.title')}
+              description={t('sqliteAdmin.empty.noPermission.description')}
+            />
           </Card>
         </div>
       </div>
@@ -318,7 +328,7 @@ function SqliteAdminApp() {
         render: (value: unknown) => renderCellValue(value),
       })),
       {
-        title: '操作',
+        title: t('sqliteAdmin.table.action'),
         key: 'action',
         fixed: isMobileTableLayout ? undefined : ('right' as const),
         width: 128,
@@ -331,7 +341,7 @@ function SqliteAdminApp() {
               icon={<IconEdit />}
               onClick={() => openEditModal(record)}
             >
-              编辑
+              {t('sqliteAdmin.action.edit')}
             </Button>
             <Button
               size="small"
@@ -340,7 +350,7 @@ function SqliteAdminApp() {
               icon={<IconDelete />}
               onClick={() => removeRow(record)}
             >
-              删除
+              {t('sqliteAdmin.action.delete')}
             </Button>
           </Space>
         ),
@@ -355,7 +365,7 @@ function SqliteAdminApp() {
           <Card
             className={styles.sidebarCard}
             bodyStyle={{ padding: 16 }}
-            title="数据表"
+            title={t('sqliteAdmin.sidebar.title')}
             headerExtraContent={
               <Button
                 theme="borderless"
@@ -381,11 +391,13 @@ function SqliteAdminApp() {
                     }}
                   >
                     <div className={styles.tableItemName}>{table.name}</div>
-                    <div className={styles.tableItemMeta}>{table.rowCount} 行</div>
+                    <div className={styles.tableItemMeta}>
+                      {t('sqliteAdmin.sidebar.rowCount', { count: table.rowCount })}
+                    </div>
                   </button>
                 ))
               ) : (
-                <Empty title="暂无数据表" />
+                <Empty title={t('sqliteAdmin.empty.noTables')} />
               )}
             </div>
           </Card>
@@ -402,10 +414,10 @@ function SqliteAdminApp() {
                       icon={<IconRefresh />}
                       onClick={() => loadTableDetail(selectedTable).catch(() => undefined)}
                     >
-                      刷新
+                      {t('sqliteAdmin.action.refresh')}
                     </Button>
                     <Button type="primary" icon={<IconPlus />} onClick={openCreateModal}>
-                      新增一行
+                      {t('sqliteAdmin.action.createRow')}
                     </Button>
                   </div>
                 </div>
@@ -426,17 +438,24 @@ function SqliteAdminApp() {
                   />
                 </div>
 
-                <div className={styles.identityNote}>行标识字段：{identityColumns.join(', ')}</div>
+                <div className={styles.identityNote}>
+                  {t('sqliteAdmin.identityColumns', { columns: identityColumns.join(', ') })}
+                </div>
               </div>
             ) : (
-              <Empty title="请选择左侧数据表" description="选中一张表后就可以直接查看、编辑、新增和删除数据。" />
+              <Empty
+                title={t('sqliteAdmin.empty.selectTable.title')}
+                description={t('sqliteAdmin.empty.selectTable.description')}
+              />
             )}
           </Card>
         </div>
       </div>
 
       <Modal
-        title={editor.mode === 'create' ? `新增到 ${selectedTable}` : `编辑 ${selectedTable}`}
+        title={t(editor.mode === 'create' ? 'sqliteAdmin.modal.createTitle' : 'sqliteAdmin.modal.editTitle', {
+          table: selectedTable,
+        })}
         visible={editor.visible}
         onCancel={closeEditor}
         onOk={() => submitEditor().catch(() => undefined)}
@@ -445,13 +464,15 @@ function SqliteAdminApp() {
       >
         <div className={styles.modalBody}>
           {editor.mode === 'edit' && editor.identity ? (
-            <div className={styles.fieldHint}>当前行标识：{JSON.stringify(editor.identity)}</div>
+            <div className={styles.fieldHint}>
+              {t('sqliteAdmin.modal.currentIdentity', { value: JSON.stringify(editor.identity) })}
+            </div>
           ) : null}
           {editableColumns.map((column: SqliteAdminColumn) => (
             <div key={column.name} className={styles.fieldBlock}>
               <div className={styles.fieldLabel}>
                 <span>{column.name}</span>
-                {column.primaryKey ? <Tag color="blue">主键</Tag> : null}
+                {column.primaryKey ? <Tag color="blue">{t('sqliteAdmin.tag.primaryKey')}</Tag> : null}
                 {column.notNull ? <Tag color="red">NOT NULL</Tag> : null}
                 {column.type ? <Tag color="grey">{column.type}</Tag> : null}
               </div>
@@ -484,8 +505,7 @@ function SqliteAdminApp() {
                 />
               )}
               <div className={styles.fieldHint}>
-                默认值：{column.defaultValue ?? '无'}。输入 <code>null</code> 可写入空值，输入对象/数组时会按 JSON
-                解析。
+                {t('sqliteAdmin.modal.fieldHint', { defaultValue: column.defaultValue ?? t('common.status.none') })}
               </div>
             </div>
           ))}

@@ -43,6 +43,7 @@ const logoWrapStyle = {
 } as const;
 
 const routeHandle = (config: AppRouteHandle): AppRouteHandle => config;
+const msg = (id: string, defaultMessage: string) => ({ id, defaultMessage });
 
 export const router = createBrowserRouter([
   {
@@ -56,7 +57,7 @@ export const router = createBrowserRouter([
     ErrorBoundary: AppErrorBoundary,
     handle: routeHandle({
       appHeader: {
-        title: '我的应用',
+        title: msg('route.home.title', '我的应用'),
         logo: (
           <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #14B8A6 0%, #22C55E 100%)' }}>
             <IconApps style={{ fontSize: 20 }} />
@@ -72,8 +73,8 @@ export const router = createBrowserRouter([
         handle: routeHandle({
           requiresAuth: true,
           appHeader: {
-            title: 'SQLite 数据管理',
-            description: '管理员可直接浏览和编辑当前应用数据库中的表数据',
+            title: msg('route.sqliteAdmin.title', 'SQLite 数据管理'),
+            description: msg('route.sqliteAdmin.description', '管理员可直接浏览和编辑当前应用数据库中的表数据'),
             logo: (
               <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #020617 0%, #0369a1 100%)' }}>
                 <IconTabsStroked style={{ fontSize: 20 }} />
@@ -87,9 +88,9 @@ export const router = createBrowserRouter([
         Component: FormatterApp,
         handle: routeHandle({
           appHeader: {
-            title: '智能格式化',
-            description: '支持 JSON、XML、Base64 的智能识别、递归解码和结构化查看',
-            logo: <img alt="智能格式化" src={formatterIcon} style={{ display: 'block', width: 44, height: 44 }} />,
+            title: msg('route.formatter.title', '智能格式化'),
+            description: msg('route.formatter.description', '支持 JSON、XML、Base64 的智能识别、递归解码和结构化查看'),
+            logo: <img alt="Formatter" src={formatterIcon} style={{ display: 'block', width: 44, height: 44 }} />,
           },
         }),
       },
@@ -98,9 +99,9 @@ export const router = createBrowserRouter([
         Component: ColorPickerApp,
         handle: routeHandle({
           appHeader: {
-            title: '取色器',
-            description: '支持网页取色和图片点击取色，自动生成 HEX、RGB、HSL',
-            logo: <img alt="取色器" src={colorPickerIcon} style={{ display: 'block', width: 44, height: 44 }} />,
+            title: msg('route.colorPicker.title', '取色器'),
+            description: msg('route.colorPicker.description', '支持网页取色和图片点击取色，自动生成 HEX、RGB、HSL'),
+            logo: <img alt="Color Picker" src={colorPickerIcon} style={{ display: 'block', width: 44, height: 44 }} />,
           },
         }),
       },
@@ -118,8 +119,8 @@ export const router = createBrowserRouter([
         handle: routeHandle({
           requiresAuth: true,
           appHeader: {
-            title: '我的喜欢',
-            description: '管理你收藏的 115 图片',
+            title: msg('route.picLikes.title', '我的喜欢'),
+            description: msg('route.picLikes.description', '管理你收藏的 115 图片'),
             logo: (
               <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #dc2626 0%, #f97316 100%)' }}>
                 <IconStar style={{ fontSize: 20 }} />
@@ -133,8 +134,8 @@ export const router = createBrowserRouter([
         Component: RssApp,
         handle: routeHandle({
           appHeader: {
-            title: 'RSS 阅读器',
-            description: '基于 RSSHub 的订阅抓取与阅读',
+            title: msg('route.rss.title', 'RSS 阅读器'),
+            description: msg('route.rss.description', '基于 RSSHub 的订阅抓取与阅读'),
             logo: (
               <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%)' }}>
                 RSS
@@ -149,9 +150,9 @@ export const router = createBrowserRouter([
         handle: routeHandle({
           requiresAuth: true,
           appHeader: {
-            title: '设置',
-            description: '账号、系统与服务配置中心',
-            logo: <img alt="设置" src={adminIcon} style={{ display: 'block', width: 44, height: 44 }} />,
+            title: msg('route.setting.title', '设置'),
+            description: msg('route.setting.description', '账号、系统与服务配置中心'),
+            logo: <img alt="Settings" src={adminIcon} style={{ display: 'block', width: 44, height: 44 }} />,
           },
         }),
         children: [
@@ -162,8 +163,8 @@ export const router = createBrowserRouter([
             Component: SettingUserApp,
             handle: routeHandle({
               appHeader: {
-                title: '用户管理',
-                description: '查看和维护系统用户',
+                title: msg('route.settingUser.title', '用户管理'),
+                description: msg('route.settingUser.description', '查看和维护系统用户'),
                 logo: (
                   <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)' }}>
                     <IconComment style={{ fontSize: 20 }} />
@@ -180,8 +181,8 @@ export const router = createBrowserRouter([
             Component: SettingConfig115App,
             handle: routeHandle({
               appHeader: {
-                title: '随机图片配置',
-                description: '管理随机图片来源、缓存目录与 115 登录状态',
+                title: msg('route.settingConfig115.title', '随机图片配置'),
+                description: msg('route.settingConfig115.description', '管理随机图片来源、缓存目录与 115 登录状态'),
                 logo: (
                   <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)' }}>
                     <IconCloudStroked style={{ fontSize: 20 }} />
@@ -196,8 +197,8 @@ export const router = createBrowserRouter([
             Component: SettingConfigAccountCenterApp,
             handle: routeHandle({
               appHeader: {
-                title: '账号管理',
-                description: '',
+                title: msg('route.settingAccount.title', '账号管理'),
+                description: msg('route.settingAccount.description', ''),
                 logo: (
                   <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #ea580c 0%, #f59e0b 100%)' }}>
                     <IconMailStroked style={{ fontSize: 20 }} />

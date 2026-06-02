@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { Avatar, Button, Card, Empty, Space, Table, Tag, Toast } from '@douyinfe/semi-ui';
 import { getUserList } from '@/services/user';
 import { useAppPageContext } from '@/hooks';
+import { useI18n } from '@/i18n';
 import type { UserInfoResponse } from '@volix/types';
 
 function SettingUserApp() {
+  const { t } = useI18n();
   const { isAdmin, requestNavigate } = useAppPageContext();
   const [userList, setUserList] = useState<UserInfoResponse[]>([]);
   const tableMinWidth = 'max(100%, 980px)';
@@ -19,27 +21,27 @@ function SettingUserApp() {
 
   useEffect(() => {
     loadData().catch(() => {
-      Toast.error('获取用户信息失败');
+      Toast.error(t('setting.user.loadFailed'));
     });
   }, [isAdmin]);
 
   if (!isAdmin) {
     return (
-      <Card title="用户管理" shadows="hover" style={{ width: '100%' }} bodyStyle={{ width: '100%' }}>
-        <Empty title="暂无权限" description="仅管理员可查看用户管理" />
+      <Card title={t('setting.user.title')} shadows="hover" style={{ width: '100%' }} bodyStyle={{ width: '100%' }}>
+        <Empty title={t('admin.empty.noPermission.title')} description={t('setting.user.noPermission')} />
       </Card>
     );
   }
 
   return (
     <Card
-      title="用户管理"
+      title={t('setting.user.title')}
       shadows="hover"
       style={{ width: '100%' }}
       bodyStyle={{ width: '100%' }}
       headerExtraContent={
         <Button type="primary" onClick={() => requestNavigate('/setting/user/add')}>
-          添加用户
+          {t('setting.user.add')}
         </Button>
       }
     >
@@ -54,7 +56,7 @@ function SettingUserApp() {
           dataSource={userList}
           columns={[
             {
-              title: '头像',
+              title: t('setting.user.table.avatar'),
               dataIndex: 'avatar',
               key: 'avatar',
               width: 88,
@@ -65,7 +67,7 @@ function SettingUserApp() {
               ),
             },
             {
-              title: '昵称',
+              title: t('setting.user.table.nickname'),
               dataIndex: 'nickname',
               key: 'nickname',
               width: 220,
@@ -75,7 +77,7 @@ function SettingUserApp() {
               render: (value: string | undefined) => value || '-',
             },
             {
-              title: '邮箱',
+              title: t('admin.table.email'),
               dataIndex: 'email',
               key: 'email',
               ellipsis: {
@@ -83,21 +85,27 @@ function SettingUserApp() {
               },
             },
             {
-              title: '邮箱验证',
+              title: t('setting.user.table.emailVerified'),
               dataIndex: 'emailVerified',
               key: 'emailVerified',
               width: 120,
-              render: (value: boolean) => (value ? <Tag color="green">已验证</Tag> : <Tag color="orange">未验证</Tag>),
+              render: (value: boolean) =>
+                value ? (
+                  <Tag color="green">{t('setting.info.verified')}</Tag>
+                ) : (
+                  <Tag color="orange">{t('setting.info.unverified')}</Tag>
+                ),
             },
             {
-              title: '系统角色',
+              title: t('setting.user.table.role'),
               dataIndex: 'role',
               key: 'role',
               width: 120,
-              render: (value: UserInfoResponse['role']) => (value === 'admin' ? '管理员' : '普通用户'),
+              render: (value: UserInfoResponse['role']) =>
+                value === 'admin' ? t('admin.role.admin') : t('admin.role.user'),
             },
             {
-              title: '操作',
+              title: t('sqliteAdmin.table.action'),
               key: 'action',
               width: 120,
               render: (_: unknown, record: UserInfoResponse) => (
@@ -106,7 +114,7 @@ function SettingUserApp() {
                   type="primary"
                   onClick={() => requestNavigate(`/setting/user/edit/${record.id}`)}
                 >
-                  编辑
+                  {t('sqliteAdmin.action.edit')}
                 </Button>
               ),
             },

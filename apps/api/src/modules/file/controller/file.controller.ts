@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidV4 } from 'uuid';
+import { t } from '../../../utils/i18n';
 import { PATH } from '../../../utils/path';
 import { badRequest } from '../../shared/http-handler';
 import { FileEntity } from '../model/file.model';
@@ -26,7 +27,7 @@ const moveUploadedFile = async (sourcePath: string, targetPath: string): Promise
 export const uploadFile: MyMiddleware = async ctx => {
   const file = ctx.request.files?.file as UploadedFileFormData | undefined;
   if (!file) {
-    badRequest('文件不存在');
+    badRequest(t({ id: 'file.notFound', defaultMessage: '文件不存在' }));
   }
 
   const { originalFilename, size, mimetype, filepath } = file as UploadedFileFormData;
@@ -53,7 +54,7 @@ export const downloadFile: MyMiddleware = async ctx => {
   const { fileId } = ctx.params;
   const fileInfo = await getFile(fileId);
   if (!fileInfo) {
-    badRequest('文件不存在');
+    badRequest(t({ id: 'file.notFound', defaultMessage: '文件不存在' }));
   }
 
   const { name, mime_type } = fileInfo as FileEntity;

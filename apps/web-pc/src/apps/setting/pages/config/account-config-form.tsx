@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Space, Toast } from '@douyinfe/semi-ui';
 import { AppForm, Loading } from '@/components';
+import { useI18n } from '@/i18n';
 import { getAccountConfigs, testAccountConfig, updateAccountConfig } from '@/services/user';
 import { useAppPageContext } from '@/hooks';
 import { AccountConfigPlatform, UserRole } from '@volix/types';
@@ -23,6 +24,7 @@ const EMPTY_VALUES: AccountConfigFormValues = {
 };
 
 function AccountConfigForm({ platform, title }: AccountConfigFormProps) {
+  const { t } = useI18n();
   const { user, requestNavigate } = useAppPageContext();
   const [initialValues, setInitialValues] = useState<AccountConfigFormValues>(EMPTY_VALUES);
   const [formValues, setFormValues] = useState<AccountConfigFormValues>(EMPTY_VALUES);
@@ -55,7 +57,7 @@ function AccountConfigForm({ platform, title }: AccountConfigFormProps) {
     setLoading(true);
     loadConfig()
       .catch(() => {
-        Toast.error('加载账号配置失败');
+        Toast.error(t({ id: 'setting.account.loadFailed', defaultMessage: '加载账号配置失败' }));
       })
       .finally(() => {
         setLoading(false);
@@ -83,10 +85,10 @@ function AccountConfigForm({ platform, title }: AccountConfigFormProps) {
       };
       setInitialValues(nextValues);
       setFormValues(nextValues);
-      Toast.success('配置保存成功');
+      Toast.success(t({ id: 'setting.account.saveSuccess', defaultMessage: '配置保存成功' }));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '保存失败');
+      Toast.error(message || t({ id: 'common.action.saveFailed', defaultMessage: '保存失败' }));
     } finally {
       setSaving(false);
     }
@@ -103,10 +105,10 @@ function AccountConfigForm({ platform, title }: AccountConfigFormProps) {
           password: formValues.password.trim(),
         },
       });
-      Toast.success(res.data?.message || '联通成功');
+      Toast.success(res.data?.message || t({ id: 'setting.account.connectionSuccess', defaultMessage: '联通成功' }));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '联通失败');
+      Toast.error(message || t({ id: 'setting.account.connectionFailed', defaultMessage: '联通失败' }));
     } finally {
       setTesting(false);
     }
@@ -132,15 +134,28 @@ function AccountConfigForm({ platform, title }: AccountConfigFormProps) {
             }}
             onSubmit={onSubmit}
           >
-            <AppForm.Input field="baseUrl" label="服务地址" placeholder="请输入 http(s) 地址" />
-            <AppForm.Input field="username" label="账号" placeholder="请输入账号" />
-            <AppForm.Input field="password" label="密码" mode="password" placeholder="请输入密码" />
+            <AppForm.Input
+              field="baseUrl"
+              label={t({ id: 'setting.account.baseUrl', defaultMessage: '服务地址' })}
+              placeholder={t({ id: 'setting.account.baseUrl.placeholder', defaultMessage: '请输入 http(s) 地址' })}
+            />
+            <AppForm.Input
+              field="username"
+              label={t({ id: 'setting.account.username', defaultMessage: '账号' })}
+              placeholder={t({ id: 'setting.account.username.placeholder', defaultMessage: '请输入账号' })}
+            />
+            <AppForm.Input
+              field="password"
+              label={t({ id: 'setting.account.password', defaultMessage: '密码' })}
+              mode="password"
+              placeholder={t({ id: 'setting.account.password.placeholder', defaultMessage: '请输入密码' })}
+            />
             <Space>
               <Button type="primary" htmlType="submit" loading={saving}>
-                保存配置
+                {t({ id: 'common.action.saveConfig', defaultMessage: '保存配置' })}
               </Button>
               <Button loading={testing} onClick={onTestConnection}>
-                测试联通性
+                {t({ id: 'setting.account.testConnection', defaultMessage: '测试联通性' })}
               </Button>
             </Space>
           </AppForm>

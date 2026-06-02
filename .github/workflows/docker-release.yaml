@@ -10,6 +10,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   Build:
     runs-on: ubuntu-latest
@@ -19,6 +22,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: master
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v6
@@ -32,6 +36,16 @@ jobs:
           VERSION=${TAG#v}
           echo "Setting package versions to $VERSION"
           node scripts/update-versions.js "$VERSION"
+
+      - name: Generate AI Release Summary
+        env:
+          TAG: ${{ github.ref_name }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          node scripts/release-ai-summary.cjs \
+            --tag "$TAG" \
+            --changelog CHANGELOG.md \
+            --release-notes release-notes.md
 
       - name: Build Source
         run: |
@@ -85,6 +99,7 @@ jobs:
       - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: release-notes.md
           files: app.zip
           prerelease: false
 
@@ -92,6 +107,7 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          rm -f release-notes.md
           git add .
           git restore --staged app.zip || true
           if ! git diff --cached --quiet; then

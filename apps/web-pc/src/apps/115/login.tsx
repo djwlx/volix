@@ -3,8 +3,10 @@ import type { QrCodeResponse, QrCodeStatusParams } from '@volix/types';
 import { omit } from '@volix/utils';
 import { useEffect, useState } from 'react';
 import { Spin, Toast } from '@douyinfe/semi-ui';
+import { useI18n } from '@/i18n';
 
 export function Login() {
+  const { t } = useI18n();
   const [qrCodeValue, setQrCodeValue] = useState<QrCodeResponse>();
   const [scaned, setScaned] = useState('');
 
@@ -21,7 +23,7 @@ export function Login() {
     if (res.data.status === 1) {
       setScaned(res.data.msg);
     } else {
-      Toast.warning('扫码超时，请重新扫码');
+      Toast.warning(t('pic115.login.scanTimeout'));
       getQr();
     }
   };
@@ -31,7 +33,7 @@ export function Login() {
     if (res.data.status === 2) {
       login();
     } else {
-      Toast.warning('超时，请重新扫码');
+      Toast.warning(t('pic115.login.confirmTimeout'));
       getQr();
     }
   };
@@ -70,7 +72,7 @@ export function Login() {
 
   return (
     <center>
-      <div>扫码登录</div>
+      <div>{t('pic115.login.title')}</div>
       {scaned ? (
         <div style={{ ...imgStyle, border: '1px solid black' }}>{scaned}</div>
       ) : (

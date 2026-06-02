@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Button, Popconfirm, Space, Table, Tag, Typography } from '@douyinfe/semi-ui';
 import type { UserRssSubscriptionItem } from '@volix/types';
+import { useI18n } from '@/i18n';
 
 interface RouteStat {
   pendingCount: number;
@@ -42,6 +43,7 @@ export function RssSubscriptionTable({
   formatBytes,
   formatTime,
 }: SubscriptionTableProps) {
+  const { t } = useI18n();
   const tableMinWidth = 1200;
 
   const rows = useMemo<SubscriptionRow[]>(() => {
@@ -64,7 +66,7 @@ export function RssSubscriptionTable({
   const columns = useMemo(() => {
     return [
       {
-        title: '订阅',
+        title: t('setting.rss.table.subscription'),
         dataIndex: 'route',
         width: 380,
         render: (_: unknown, record: SubscriptionRow) => (
@@ -72,7 +74,9 @@ export function RssSubscriptionTable({
             <Space spacing={8} align="center" wrap>
               <Typography.Text strong>{record.title}</Typography.Text>
               <Tag size="small" color={record.pendingCount > 0 ? 'orange' : 'green'}>
-                {record.pendingCount > 0 ? `待处理 ${record.pendingCount}` : '状态正常'}
+                {record.pendingCount > 0
+                  ? t('setting.rss.table.pendingCount', { count: record.pendingCount })
+                  : t('setting.rss.table.statusNormal')}
               </Tag>
             </Space>
             <Typography.Text
@@ -89,47 +93,55 @@ export function RssSubscriptionTable({
         ),
       },
       {
-        title: '数据概览',
+        title: t('setting.rss.table.overview'),
         dataIndex: 'stats',
         width: 320,
         render: (_: unknown, record: SubscriptionRow) => (
           <Space spacing={6} wrap>
-            <Tag size="small" color="blue">{`已入库 ${record.itemCount}`}</Tag>
-            <Tag size="small" color="orange">{`待处理 ${record.pendingCount}`}</Tag>
-            <Tag size="small" color="cyan">{`文件 ${record.storageFileCount}`}</Tag>
-            <Tag size="small" color="indigo">{`占用 ${formatBytes(record.storageSizeBytes)}`}</Tag>
+            <Tag size="small" color="blue">
+              {t('setting.rss.table.itemCount', { count: record.itemCount })}
+            </Tag>
+            <Tag size="small" color="orange">
+              {t('setting.rss.table.pendingCount', { count: record.pendingCount })}
+            </Tag>
+            <Tag size="small" color="cyan">
+              {t('setting.rss.table.fileCount', { count: record.storageFileCount })}
+            </Tag>
+            <Tag size="small" color="indigo">
+              {t('setting.rss.table.storageSize', { size: formatBytes(record.storageSizeBytes) })}
+            </Tag>
           </Space>
         ),
       },
       {
-        title: '更新时间',
+        title: t('setting.rss.table.updatedAt'),
         dataIndex: 'schedule',
         width: 320,
         render: (_: unknown, record: SubscriptionRow) => (
           <div style={{ display: 'grid', gap: 2 }}>
             <Typography.Text size="small" type="tertiary">
-              上次更新：{formatTime(record.lastUpdatedAt)}
+              {t('setting.rss.table.lastUpdatedAt', { time: formatTime(record.lastUpdatedAt) })}
             </Typography.Text>
             <Typography.Text size="small" type="tertiary">
-              下次更新：{formatTime(record.nextUpdateAt)}
+              {t('setting.rss.table.nextUpdatedAt', { time: formatTime(record.nextUpdateAt) })}
             </Typography.Text>
           </div>
         ),
       },
       {
-        title: '操作',
+        title: t('sqliteAdmin.table.action'),
         dataIndex: 'actions',
         align: 'right' as const,
         width: 180,
         render: (_: unknown, record: SubscriptionRow) => (
           <Space spacing={8}>
             <Popconfirm
-              title="确定删除该订阅？"
-              content="删除后不会再自动拉取此 route。"
+              title={t('setting.rss.table.deleteConfirmTitle')}
+              content={t('setting.rss.table.deleteConfirmDescription')}
               onConfirm={() => onDeleteRoute(record.route)}
             >
               <Button theme="borderless" type="danger" size="small">
-                删除
+                {t('common.action.delete')}
               </Button>
             </Popconfirm>
             <Button
@@ -138,7 +150,7 @@ export function RssSubscriptionTable({
               loading={clearingRouteHistory === record.route}
               onClick={() => onOpenClearRouteHistoryModal(record.route)}
             >
-              清理历史
+              {t('setting.rss.table.clearHistory')}
             </Button>
           </Space>
         ),

@@ -36,11 +36,12 @@ import {
   normalizePicCacheFormatOptions,
   resolvePicCacheByFormat,
 } from './picture-cache-format';
+import { t } from '../../../../utils/i18n';
 
 export async function like115PicData(params: Like115PicParams, userAgent: string) {
   const pc = params.pc?.trim() || '';
   if (!pc) {
-    badRequest('缺少图片参数');
+    badRequest(t('pic115Api.picParamRequired'));
   }
 
   const file = await getFile115ByPc(pc);
@@ -49,7 +50,7 @@ export async function like115PicData(params: Like115PicParams, userAgent: string
       const removed = await clearLocalPicCacheByPcFromFs(pc);
       const removedWebp = await clearWebpCacheByPc(pc);
       if (!removed && !removedWebp) {
-        badRequest('未找到当前图片');
+        badRequest(t('pic115Api.currentPicNotFound'));
       }
       return {
         pc,
@@ -61,7 +62,7 @@ export async function like115PicData(params: Like115PicParams, userAgent: string
         cached: false,
       };
     }
-    badRequest('未找到当前图片');
+    badRequest(t('pic115Api.currentPicNotFound'));
   }
   const safeFile = file as Cloud115DbFileItem;
 
@@ -126,12 +127,12 @@ export async function getLiked115PicListData(params?: { offset?: number; pageSiz
 export async function get115PicPathByPcData(pc: string) {
   const normalizedPc = String(pc || '').trim();
   if (!normalizedPc) {
-    badRequest('缺少图片参数');
+    badRequest(t('pic115Api.picParamRequired'));
   }
 
   const info = await getFile115PathByPc(normalizedPc);
   if (!info) {
-    badRequest('未找到缓存路径');
+    badRequest(t('pic115Api.cachePathNotFound'));
   }
   const safeInfo = info as NonNullable<typeof info>;
 
@@ -148,7 +149,7 @@ export async function get115PicPathByPcData(pc: string) {
 export async function get115RandomPicCacheFileData(cacheFileName: string, userAgent = '') {
   const safeName = sanitizeCacheFileName(String(cacheFileName || '').trim());
   if (!safeName) {
-    badRequest('缺少缓存文件参数');
+    badRequest(t('pic115Api.cacheFileParamRequired'));
   }
 
   const cache = await getLocalRandomPicCacheByFileName(safeName);
@@ -167,12 +168,12 @@ export async function get115RandomPicCacheFileData(cacheFileName: string, userAg
 
   const pc = parsePcFromLocalCacheFileName(safeName);
   if (!pc) {
-    badRequest('未找到本地随机缓存文件');
+    badRequest(t('pic115Api.localRandomCacheNotFound'));
   }
 
   const file = await getFile115ByPc(pc);
   if (!file) {
-    badRequest('未找到本地随机缓存文件');
+    badRequest(t('pic115Api.localRandomCacheNotFound'));
   }
   const safeFile = file as Cloud115DbFileItem;
 
@@ -196,7 +197,7 @@ export async function get115RandomPicCacheFileData(cacheFileName: string, userAg
 
   const meta = parse115FileMeta(await get115FileData(safeFile.pc, userAgent || DEFAULT_115_DOWNLOAD_UA));
   if (!meta.url) {
-    badRequest('未找到本地随机缓存文件');
+    badRequest(t('pic115Api.localRandomCacheNotFound'));
   }
 
   return {
@@ -219,7 +220,7 @@ export async function get115PicCacheFileByPcData(
 ) {
   const normalizedPc = String(pc || '').trim();
   if (!normalizedPc) {
-    badRequest('缺少图片参数');
+    badRequest(t('pic115Api.picParamRequired'));
   }
   const cacheFormat = normalizePicCacheFormat(format);
   const formatOptions = normalizePicCacheFormatOptions({
@@ -251,7 +252,7 @@ export async function get115PicCacheFileByPcData(
 
   const file = await getFile115ByPc(normalizedPc);
   if (!file) {
-    badRequest('未找到当前图片');
+    badRequest(t('pic115Api.currentPicNotFound'));
   }
   const safeFile = file as Cloud115DbFileItem;
   const normalizedUserAgent = userAgent || DEFAULT_115_DOWNLOAD_UA;
@@ -305,7 +306,7 @@ export async function get115PicCacheFileByPcData(
     prewarmWebpCacheByFileAsync(safeFile);
     const meta = parse115FileMeta(await get115FileData(safeFile.pc, normalizedUserAgent));
     if (!meta.url) {
-      badRequest('图片地址获取失败');
+      badRequest(t('pic115Api.picUrlResolveFailed'));
     }
 
     return {
@@ -323,7 +324,7 @@ export async function get115PicCacheFileByPcData(
 
   const meta = parse115FileMeta(await get115FileData(safeFile.pc, normalizedUserAgent));
   if (!meta.url) {
-    badRequest('图片地址获取失败');
+    badRequest(t('pic115Api.picUrlResolveFailed'));
   }
 
   return {

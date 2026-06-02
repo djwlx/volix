@@ -1,4 +1,5 @@
 import { exit115 } from '@/services/115';
+import { useI18n } from '@/i18n';
 import { IconExit } from '@douyinfe/semi-icons';
 import { Card, Avatar, Button, Popconfirm, Typography } from '@douyinfe/semi-ui';
 import type { Account115UserInfo } from '@volix/types';
@@ -7,6 +8,7 @@ interface UserInfoProps {
   info?: Account115UserInfo;
 }
 export function UserInfo({ info }: UserInfoProps) {
+  const { t } = useI18n();
   const onConfirm = async () => {
     await exit115();
     window.location.reload();
@@ -31,8 +33,13 @@ export function UserInfo({ info }: UserInfoProps) {
             {info?.user_name}
           </Typography.Text>
         </div>
-        <Popconfirm title="确定退出账号？" content="此修改将不可逆" onConfirm={onConfirm} onCancel={onCancel}>
-          <Button icon={<IconExit />} style={{ color: 'red', flexShrink: 0 }} aria-label="退出" />
+        <Popconfirm
+          title={t('pic115.user.exitConfirm.title')}
+          content={t('pic115.user.exitConfirm.description')}
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        >
+          <Button icon={<IconExit />} style={{ color: 'red', flexShrink: 0 }} aria-label={t('pic115.user.exit')} />
         </Popconfirm>
       </div>
     </Card>

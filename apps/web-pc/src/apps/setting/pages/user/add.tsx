@@ -4,6 +4,7 @@ import { adminCreateUser } from '@/services/user';
 import { uploadLocalFile } from '@/services/file';
 import { AppForm } from '@/components';
 import { useAppPageContext } from '@/hooks';
+import { useI18n } from '@/i18n';
 import { UserRole } from '@volix/types';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 
@@ -24,6 +25,7 @@ const defaultValues: UserAddFormValues = {
 };
 
 function SettingUserAddApp() {
+  const { t } = useI18n();
   const { user, isAdmin, requestNavigate } = useAppPageContext();
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -50,11 +52,11 @@ function SettingUserAddApp() {
         avatar: payload.avatar?.trim(),
         role: payload.role,
       });
-      Toast.success('用户创建成功');
+      Toast.success(t('setting.user.createSuccess'));
       requestNavigate('/setting/user');
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '创建失败');
+      Toast.error(message || t('setting.user.createFailed'));
     } finally {
       setSaving(false);
     }
@@ -70,35 +72,48 @@ function SettingUserAddApp() {
       setUploading(true);
       const res = await uploadLocalFile(file);
       formApi?.setValue('avatar', res.data.path);
-      Toast.success('头像上传成功');
+      Toast.success(t('setting.info.avatarUploadSuccess'));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '头像上传失败');
+      Toast.error(message || t('setting.info.avatarUploadFailed'));
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <Card title="添加用户" shadows="hover" style={{ width: '100%' }}>
+    <Card title={t('setting.user.addTitle')} shadows="hover" style={{ width: '100%' }}>
       <Space vertical spacing={16} style={{ width: '100%' }}>
         <AppForm labelPosition="top" initValues={defaultValues} getFormApi={setFormApi} onSubmit={onSubmit}>
-          <AppForm.Input field="email" label="邮箱" placeholder="请输入邮箱" />
-          <AppForm.Input field="password" label="密码" mode="password" placeholder="请输入密码" />
-          <AppForm.Input field="nickname" label="昵称（可选）" placeholder="请输入昵称" />
-          <AppForm.Input field="avatar" label="头像URL（可选）" placeholder="请输入头像URL（http/https 或 /file/）" />
+          <AppForm.Input field="email" label={t('auth.email.label')} placeholder={t('auth.email.placeholder')} />
+          <AppForm.Input
+            field="password"
+            label={t('auth.password.label')}
+            mode="password"
+            placeholder={t('auth.password.placeholder')}
+          />
+          <AppForm.Input
+            field="nickname"
+            label={t('setting.user.nicknameOptional')}
+            placeholder={t('setting.info.nicknamePlaceholder')}
+          />
+          <AppForm.Input
+            field="avatar"
+            label={t('setting.user.avatarOptional')}
+            placeholder={t('setting.info.avatarUrlPlaceholder')}
+          />
           <AppForm.Select
             field="role"
-            label="系统角色"
+            label={t('setting.user.table.role')}
             optionList={[
-              { label: '普通用户', value: UserRole.USER },
-              { label: '管理员', value: UserRole.ADMIN },
+              { label: t('admin.role.user'), value: UserRole.USER },
+              { label: t('admin.role.admin'), value: UserRole.ADMIN },
             ]}
           />
         </AppForm>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'flex-start', alignItems: 'center' }}>
           <Button loading={uploading} onClick={() => fileInputRef.current?.click()}>
-            上传头像
+            {t('setting.info.uploadAvatar')}
           </Button>
           <input
             ref={fileInputRef}
@@ -108,9 +123,9 @@ function SettingUserAddApp() {
             onChange={onUploadAvatar}
           />
           <Button type="primary" loading={saving} onClick={() => formApi?.submitForm()}>
-            保存用户
+            {t('setting.user.saveUser')}
           </Button>
-          <Button onClick={() => requestNavigate('/setting/user')}>取消</Button>
+          <Button onClick={() => requestNavigate('/setting/user')}>{t('common.action.cancel')}</Button>
         </div>
       </Space>
     </Card>

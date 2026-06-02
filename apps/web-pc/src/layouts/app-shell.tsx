@@ -1,13 +1,15 @@
 import { useMemo, type ReactNode } from 'react';
+import type { MessageDescriptor } from '@volix/i18n';
 import { Navigate, Outlet, useMatches, useNavigate } from 'react-router';
 import { Loading, AppHeader } from '@/components';
+import { useI18n } from '@/i18n';
 import { useUserStore } from '@/stores';
 import styles from './app-shell.module.scss';
 
 export interface AppRouteHandle {
   appHeader?: {
-    title: string;
-    description?: string;
+    title: MessageDescriptor;
+    description?: MessageDescriptor;
     logo: ReactNode;
   } | null;
   requiresAuth?: boolean;
@@ -15,6 +17,7 @@ export interface AppRouteHandle {
 }
 
 function AppShell() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const matches = useMatches();
   const currentUser = useUserStore(state => state.currentUser);
@@ -45,7 +48,7 @@ function AppShell() {
   }, [matches]);
 
   if (resolvedHandle.requiresAuth && (!authInitialized || userLoading)) {
-    return <Loading type="page" text="正在加载页面..." />;
+    return <Loading type="page" text={t({ id: 'common.status.loadingPage', defaultMessage: '正在加载页面...' })} />;
   }
 
   if (resolvedHandle.requiresAuth && !currentUser) {
@@ -56,8 +59,8 @@ function AppShell() {
     <div className={styles.shell}>
       {resolvedHandle.appHeader ? (
         <AppHeader
-          title={resolvedHandle.appHeader.title}
-          description={resolvedHandle.appHeader.description}
+          title={t(resolvedHandle.appHeader.title)}
+          description={resolvedHandle.appHeader.description ? t(resolvedHandle.appHeader.description) : undefined}
           logo={resolvedHandle.appHeader.logo}
           onLogoClick={() => navigate('/')}
         />

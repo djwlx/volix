@@ -1,4 +1,5 @@
 import { log } from '../../utils/logger';
+import { t } from '../../utils/i18n';
 import { resError, resSuccess } from '../../utils/response';
 
 export class HttpError extends Error {
@@ -53,7 +54,7 @@ export const http = (handler: MyMiddleware): MyMiddleware => {
       });
       resError(ctx, {
         code: 500,
-        message: '服务器错误',
+        message: t({ id: 'common.error.server', defaultMessage: '服务器错误' }),
       });
     }
   };

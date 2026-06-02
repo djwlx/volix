@@ -5,6 +5,7 @@ import { IconAvatar, IconList } from '@douyinfe/semi-icons-lab';
 import { clearAuthToken } from '@/utils';
 import { useNavigate } from 'react-router';
 import { getCurrentUser, getUserList, setUserRole } from '@/services/user';
+import { useI18n } from '@/i18n';
 import { UserRole } from '@volix/types';
 import type { UserInfoResponse } from '@volix/types';
 
@@ -12,6 +13,7 @@ type MenuKey = 'profile' | 'users';
 
 function AdminApp() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [user, setUser] = useState<UserInfoResponse>();
   const [userList, setUserList] = useState<UserInfoResponse[]>([]);
   const [updatingUserId, setUpdatingUserId] = useState<string | number>();
@@ -41,14 +43,14 @@ function AdminApp() {
     try {
       setUpdatingUserId(target.id);
       await setUserRole({ userId: target.id, role });
-      Toast.success('角色更新成功');
+      Toast.success(t('admin.roleUpdateSuccess'));
       await loadUserList();
       if (String(target.id) === String(user?.id)) {
         await loadCurrentUser();
       }
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '更新失败');
+      Toast.error(message || t('admin.error.updateFailed'));
     } finally {
       setUpdatingUserId(undefined);
     }
@@ -62,7 +64,7 @@ function AdminApp() {
 
   useEffect(() => {
     loadUserList().catch(() => {
-      Toast.error('获取用户列表失败');
+      Toast.error(t('admin.error.loadUsersFailed'));
     });
   }, [isAdmin]);
 
@@ -74,12 +76,12 @@ function AdminApp() {
 
   const columns = [
     {
-      title: '邮箱',
+      title: t('admin.table.email'),
       dataIndex: 'email',
       key: 'email',
     },
     {
-      title: '角色',
+      title: t('admin.table.role'),
       dataIndex: 'role',
       key: 'role',
       render: (_: unknown, record: UserInfoResponse) => (
@@ -103,8 +105,8 @@ function AdminApp() {
             onRoleChange(record, value);
           }}
         >
-          <option value={UserRole.USER}>普通用户</option>
-          <option value={UserRole.ADMIN}>管理员</option>
+          <option value={UserRole.USER}>{t('admin.role.user')}</option>
+          <option value={UserRole.ADMIN}>{t('admin.role.admin')}</option>
         </select>
       ),
     },
@@ -113,22 +115,22 @@ function AdminApp() {
   const navItems = [
     {
       itemKey: 'common-settings',
-      text: '普通设置',
+      text: t('admin.nav.commonSettings'),
       items: [
         {
           itemKey: 'profile',
-          text: '个人信息',
+          text: t('admin.nav.profile'),
           icon: <IconAvatar />,
         },
       ],
     },
     {
       itemKey: 'admin-settings',
-      text: '管理员设置',
+      text: t('admin.nav.adminSettings'),
       items: [
         {
           itemKey: 'users',
-          text: '用户信息',
+          text: t('admin.nav.users'),
           icon: <IconUserGroup />,
           disabled: !isAdmin,
         },
@@ -139,15 +141,15 @@ function AdminApp() {
   const renderContent = () => {
     if (activeMenu === 'profile') {
       return (
-        <Card title="个人信息" shadows="hover">
+        <Card title={t('admin.profile.title')} shadows="hover">
           <div style={{ display: 'grid', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Typography.Text strong>邮箱：</Typography.Text>
+              <Typography.Text strong>{t('admin.profile.email')}</Typography.Text>
               <Typography.Text>{user?.email || '-'}</Typography.Text>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Typography.Text strong>角色：</Typography.Text>
-              <Tag color={isAdmin ? 'red' : 'blue'}>{isAdmin ? '管理员' : '普通用户'}</Tag>
+              <Typography.Text strong>{t('admin.profile.role')}</Typography.Text>
+              <Tag color={isAdmin ? 'red' : 'blue'}>{t(isAdmin ? 'admin.role.admin' : 'admin.role.user')}</Tag>
             </div>
           </div>
         </Card>
@@ -156,14 +158,14 @@ function AdminApp() {
 
     if (!isAdmin) {
       return (
-        <Card title="用户信息" shadows="hover">
-          <Empty title="暂无权限" description="仅管理员可查看用户信息" />
+        <Card title={t('admin.user.title')} shadows="hover">
+          <Empty title={t('admin.empty.noPermission.title')} description={t('admin.empty.noPermission.description')} />
         </Card>
       );
     }
 
     return (
-      <Card title="用户信息" shadows="hover">
+      <Card title={t('admin.user.title')} shadows="hover">
         <Table<UserInfoResponse> rowKey="id" columns={columns} dataSource={userList} pagination={false} />
       </Card>
     );
@@ -175,14 +177,14 @@ function AdminApp() {
         mode="horizontal"
         header={{
           logo: <IconList style={{ height: 32, fontSize: 32 }} />,
-          text: '后台管理',
+          text: t('admin.header.title'),
         }}
         footer={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <Typography.Text>{user?.email}</Typography.Text>
-            <Tag color={isAdmin ? 'red' : 'blue'}>{isAdmin ? '管理员' : '普通用户'}</Tag>
+            <Tag color={isAdmin ? 'red' : 'blue'}>{t(isAdmin ? 'admin.role.admin' : 'admin.role.user')}</Tag>
             <Button icon={<IconArrowLeft />} onClick={() => navigate('/')}>
-              返回首页
+              {t('admin.action.backHome')}
             </Button>
           </div>
         }

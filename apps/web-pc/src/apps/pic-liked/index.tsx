@@ -4,6 +4,7 @@ import { Button, Empty, ImagePreview, Skeleton, Toast, Tooltip } from '@douyinfe
 import type { Liked115PicItem } from '@volix/types';
 import { get115LikedPics, like115Pic } from '@/services/115';
 import { getHttpErrorMessage } from '@/utils/error';
+import { useI18n } from '@/i18n';
 import styles from './index.module.scss';
 
 type LikedPicCard = Liked115PicItem;
@@ -15,6 +16,10 @@ interface LikedPicWallItemProps {
   onOpenPreview: (pc: string) => void;
   onUnlike: (pc: string) => void;
   onImageError: (pc: string) => void;
+  loadingText: string;
+  failedText: string;
+  pathAriaLabel: string;
+  unlikeAriaLabel: string;
 }
 
 const LIST_PAGE_SIZE = 40;
@@ -44,6 +49,10 @@ function LikedPicWallItem({
   onOpenPreview,
   onUnlike,
   onImageError,
+  loadingText,
+  failedText,
+  pathAriaLabel,
+  unlikeAriaLabel,
 }: LikedPicWallItemProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
@@ -121,7 +130,7 @@ function LikedPicWallItem({
           </div>
         ) : null}
 
-        {showFallbackText ? <div className={styles.wallPlaceholder}>{failed ? '加载失败' : '缓存中...'}</div> : null}
+        {showFallbackText ? <div className={styles.wallPlaceholder}>{failed ? failedText : loadingText}</div> : null}
 
         <div className={styles.overlayActions}>
           <Tooltip
@@ -132,7 +141,7 @@ function LikedPicWallItem({
               theme="borderless"
               className={styles.overlayIconBtn}
               icon={<IconInfoCircle />}
-              aria-label="查看路径"
+              aria-label={pathAriaLabel}
               onClick={event => {
                 event.stopPropagation();
               }}
@@ -143,7 +152,7 @@ function LikedPicWallItem({
             type="danger"
             className={styles.overlayIconBtn}
             icon={<IconHeartStroked />}
-            aria-label="取消喜欢"
+            aria-label={unlikeAriaLabel}
             onClick={event => {
               event.stopPropagation();
               onUnlike(item.pc);
@@ -156,6 +165,7 @@ function LikedPicWallItem({
 }
 
 function PicLikedApp() {
+  const { t } = useI18n();
   const [list, setList] = useState<LikedPicCard[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -223,7 +233,9 @@ function PicLikedApp() {
         return merged;
       });
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, append ? '加载更多失败' : '加载我的喜欢失败'));
+      Toast.error(
+        getHttpErrorMessage(error, t(append ? 'picLiked.error.loadMoreFailed' : 'picLiked.error.loadFailed'))
+      );
       if (!append) {
         setList([]);
         setTotal(0);
@@ -252,27 +264,30 @@ function PicLikedApp() {
     await fetchPage(offset, true);
   }, [fetchPage, hasMore, initialLoading, offset]);
 
-  const onUnlike = useCallback(async (pc: string) => {
-    try {
-      await like115Pic({
-        pc,
-        liked: false,
-      });
-      setList(prev => prev.filter(item => item.pc !== pc));
-      setTotal(prev => Math.max(0, prev - 1));
-      setFailedPcSet(prev => {
-        if (!prev.has(pc)) {
-          return prev;
-        }
-        const next = new Set(prev);
-        next.delete(pc);
-        return next;
-      });
-      Toast.success('已取消喜欢');
-    } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '取消喜欢失败'));
-    }
-  }, []);
+  const onUnlike = useCallback(
+    async (pc: string) => {
+      try {
+        await like115Pic({
+          pc,
+          liked: false,
+        });
+        setList(prev => prev.filter(item => item.pc !== pc));
+        setTotal(prev => Math.max(0, prev - 1));
+        setFailedPcSet(prev => {
+          if (!prev.has(pc)) {
+            return prev;
+          }
+          const next = new Set(prev);
+          next.delete(pc);
+          return next;
+        });
+        Toast.success(t('picLiked.unlikeSuccess'));
+      } catch (error) {
+        Toast.error(getHttpErrorMessage(error, t('picLiked.error.unlikeFailed')));
+      }
+    },
+    [t]
+  );
 
   const onImageError = useCallback((pc: string) => {
     setFailedPcSet(prev => {
@@ -349,7 +364,7 @@ function PicLikedApp() {
   return (
     <div className={styles.page}>
       {list.length === 0 ? (
-        <Empty title="还没有喜欢的图片" description="在随机图片页点击喜欢后，会出现在这里。" />
+        <Empty title={t('picLiked.empty.title')} description={t('picLiked.empty.description')} />
       ) : (
         <>
           <div className={styles.wall}>
@@ -364,6 +379,10 @@ function PicLikedApp() {
                   void onUnlike(pc);
                 }}
                 onImageError={onImageError}
+                loadingText={t('picLiked.loading')}
+                failedText={t('picLiked.loadFailed')}
+                pathAriaLabel={t('picLiked.action.viewPath')}
+                unlikeAriaLabel={t('picLiked.action.unlike')}
               />
             ))}
           </div>

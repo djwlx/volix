@@ -9,6 +9,7 @@ import type {
   UpdateUserProfilePayload,
   VerifyCurrentUserEmailPayload,
 } from '@volix/types';
+import { t } from '../../../utils/i18n';
 import jwt from '../../../utils/jwt';
 import { badRequest, unauthorized } from '../../shared/http-handler';
 import {
@@ -53,10 +54,10 @@ export const loginUser: MyMiddleware = async ctx => {
   const email = param.email?.trim();
   const password = param.password?.trim();
   if (!email || !password) {
-    badRequest('邮箱或密码不能为空');
+    badRequest(t({ id: 'auth.validation.emailOrPasswordRequired', defaultMessage: '邮箱或密码不能为空' }));
   }
   if (!EMAIL_REGEXP.test(email)) {
-    badRequest('邮箱格式错误');
+    badRequest(t({ id: 'auth.validation.invalidEmail', defaultMessage: '邮箱格式错误' }));
   }
 
   const findOne = await queryUser({
@@ -64,11 +65,11 @@ export const loginUser: MyMiddleware = async ctx => {
     password,
   });
   if (!findOne) {
-    badRequest('邮箱或密码错误');
+    badRequest(t({ id: 'auth.login.invalidCredentials', defaultMessage: '邮箱或密码错误' }));
   }
   const userId = findOne?.dataValues?.id;
   if (userId === undefined || userId === null) {
-    badRequest('用户信息异常');
+    badRequest(t({ id: 'auth.user.invalid', defaultMessage: '用户信息异常' }));
   }
 
   return {
@@ -81,34 +82,36 @@ export const registerUser: MyMiddleware = async ctx => {
   const email = param.email?.trim();
   const password = param.password?.trim();
   if (!email || !password) {
-    badRequest('邮箱或密码不能为空');
+    badRequest(t({ id: 'auth.validation.emailOrPasswordRequired', defaultMessage: '邮箱或密码不能为空' }));
   }
   if (!EMAIL_REGEXP.test(email)) {
-    badRequest('邮箱格式错误');
+    badRequest(t({ id: 'auth.validation.invalidEmail', defaultMessage: '邮箱格式错误' }));
   }
 
   const findOne = await queryUser({
     email,
   });
   if (findOne) {
-    badRequest('用户已存在');
+    badRequest(t({ id: 'auth.user.exists', defaultMessage: '用户已存在' }));
   }
 
   const [systemConfig, smtpConfig] = await Promise.all([getSystemConfigData(), resolveRegisterSmtpConfig()]);
   const shouldVerifyEmail = systemConfig.registerEmailVerifyEnabled && Boolean(smtpConfig);
 
   if (systemConfig.registerEmailVerifyEnabled && !smtpConfig) {
-    badRequest('系统未配置可用 SMTP，暂时无法启用邮箱验证注册');
+    badRequest(
+      t({ id: 'auth.register.smtpUnavailable', defaultMessage: '系统未配置可用 SMTP，暂时无法启用邮箱验证注册' })
+    );
   }
 
   if (shouldVerifyEmail) {
     const verifyCode = (param.verifyCode || '').trim();
     if (!verifyCode) {
-      badRequest('请输入邮箱验证码');
+      badRequest(t({ id: 'auth.verifyCode.required', defaultMessage: '请输入邮箱验证码' }));
     }
     const isValid = verifyRegisterCode(email, verifyCode);
     if (!isValid) {
-      badRequest('验证码错误或已过期');
+      badRequest(t({ id: 'auth.verifyCode.invalid', defaultMessage: '验证码错误或已过期' }));
     }
   }
 
@@ -149,21 +152,21 @@ export const sendRegisterCode: MyMiddleware = async ctx => {
   const email = param.email?.trim();
 
   if (!email || !EMAIL_REGEXP.test(email)) {
-    badRequest('邮箱格式错误');
+    badRequest(t({ id: 'auth.validation.invalidEmail', defaultMessage: '邮箱格式错误' }));
   }
 
   const [systemConfig, smtpConfig] = await Promise.all([getSystemConfigData(), resolveRegisterSmtpConfig()]);
   if (!systemConfig.registerEmailVerifyEnabled) {
-    badRequest('当前未开启注册邮箱验证');
+    badRequest(t({ id: 'auth.register.verifyDisabled', defaultMessage: '当前未开启注册邮箱验证' }));
   }
   if (!smtpConfig) {
-    badRequest('系统未配置可用 SMTP');
-    throw new Error('系统未配置可用 SMTP');
+    badRequest(t({ id: 'auth.register.smtpMissing', defaultMessage: '系统未配置可用 SMTP' }));
+    throw new Error(t({ id: 'auth.register.smtpMissing', defaultMessage: '系统未配置可用 SMTP' }));
   }
 
   const exists = await queryUser({ email });
   if (exists) {
-    badRequest('用户已存在');
+    badRequest(t({ id: 'auth.user.exists', defaultMessage: '用户已存在' }));
   }
 
   await sendVerifyCodeEmail({
@@ -179,24 +182,24 @@ export const sendRegisterCode: MyMiddleware = async ctx => {
 export const sendCurrentUserEmailVerifyCode: MyMiddleware = async ctx => {
   const userId = ctx.state.userInfo?.id;
   if (!userId) {
-    unauthorized('未登录');
+    unauthorized(t({ id: 'auth.unauthorized', defaultMessage: '未登录' }));
     return;
   }
 
   const userRecord = await queryUser({ id: userId as string | number });
   if (!userRecord) {
-    unauthorized('用户不存在');
+    unauthorized(t({ id: 'auth.user.notFound', defaultMessage: '用户不存在' }));
     return;
   }
   const user = userRecord.dataValues;
   if (user.email_verified) {
-    badRequest('当前邮箱已完成验证');
+    badRequest(t({ id: 'auth.email.alreadyVerified', defaultMessage: '当前邮箱已完成验证' }));
   }
 
   const smtpConfig = await resolveRegisterSmtpConfig();
   if (!smtpConfig) {
-    badRequest('系统未配置可用 SMTP');
-    throw new Error('系统未配置可用 SMTP');
+    badRequest(t({ id: 'auth.register.smtpMissing', defaultMessage: '系统未配置可用 SMTP' }));
+    throw new Error(t({ id: 'auth.register.smtpMissing', defaultMessage: '系统未配置可用 SMTP' }));
   }
 
   const email = user.email;
@@ -214,29 +217,29 @@ export const sendCurrentUserEmailVerifyCode: MyMiddleware = async ctx => {
 export const verifyCurrentUserEmail: MyMiddleware = async ctx => {
   const userId = ctx.state.userInfo?.id;
   if (!userId) {
-    unauthorized('未登录');
+    unauthorized(t({ id: 'auth.unauthorized', defaultMessage: '未登录' }));
     return;
   }
 
   const userRecord = await queryUser({ id: userId as string | number });
   if (!userRecord) {
-    unauthorized('用户不存在');
+    unauthorized(t({ id: 'auth.user.notFound', defaultMessage: '用户不存在' }));
     return;
   }
   const user = userRecord.dataValues;
   if (user.email_verified) {
-    badRequest('当前邮箱已完成验证');
+    badRequest(t({ id: 'auth.email.alreadyVerified', defaultMessage: '当前邮箱已完成验证' }));
   }
 
   const param = (ctx.request.body || {}) as VerifyCurrentUserEmailPayload;
   const verifyCode = (param.verifyCode || '').trim();
   if (!verifyCode) {
-    badRequest('请输入邮箱验证码');
+    badRequest(t({ id: 'auth.verifyCode.required', defaultMessage: '请输入邮箱验证码' }));
   }
 
   const isValid = verifyRegisterCode(user.email, verifyCode);
   if (!isValid) {
-    badRequest('验证码错误或已过期');
+    badRequest(t({ id: 'auth.verifyCode.invalid', defaultMessage: '验证码错误或已过期' }));
   }
 
   await updateUser(userId as string | number, {
@@ -245,7 +248,7 @@ export const verifyCurrentUserEmail: MyMiddleware = async ctx => {
 
   const updatedRecord = await queryUser({ id: userId as string | number });
   if (!updatedRecord) {
-    badRequest('用户不存在');
+    badRequest(t({ id: 'auth.user.notFound', defaultMessage: '用户不存在' }));
     return;
   }
 
@@ -255,12 +258,12 @@ export const verifyCurrentUserEmail: MyMiddleware = async ctx => {
 export const getCurrentUser: MyMiddleware = async ctx => {
   const userId = ctx.state.userInfo?.id;
   if (!userId) {
-    unauthorized('未登录');
+    unauthorized(t({ id: 'auth.unauthorized', defaultMessage: '未登录' }));
   }
 
   const user = await queryUser({ id: userId as string | number });
   if (!user) {
-    unauthorized('用户不存在');
+    unauthorized(t({ id: 'auth.user.notFound', defaultMessage: '用户不存在' }));
     return;
   }
 
@@ -281,7 +284,7 @@ export const getCurrentUser: MyMiddleware = async ctx => {
 export const updateCurrentUserProfile: MyMiddleware = async ctx => {
   const userId = ctx.state.userInfo?.id;
   if (!userId) {
-    unauthorized('未登录');
+    unauthorized(t({ id: 'auth.unauthorized', defaultMessage: '未登录' }));
   }
 
   const param = (ctx.request.body || {}) as UpdateUserProfilePayload;
@@ -290,7 +293,7 @@ export const updateCurrentUserProfile: MyMiddleware = async ctx => {
   if (typeof param.nickname === 'string') {
     const nickname = param.nickname.trim();
     if (nickname.length > 32) {
-      badRequest('昵称长度不能超过 32');
+      badRequest(t({ id: 'user.nickname.maxLength', defaultMessage: '昵称长度不能超过 32' }));
     }
     nextProfile.nickname = nickname;
   }
@@ -298,20 +301,22 @@ export const updateCurrentUserProfile: MyMiddleware = async ctx => {
   if (typeof param.avatar === 'string') {
     const avatar = param.avatar.trim();
     if (avatar && !AVATAR_URL_REGEXP.test(avatar)) {
-      badRequest('头像地址必须是 http/https 链接或 /file/ 开头的上传地址');
+      badRequest(
+        t({ id: 'user.avatar.invalid', defaultMessage: '头像地址必须是 http/https 链接或 /file/ 开头的上传地址' })
+      );
     }
     nextProfile.avatar = avatar;
   }
 
   if (Object.keys(nextProfile).length === 0) {
-    badRequest('未提供可更新的字段');
+    badRequest(t({ id: 'common.validation.noFieldsToUpdate', defaultMessage: '未提供可更新的字段' }));
   }
 
   await updateUser(userId as string | number, nextProfile);
 
   const updated = await queryUser({ id: userId as string | number });
   if (!updated) {
-    badRequest('用户不存在');
+    badRequest(t({ id: 'auth.user.notFound', defaultMessage: '用户不存在' }));
     return;
   }
 

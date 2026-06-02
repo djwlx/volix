@@ -5,6 +5,7 @@ import { uploadLocalFile } from '@/services/file';
 import { AppForm } from '@/components';
 import { useParams } from 'react-router';
 import { useAppPageContext } from '@/hooks';
+import { useI18n } from '@/i18n';
 import { UserRole } from '@volix/types';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 import type { UserInfoResponse } from '@volix/types';
@@ -17,6 +18,7 @@ interface UserEditFormValues {
 }
 
 function SettingUserEditApp() {
+  const { t } = useI18n();
   const { user, isAdmin, requestNavigate } = useAppPageContext();
   const { id = '' } = useParams();
   const [origin, setOrigin] = useState<UserInfoResponse>();
@@ -45,7 +47,7 @@ function SettingUserEditApp() {
       requestNavigate('/setting/user');
       return;
     }
-    loadData().catch(() => Toast.error('获取用户信息失败'));
+    loadData().catch(() => Toast.error(t('setting.user.loadFailed')));
   }, [user, isAdmin, id, requestNavigate]);
 
   const onSubmit = async (values: unknown) => {
@@ -57,11 +59,11 @@ function SettingUserEditApp() {
         avatar: payload.avatar,
         role: payload.role,
       });
-      Toast.success('用户信息已更新');
+      Toast.success(t('setting.user.updateSuccess'));
       requestNavigate('/setting/user');
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '更新失败');
+      Toast.error(message || t('admin.error.updateFailed'));
     } finally {
       setSaving(false);
     }
@@ -77,10 +79,10 @@ function SettingUserEditApp() {
       setUploading(true);
       const res = await uploadLocalFile(file);
       formApi?.setValue('avatar', res.data.path);
-      Toast.success('头像上传成功');
+      Toast.success(t('setting.info.avatarUploadSuccess'));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '头像上传失败');
+      Toast.error(message || t('setting.info.avatarUploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -88,14 +90,18 @@ function SettingUserEditApp() {
 
   if (!origin || !formInitValues) {
     return (
-      <Card title="编辑用户" shadows="hover">
-        <Empty title="加载中" />
+      <Card title={t('setting.user.editTitle')} shadows="hover">
+        <Empty title={t('common.status.loading')} />
       </Card>
     );
   }
 
   return (
-    <Card title={`编辑用户：${origin.email}`} shadows="hover" style={{ width: '100%' }}>
+    <Card
+      title={t('setting.user.editTitleWithEmail', { email: origin.email })}
+      shadows="hover"
+      style={{ width: '100%' }}
+    >
       <Space vertical spacing={16} style={{ width: '100%' }}>
         <AppForm
           key={`${origin.id}`}
@@ -104,21 +110,29 @@ function SettingUserEditApp() {
           getFormApi={setFormApi}
           onSubmit={onSubmit}
         >
-          <AppForm.Input field="email" label="邮箱" disabled />
-          <AppForm.Input field="nickname" label="昵称（可选）" placeholder="请输入昵称" />
-          <AppForm.Input field="avatar" label="头像URL（可选）" placeholder="请输入头像URL（http/https 或 /file/）" />
+          <AppForm.Input field="email" label={t('auth.email.label')} disabled />
+          <AppForm.Input
+            field="nickname"
+            label={t('setting.user.nicknameOptional')}
+            placeholder={t('setting.info.nicknamePlaceholder')}
+          />
+          <AppForm.Input
+            field="avatar"
+            label={t('setting.user.avatarOptional')}
+            placeholder={t('setting.info.avatarUrlPlaceholder')}
+          />
           <AppForm.Select
             field="role"
-            label="系统角色"
+            label={t('setting.user.table.role')}
             optionList={[
-              { label: '普通用户', value: UserRole.USER },
-              { label: '管理员', value: UserRole.ADMIN },
+              { label: t('admin.role.user'), value: UserRole.USER },
+              { label: t('admin.role.admin'), value: UserRole.ADMIN },
             ]}
           />
         </AppForm>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'flex-start', alignItems: 'center' }}>
           <Button loading={uploading} onClick={() => fileInputRef.current?.click()}>
-            上传头像
+            {t('setting.info.uploadAvatar')}
           </Button>
           <input
             ref={fileInputRef}
@@ -128,9 +142,9 @@ function SettingUserEditApp() {
             onChange={onUploadAvatar}
           />
           <Button type="primary" loading={saving} onClick={() => formApi?.submitForm()}>
-            保存修改
+            {t('setting.info.save')}
           </Button>
-          <Button onClick={() => requestNavigate('/setting/user')}>取消</Button>
+          <Button onClick={() => requestNavigate('/setting/user')}>{t('common.action.cancel')}</Button>
         </div>
       </Space>
     </Card>

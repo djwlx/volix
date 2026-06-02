@@ -6,6 +6,7 @@ import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 import type { PicCacheFolderItem } from '@volix/types';
 import { clear115Pic, get115PicInfo, retry115Pic, set115PicRandomCacheConfig } from '@/services/115';
 import { getHttpErrorMessage } from '@/utils/error';
+import { useI18n } from '@/i18n';
 import { FilePath } from './components';
 import { picCacheStatusOrder, renderPicCacheStatusTag } from './pic-cache-status';
 
@@ -50,6 +51,7 @@ const DEFAULT_RANDOM_CACHE_FORM_VALUES: RandomCacheFormValues = {
 const RANDOM_CACHE_FIELD_WIDTH = 430;
 
 export function PicSetting() {
+  const { t } = useI18n();
   const [count, setCount] = useState(0);
   const [isCaching, setIsCaching] = useState(false);
   const [folders, setFolders] = useState<PicCacheFolderItem[]>([]);
@@ -69,21 +71,21 @@ export function PicSetting() {
     return [
       {
         key: 'json',
-        label: '随机图片 JSON',
+        label: t('pic115.endpoint.json'),
         url: withOrigin('/api/115/pic?mode=json'),
       },
       {
         key: 'json-proxy',
-        label: '随机图片 JSON（本地中转）',
+        label: t('pic115.endpoint.jsonProxy'),
         url: withOrigin('/api/115/pic?mode=json&proxy=1'),
       },
       {
         key: 'direct',
-        label: '随机图片直出',
+        label: t('pic115.endpoint.direct'),
         url: withOrigin('/api/115/pic?mode=direct'),
       },
     ];
-  }, []);
+  }, [t]);
 
   const syncRandomCacheFormValues = (
     randomCacheConfig:
@@ -161,9 +163,9 @@ export function PicSetting() {
     try {
       await clear115Pic();
       await fetch();
-      Toast.success('清理成功');
+      Toast.success(t('pic115.cache.clearSuccess'));
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '清理失败'));
+      Toast.error(getHttpErrorMessage(error, t('pic115.cache.clearFailed')));
     }
   };
 
@@ -173,9 +175,9 @@ export function PicSetting() {
         paths: [path],
       });
       await fetch();
-      Toast.success('删除成功');
+      Toast.success(t('pic115.cache.deleteSuccess'));
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '删除失败'));
+      Toast.error(getHttpErrorMessage(error, t('pic115.cache.deleteFailed')));
     }
   };
 
@@ -185,9 +187,9 @@ export function PicSetting() {
         paths: [path],
       });
       await fetch();
-      Toast.success('已加入重试队列');
+      Toast.success(t('pic115.cache.retrySuccess'));
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '重试失败'));
+      Toast.error(getHttpErrorMessage(error, t('pic115.cache.retryFailed')));
     }
   };
 
@@ -203,7 +205,7 @@ export function PicSetting() {
     };
     const sum = payload.localWeight + payload.cloudWeight;
     if (sum !== 100) {
-      Toast.error('随机来源权重总和必须等于100');
+      Toast.error(t('pic115.form.weightInvalid'));
       return;
     }
 
@@ -221,9 +223,9 @@ export function PicSetting() {
         localProxyEnabled: payload.localProxyEnabled,
       });
       await fetch(true);
-      Toast.success('随机缓存配置已保存');
+      Toast.success(t('pic115.form.saveSuccess'));
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '保存随机缓存配置失败'));
+      Toast.error(getHttpErrorMessage(error, t('pic115.form.saveFailed')));
     } finally {
       setSavingRandomCacheConfig(false);
     }
@@ -232,58 +234,62 @@ export function PicSetting() {
   const onCopyEndpoint = async (url: string) => {
     try {
       await navigator.clipboard.writeText(url);
-      Toast.success('端点已复制');
+      Toast.success(t('pic115.endpoint.copySuccess'));
     } catch {
-      Toast.error('复制失败');
+      Toast.error(t('common.action.copyFailed'));
     }
   };
 
   const data: Data[] = useMemo(() => {
     return [
-      { key: '缓存数量', value: count },
-      { key: '缓存目录', value: folders.length },
-      { key: '本地缓存文件', value: localCacheFileCount },
-      { key: '本地缓存占用', value: `${localCacheTotalSizeMb} MB` },
+      { key: t('pic115.stats.cacheCount'), value: count },
+      { key: t('pic115.stats.cacheFolderCount'), value: folders.length },
+      { key: t('pic115.stats.localFileCount'), value: localCacheFileCount },
+      { key: t('pic115.stats.localUsage'), value: `${localCacheTotalSizeMb} MB` },
       {
-        key: '状态',
+        key: t('pic115.stats.status'),
         value: isCaching ? (
           <Tag size="small" shape="circle" color="amber">
-            缓存中
+            {t('pic115.status.caching')}
           </Tag>
         ) : count ? (
           <Tag size="small" shape="circle" color="green">
-            已缓存
+            {t('pic115.status.cached')}
           </Tag>
         ) : (
           <Tag size="small" shape="circle" color="orange">
-            未缓存
+            {t('pic115.status.notCached')}
           </Tag>
         ),
       },
       {
-        key: '本地缓存容量',
+        key: t('pic115.stats.localCapacity'),
         value: localCacheLimitExceeded ? (
           <Tag size="small" shape="circle" color="red">
-            已超上限
+            {t('pic115.status.overLimit')}
           </Tag>
         ) : (
           <Tag size="small" shape="circle" color="green">
-            正常
+            {t('pic115.status.normal')}
           </Tag>
         ),
       },
     ];
-  }, [count, folders.length, isCaching, localCacheFileCount, localCacheLimitExceeded, localCacheTotalSizeMb]);
+  }, [count, folders.length, isCaching, localCacheFileCount, localCacheLimitExceeded, localCacheTotalSizeMb, t]);
 
   return (
     <Space vertical align="start" spacing={16} style={{ width: '100%' }}>
       <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
-        <Popconfirm title="确定清理所有缓存？" content="此修改将不可逆" onConfirm={onDelete}>
-          <Button icon={<IconDelete style={{ color: 'red' }} />} aria-label="清理" />
+        <Popconfirm
+          title={t('pic115.cache.clearConfirm.title')}
+          content={t('pic115.cache.clearConfirm.description')}
+          onConfirm={onDelete}
+        >
+          <Button icon={<IconDelete style={{ color: 'red' }} />} aria-label={t('pic115.action.clear')} />
         </Popconfirm>
       </div>
       <Descriptions data={data} />
-      <Text strong>随机图片端点</Text>
+      <Text strong>{t('pic115.endpoint.sectionTitle')}</Text>
       <Space vertical spacing={8} style={{ width: '100%' }}>
         {randomPicEndpointList.map(item => (
           <Space key={item.key} align="center" style={{ width: '100%' }}>
@@ -292,12 +298,12 @@ export function PicSetting() {
               {item.url}
             </Text>
             <Button size="small" theme="borderless" type="primary" onClick={() => onCopyEndpoint(item.url)}>
-              复制
+              {t('common.action.copy')}
             </Button>
           </Space>
         ))}
       </Space>
-      <Text strong>随机图片本地缓存</Text>
+      <Text strong>{t('pic115.cache.sectionTitle')}</Text>
       <Form<RandomCacheFormValues>
         labelPosition="top"
         initValues={DEFAULT_RANDOM_CACHE_FORM_VALUES}
@@ -313,50 +319,50 @@ export function PicSetting() {
             <Space vertical spacing={12} style={{ width: '100%' }}>
               <Form.InputNumber
                 field="localWeight"
-                label="本地文件来源权重（%）"
+                label={t('pic115.form.localWeight')}
                 min={0}
                 max={100}
                 style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
               />
               <Form.InputNumber
                 field="cloudWeight"
-                label="115云来源权重（%）"
+                label={t('pic115.form.cloudWeight')}
                 min={0}
                 max={100}
                 style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
               />
               <Text type={totalWeight === 100 ? 'secondary' : 'danger'}>
-                当前权重总和：{totalWeight}（必须等于100）
+                {t('pic115.form.weightSummary', { totalWeight })}
               </Text>
               <Form.InputNumber
                 field="localMaxSizeMb"
-                label="本地缓存上限（MB）"
+                label={t('pic115.form.localMaxSizeMb')}
                 min={100}
                 max={102400}
                 style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
               />
               <Form.Input
                 field="randomPicEndpoint"
-                label="随机图片端点（配置后优先使用）"
+                label={t('pic115.form.randomEndpoint')}
                 placeholder="https://your-domain/api/115/pic?mode=json&proxy=1"
                 style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
               />
               <div style={{ width: RANDOM_CACHE_FIELD_WIDTH }}>
-                <Form.Switch field="localProxyEnabled" label="启用本地代理（随机图返回前强制本地下载）" />
+                <Form.Switch field="localProxyEnabled" label={t('pic115.form.localProxyEnabled')} />
               </div>
               <Form.InputNumber
                 field="randomNoRepeatWindowMinutes"
-                label="随机去重窗口（分钟）"
+                label={t('pic115.form.noRepeatWindow')}
                 min={0}
                 max={1440}
                 style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
               />
               <Text type="tertiary" size="small">
-                设为 0 表示关闭不重复限制
+                {t('pic115.form.noRepeatWindowHint')}
               </Text>
               <Form.InputNumber
                 field="randomNoRepeatMaxCount"
-                label="随机去重次数上限"
+                label={t('pic115.form.noRepeatMaxCount')}
                 min={1}
                 max={10000}
                 style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
@@ -366,7 +372,7 @@ export function PicSetting() {
                 loading={savingRandomCacheConfig}
                 onClick={() => randomCacheFormApiRef.current?.submitForm()}
               >
-                保存随机缓存配置
+                {t('pic115.form.save')}
               </Button>
             </Space>
           );
@@ -379,7 +385,7 @@ export function PicSetting() {
         dataSource={folders}
         columns={[
           {
-            title: '目录',
+            title: t('pic115.table.directory'),
             dataIndex: 'cid',
             width: 300,
             key: 'cid',
@@ -393,7 +399,7 @@ export function PicSetting() {
             render: (cid: string) => <Text>{cid}</Text>,
           },
           {
-            title: '状态',
+            title: t('pic115.table.status'),
             dataIndex: 'status',
             key: 'status',
             width: 220,
@@ -409,31 +415,31 @@ export function PicSetting() {
             ),
           },
           {
-            title: '缓存数量',
+            title: t('pic115.table.cacheCount'),
             dataIndex: 'count',
             key: 'count',
             width: 120,
             render: (value: number | undefined) => value || 0,
           },
           {
-            title: '操作',
+            title: t('pic115.table.action'),
             key: 'action',
             width: 180,
             render: (_: unknown, record: PicCacheFolderItem) => (
               <Space>
                 {record.status === 'failed' ? (
                   <Button theme="borderless" type="primary" onClick={() => onRetryByPath(record.cid)}>
-                    重试
+                    {t('pic115.action.retry')}
                   </Button>
                 ) : null}
                 {record.status === 'cached' || record.status === 'failed' || record.status === 'partial' ? (
                   <Popconfirm
-                    title="确定删除该路径缓存？"
-                    content="此修改将不可逆"
+                    title={t('pic115.cache.deleteConfirm.title')}
+                    content={t('pic115.cache.deleteConfirm.description')}
                     onConfirm={() => onDeleteByPath(record.cid)}
                   >
                     <Button theme="borderless" type="danger">
-                      删除
+                      {t('common.action.delete')}
                     </Button>
                   </Popconfirm>
                 ) : (

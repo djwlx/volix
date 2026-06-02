@@ -1,4 +1,5 @@
 import type { SystemConfigResponse, UpdateSystemConfigPayload } from '@volix/types';
+import { t } from '../../../utils/i18n';
 import { badRequest } from '../../shared/http-handler';
 import { querySystemSettingByKey, queryUser, upsertSystemSetting } from './user.service';
 import { normalizeSmtpAccountConfig, parseSmtpAccountConfig } from './user-config.service';
@@ -32,7 +33,9 @@ export async function getSystemConfigData(): Promise<SystemConfigResponse> {
 
 export async function updateSystemConfigData(payload: UpdateSystemConfigPayload): Promise<SystemConfigResponse> {
   if (typeof payload.registerEmailVerifyEnabled !== 'boolean') {
-    badRequest('registerEmailVerifyEnabled 参数错误');
+    badRequest(
+      t({ id: 'setting.system.registerEmailVerify.invalid', defaultMessage: 'registerEmailVerifyEnabled 参数错误' })
+    );
   }
   const normalizedRandomPicDefaultUserId = String(payload.randomPicDefaultUserId || '').trim();
   const hasSmtpInPayload = Object.prototype.hasOwnProperty.call(payload, 'registerEmailVerifySmtp');
@@ -43,12 +46,12 @@ export async function updateSystemConfigData(payload: UpdateSystemConfigPayload)
   const effectiveSmtp = normalizedSmtp || currentSmtp;
 
   if (payload.registerEmailVerifyEnabled && !effectiveSmtp) {
-    badRequest('开启注册邮箱验证码后，必须配置 SMTP');
+    badRequest(t({ id: 'setting.system.smtp.required', defaultMessage: '开启注册邮箱验证码后，必须配置 SMTP' }));
   }
   if (normalizedRandomPicDefaultUserId) {
     const user = await queryUser({ id: normalizedRandomPicDefaultUserId });
     if (!user) {
-      badRequest('随机图默认用户不存在');
+      badRequest(t({ id: 'setting.system.randomPicUser.notFound', defaultMessage: '随机图默认用户不存在' }));
     }
   }
 

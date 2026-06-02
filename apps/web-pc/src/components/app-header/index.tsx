@@ -1,6 +1,8 @@
-import { Avatar, Dropdown, Nav, Switch, Tag, Typography } from '@douyinfe/semi-ui';
+import { Avatar, Dropdown, Nav, Tag, Typography } from '@douyinfe/semi-ui';
 import { IconExit, IconMoon, IconSetting, IconSun } from '@douyinfe/semi-icons';
 import type { ReactNode } from 'react';
+import type { Locale } from '@volix/i18n';
+import { useI18n } from '@/i18n';
 import { useNavigate } from 'react-router';
 import { useUser } from '@/hooks';
 import { clearAuthToken, isAuthenticated } from '@/utils';
@@ -32,6 +34,15 @@ interface AppHeaderProps {
   };
 }
 
+const localeOptions: Array<{ value: Locale; label: string }> = [
+  { value: 'zh-CN', label: '简体中文' },
+  { value: 'en-US', label: 'English' },
+];
+
+const getNextLocale = (locale: Locale): Locale => {
+  return locale === 'zh-CN' ? 'en-US' : 'zh-CN';
+};
+
 export function AppHeader(props: AppHeaderProps) {
   const {
     title,
@@ -45,22 +56,25 @@ export function AppHeader(props: AppHeaderProps) {
     userOverride,
   } = props;
   const navigate = useNavigate();
+  const { locale, setLocale, t } = useI18n();
   const { user } = useUser(false);
   const authed = isAuthenticated();
   const theme = useGlobalConfigStore(state => state.config.theme);
+  const nextLocale = getNextLocale(locale);
+  const currentLocaleLabel = localeOptions.find(item => item.value === locale)?.label || locale;
 
   const currentUser = userOverride || user;
   const defaultMenuItems: HeaderMenuItem[] = authed
     ? [
         {
           key: 'setting',
-          label: '系统管理',
+          label: t({ id: 'header.menu.system', defaultMessage: '系统管理' }),
           icon: <IconSetting />,
           onClick: () => navigate('/setting/info'),
         },
         {
           key: 'logout',
-          label: '退出登录',
+          label: t({ id: 'header.menu.logout', defaultMessage: '退出登录' }),
           icon: <IconExit />,
           type: 'danger',
           onClick: () => {
@@ -82,22 +96,6 @@ export function AppHeader(props: AppHeaderProps) {
         boxShadow: '0 12px 28px rgba(15, 23, 42, 0.16)',
       }}
     >
-      <div
-        onClick={event => event.stopPropagation()}
-        style={{
-          padding: 12,
-          borderBottom: '1px solid var(--semi-color-border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-start',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <IconSun size="small" style={{ color: 'var(--app-text-muted)' }} />
-          <Switch checked={theme === 'dark'} onChange={checked => setAppTheme(checked ? 'dark' : 'light')} />
-          <IconMoon size="small" style={{ color: 'var(--app-text-muted)' }} />
-        </div>
-      </div>
       <Dropdown.Menu>
         {resolvedMenuItems.map(item => (
           <Dropdown.Item key={item.key} icon={item.icon} type={item.type} onClick={item.onClick}>
@@ -106,7 +104,7 @@ export function AppHeader(props: AppHeaderProps) {
         ))}
         {!authed ? (
           <Dropdown.Item icon={<IconSetting />} onClick={() => navigate('/auth')}>
-            去登录
+            {t({ id: 'header.menu.login', defaultMessage: '去登录' })}
           </Dropdown.Item>
         ) : null}
       </Dropdown.Menu>
@@ -142,43 +140,78 @@ export function AppHeader(props: AppHeaderProps) {
         ),
       }}
       footer={
-        <Dropdown trigger="click" position="bottomRight" render={dropdownContent}>
-          {authed ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 0 }}>
-              <Avatar
-                size="small"
-                shape="circle"
-                color="blue"
-                src={currentUser?.avatar}
-                imgAttr={{ style: { objectFit: 'cover' } }}
-                style={{ width: 32, height: 32, flex: '0 0 32px' }}
-              >
-                {currentUser?.nickname?.slice(0, 1) || currentUser?.email?.slice(0, 1)?.toUpperCase() || 'U'}
-              </Avatar>
-              {showUserName ? (
-                <Typography.Text
-                  style={{ minWidth: 0 }}
-                  className={styles.userName}
-                  title={currentUser?.nickname || currentUser?.email || '未登录'}
+        <div className={styles.headerTools}>
+          <button
+            type="button"
+            className={styles.localeButton}
+            title={currentLocaleLabel}
+            aria-label={t(nextLocale === 'zh-CN' ? 'header.locale.switchToZhCn' : 'header.locale.switchToEnUs')}
+            onClick={() => setLocale(nextLocale)}
+          >
+            <span className={styles.localeGlyph} aria-hidden="true">
+              <span className={styles.localeGlyphLatin}>A</span>
+              <span className={styles.localeGlyphCjk}>文</span>
+            </span>
+          </button>
+          <button
+            type="button"
+            className={`${styles.themeToggle} ${theme === 'dark' ? styles.themeToggleDark : ''}`}
+            title={t(theme === 'dark' ? 'header.theme.currentDark' : 'header.theme.currentLight')}
+            aria-label={t(theme === 'dark' ? 'header.theme.switchToLight' : 'header.theme.switchToDark')}
+            onClick={() => setAppTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            <span className={styles.themeTrackIcon}>
+              {theme === 'dark' ? <IconMoon size="small" /> : <IconSun size="small" />}
+            </span>
+          </button>
+          <Dropdown trigger="click" position="bottomRight" render={dropdownContent}>
+            {authed ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 0 }}>
+                <Avatar
+                  size="small"
+                  shape="circle"
+                  color="blue"
+                  src={currentUser?.avatar}
+                  imgAttr={{ style: { objectFit: 'cover' } }}
+                  style={{ width: 32, height: 32, flex: '0 0 32px' }}
                 >
-                  {currentUser?.nickname || currentUser?.email || '未登录'}
-                </Typography.Text>
-              ) : null}
-              {userBadge ? <Tag style={{ flexShrink: 0 }}>{userBadge}</Tag> : null}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 0 }}>
-              <Avatar size="small" shape="circle" color="grey" style={{ width: 32, height: 32, flex: '0 0 32px' }}>
-                U
-              </Avatar>
-              {showUserName ? (
-                <Typography.Text style={{ minWidth: 0 }} className={styles.userName} title="未登录">
-                  未登录
-                </Typography.Text>
-              ) : null}
-            </div>
-          )}
-        </Dropdown>
+                  {currentUser?.nickname?.slice(0, 1) || currentUser?.email?.slice(0, 1)?.toUpperCase() || 'U'}
+                </Avatar>
+                {showUserName ? (
+                  <Typography.Text
+                    style={{ minWidth: 0 }}
+                    className={styles.userName}
+                    title={
+                      currentUser?.nickname ||
+                      currentUser?.email ||
+                      t({ id: 'header.user.guest', defaultMessage: '未登录' })
+                    }
+                  >
+                    {currentUser?.nickname ||
+                      currentUser?.email ||
+                      t({ id: 'header.user.guest', defaultMessage: '未登录' })}
+                  </Typography.Text>
+                ) : null}
+                {userBadge ? <Tag style={{ flexShrink: 0 }}>{userBadge}</Tag> : null}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 0 }}>
+                <Avatar size="small" shape="circle" color="grey" style={{ width: 32, height: 32, flex: '0 0 32px' }}>
+                  U
+                </Avatar>
+                {showUserName ? (
+                  <Typography.Text
+                    style={{ minWidth: 0 }}
+                    className={styles.userName}
+                    title={t({ id: 'header.user.guest', defaultMessage: '未登录' })}
+                  >
+                    {t({ id: 'header.user.guest', defaultMessage: '未登录' })}
+                  </Typography.Text>
+                ) : null}
+              </div>
+            )}
+          </Dropdown>
+        </div>
       }
     />
   );

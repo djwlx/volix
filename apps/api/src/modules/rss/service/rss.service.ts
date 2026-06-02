@@ -36,6 +36,7 @@ import type {
 } from '../types/rss.types';
 import type { AxiosError, AxiosResponse } from 'axios';
 import { parseUserRssConfig } from './rss-user-config.service';
+import { t } from '../../../utils/i18n';
 const DEFAULT_RSS_HUB = 'https://rsshub.app';
 const DEFAULT_RESOURCE_PROXY_BASE_URL = '';
 const DEFAULT_RESOURCE_CACHE_SIZE_MB = 0;
@@ -48,29 +49,30 @@ const parseUrlOrThrow = (value: string, fieldName: string): URL => {
   try {
     return new URL(value);
   } catch {
-    badRequest(`${fieldName} 不是合法 URL`);
-    throw new Error(`${fieldName} 不是合法 URL`);
+    const message = t('rssApi.invalidUrl', { fieldName });
+    badRequest(message);
+    throw new Error(message);
   }
 };
 const assertAllowedProtocol = (url: URL, fieldName: string) => {
   if (!ALLOWED_PROTOCOLS.has(url.protocol)) {
-    badRequest(`${fieldName} 仅支持 http 或 https`);
+    badRequest(t('rssApi.protocolUnsupported', { fieldName }));
   }
 };
 const normalizeRoute = (route: string): string => {
   const trimmedRoute = String(route || '').trim();
   if (!trimmedRoute) {
-    badRequest('route 不能为空');
+    badRequest(t('rssApi.route.required'));
   }
   if (/^https?:\/\//i.test(trimmedRoute)) {
-    badRequest('route 不能是完整 URL，请放在 feedUrl 参数中');
+    badRequest(t('rssApi.route.mustNotBeFullUrl'));
   }
   return trimmedRoute.startsWith('/') ? trimmedRoute : `/${trimmedRoute}`;
 };
 const normalizeHost = (host: string): string => {
   const trimmedHost = String(host || '').trim();
   if (!trimmedHost) {
-    badRequest('host 不能为空');
+    badRequest(t('rssApi.host.required'));
   }
   const parsedHost = parseUrlOrThrow(trimmedHost, 'host');
   assertAllowedProtocol(parsedHost, 'host');
@@ -87,7 +89,7 @@ const normalizeResourceProxyBaseUrl = (value: string): string => {
   }
   const normalized = parseResourceProxyBaseUrl(trimmed);
   if (!normalized) {
-    badRequest('resourceProxyBaseUrl 不是合法代理 URL，且仅支持 http 或 https');
+    badRequest(t('rssApi.resourceProxy.invalid'));
   }
   return normalized;
 };
@@ -120,7 +122,7 @@ const normalizeSubscriptionName = (name: string): string => {
 const getCurrentUserId = (rawUserId: string | number | undefined): string => {
   const userId = String(rawUserId || '').trim();
   if (!userId) {
-    unauthorized('未登录');
+    unauthorized(t('auth.unauthorized'));
   }
   return userId;
 };
@@ -224,8 +226,9 @@ export async function createUserRssSubscription(
   const rows = await listUserRssSubscriptionStates(normalizedUserId);
   const current = rows.find(item => item.route === route);
   if (!current) {
-    badRequest('添加订阅失败');
-    throw new Error('添加订阅失败');
+    const message = t('rssApi.subscriptionCreateFailed');
+    badRequest(message);
+    throw new Error(message);
   }
   if (!existed) {
     void fetchRssFeed(
@@ -304,16 +307,14 @@ const fetchRssFeedFromUpstream = async (params: {
           ? error.response?.data
           : error.response?.data?.message || error.message;
       if (status === 403) {
-        badRequest(
-          `RSSHub 返回 403，当前 Host 可能限制了该请求。请在“设置 -> RSS 配置”切换为你自建的 RSSHub 实例。原始信息：${upstreamText}`
-        );
+        badRequest(t('rssApi.upstreamForbidden', { upstreamText }));
       }
-      badRequest(`拉取 RSS 失败（${status || 'network'}）：${upstreamText}`);
+      badRequest(t('rssApi.fetchFailed', { status: status || 'network', upstreamText }));
       throw error;
     });
   const xml = String(response.data || '').trim();
   if (!xml) {
-    badRequest('RSS 数据为空');
+    badRequest(t('rssApi.emptyData'));
   }
   const contentType = String(response.headers['content-type'] || 'application/xml');
   const fetchedAt = new Date().toISOString();
@@ -479,14 +480,14 @@ export async function getRssCachedResourceData(
 ): Promise<NonNullable<Awaited<ReturnType<typeof getCachedResourceByKey>>>> {
   const normalizedCacheKey = String(cacheKey || '').trim();
   if (!normalizedCacheKey) {
-    badRequest('缺少缓存资源标识');
+    badRequest(t('rssApi.cacheKeyRequired'));
   }
   const cached = await getCachedResourceByKey({
     scope: 'rss',
     cacheKey: normalizedCacheKey,
   });
   if (!cached) {
-    badRequest('缓存资源不存在');
+    badRequest(t('rssApi.resourceNotFound'));
   }
   return cached!;
 }

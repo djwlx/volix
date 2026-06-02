@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Space, Toast, Typography } from '@douyinfe/semi-ui';
 import { AppForm, Loading } from '@/components';
+import { useI18n } from '@/i18n';
 import { getAccountConfigs, testAccountConfig, updateAccountConfig } from '@/services/user';
 import { useAppPageContext } from '@/hooks';
 import { AccountConfigPlatform, UserRole } from '@volix/types';
@@ -12,6 +13,7 @@ const EMPTY_VALUES: BangumiAccountConfigItem = {
 };
 
 function SettingConfigBangumiApp() {
+  const { t } = useI18n();
   const { user, requestNavigate } = useAppPageContext();
   const [initialValues, setInitialValues] = useState<BangumiAccountConfigItem>(EMPTY_VALUES);
   const [formValues, setFormValues] = useState<BangumiAccountConfigItem>(EMPTY_VALUES);
@@ -41,7 +43,7 @@ function SettingConfigBangumiApp() {
         setFormValues(nextValues);
       })
       .catch(() => {
-        Toast.error('加载 Bangumi 配置失败');
+        Toast.error(t('setting.account.loadFailed'));
       })
       .finally(() => {
         setLoading(false);
@@ -64,10 +66,10 @@ function SettingConfigBangumiApp() {
       });
       setInitialValues(nextValues);
       setFormValues(nextValues);
-      Toast.success('Bangumi 配置保存成功');
+      Toast.success(t('setting.account.platformSaveSuccess', { title: 'Bangumi' }));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '保存失败');
+      Toast.error(message || t('common.action.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -83,10 +85,10 @@ function SettingConfigBangumiApp() {
           accessToken: formValues.accessToken.trim(),
         },
       });
-      Toast.success(res.data?.message || '联通成功');
+      Toast.success(res.data?.message || t('setting.account.connectionSuccess'));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '联通失败');
+      Toast.error(message || t('setting.account.connectionFailed'));
     } finally {
       setTesting(false);
     }
@@ -98,9 +100,7 @@ function SettingConfigBangumiApp() {
         <Loading rows={4} />
       ) : (
         <Space vertical spacing={16} style={{ width: '100%' }}>
-          <Typography.Text type="secondary">
-            Access Token 可在 Bangumi 开发者页面生成。请求会优先使用当前浏览器的 User-Agent。
-          </Typography.Text>
+          <Typography.Text type="secondary">{t('setting.account.bangumi.accessTokenHint')}</Typography.Text>
           <AppForm
             key={initialFingerprint}
             initValues={initialValues}
@@ -114,19 +114,19 @@ function SettingConfigBangumiApp() {
             }}
             onSubmit={onSubmit}
           >
-            <AppForm.Input field="baseUrl" label="服务地址" placeholder="https://api.bgm.tv" />
+            <AppForm.Input field="baseUrl" label={t('setting.account.baseUrl')} placeholder="https://api.bgm.tv" />
             <AppForm.Input
               field="accessToken"
               label="Access Token"
               mode="password"
-              placeholder="请输入 Bangumi Token"
+              placeholder={t('setting.account.bangumi.accessTokenPlaceholder')}
             />
             <Space>
               <Button type="primary" htmlType="submit" loading={saving}>
-                保存配置
+                {t('common.action.saveConfig')}
               </Button>
               <Button loading={testing} onClick={onTestConnection}>
-                测试联通性
+                {t('setting.account.testConnection')}
               </Button>
             </Space>
           </AppForm>

@@ -1,5 +1,6 @@
 import { Tag } from '@douyinfe/semi-ui';
 import type { PicCacheFolderItem, PicCacheFolderStatus } from '@volix/types';
+import { translateClient } from '@/i18n';
 
 export const picCacheStatusOrder: Record<PicCacheFolderStatus, number> = {
   caching: 0,
@@ -10,19 +11,23 @@ export const picCacheStatusOrder: Record<PicCacheFolderStatus, number> = {
 };
 
 const statusMetaMap: Record<PicCacheFolderStatus, { text: string; color: 'amber' | 'blue' | 'green' | 'red' }> = {
-  pending: { text: '等待中', color: 'blue' },
-  caching: { text: '缓存中', color: 'amber' },
-  partial: { text: '部分缓存', color: 'amber' },
-  cached: { text: '已缓存', color: 'green' },
-  failed: { text: '缓存失败', color: 'red' },
+  pending: { text: 'pic115.status.pending', color: 'blue' },
+  caching: { text: 'pic115.status.caching', color: 'amber' },
+  partial: { text: 'pic115.status.partial', color: 'amber' },
+  cached: { text: 'pic115.status.cached', color: 'green' },
+  failed: { text: 'pic115.status.failed', color: 'red' },
 };
 
 export function getPicCacheStatusMeta(status: PicCacheFolderStatus) {
-  return statusMetaMap[status];
+  const meta = statusMetaMap[status];
+  return {
+    ...meta,
+    text: translateClient(meta.text),
+  };
 }
 
 export function renderPicCacheStatusTag(folder: Pick<PicCacheFolderItem, 'status'>) {
-  const meta = statusMetaMap[folder.status];
+  const meta = getPicCacheStatusMeta(folder.status);
   return (
     <Tag size="small" shape="circle" color={meta.color}>
       {meta.text}

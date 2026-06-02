@@ -45,15 +45,16 @@ import {
 import { get115QrCodeData, get115QrCodeStatusData } from '../service/qrcode.service';
 import { exit115AndClearCookie, login115WithAppAndSaveCookie } from '../service/session.service';
 import { get115UserInfoData } from '../service/user.service';
+import { t } from '../../../utils/i18n';
 
 const ensureLocalProxyUrlByPc = async (pc: string, userAgent: string) => {
   const normalizedPc = String(pc || '').trim();
   if (!normalizedPc) {
-    badRequest('随机图片缺少 pc，无法本地代理');
+    badRequest(t('pic115Api.proxyMissingPc'));
   }
   const file = await getFile115ByPc(normalizedPc);
   if (!file) {
-    badRequest('未找到随机图片缓存记录，无法本地代理');
+    badRequest(t('pic115Api.proxyCacheRecordNotFound'));
   }
   const safeFile = file as NonNullable<typeof file>;
   await ensureRandomLocalPicCacheByFile(safeFile, userAgent, {
@@ -61,7 +62,7 @@ const ensureLocalProxyUrlByPc = async (pc: string, userAgent: string) => {
   });
   const cached = await getLocalRandomPicCacheByPc(normalizedPc);
   if (!cached) {
-    badRequest('随机图片本地缓存失败');
+    badRequest(t('pic115Api.proxyCacheFailed'));
   }
   const safeCached = cached as NonNullable<typeof cached>;
   return safeCached.url;
@@ -78,7 +79,7 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
 
   if (remoteEndpoint) {
     if (isSelfReferencingRandomPicEndpoint(ctx, remoteEndpoint)) {
-      badRequest('随机图片端点不能指向当前服务随机图接口');
+      badRequest(t('pic115Api.selfReferencingEndpoint'));
     }
 
     if (isDirect) {
@@ -197,7 +198,7 @@ export const getRandom115PicByParent: MyMiddleware = async ctx => {
 
   if (remoteEndpoint) {
     if (isSelfReferencingRandomPicEndpoint(ctx, remoteEndpoint)) {
-      badRequest('随机图片端点不能指向当前服务随机图接口');
+      badRequest(t('pic115Api.selfReferencingEndpoint'));
     }
     const remoteParentEndpoint = buildRemoteParentRandomEndpoint(remoteEndpoint);
     const remoteParentUrl = buildRemoteEndpointUrl(remoteParentEndpoint, {
@@ -233,7 +234,7 @@ export const get115PicPathByPc: MyMiddleware = async ctx => {
   const remoteEndpoint = randomPicOptions.endpoint;
   if (remoteEndpoint) {
     if (isSelfReferencingRandomPicEndpoint(ctx, remoteEndpoint)) {
-      badRequest('随机图片端点不能指向当前服务随机图接口');
+      badRequest(t('pic115Api.selfReferencingEndpoint'));
     }
     const remotePathEndpoint = buildRemotePicPathEndpoint(remoteEndpoint);
     const remotePathUrl = buildRemoteEndpointUrl(remotePathEndpoint, {
@@ -246,7 +247,7 @@ export const get115PicPathByPc: MyMiddleware = async ctx => {
     });
     const parsed = parseRemotePicPathPayload(remoteResult.data);
     if (!parsed) {
-      badRequest('随机图片端点路径返回无效');
+      badRequest(t('pic115Api.invalidPathPayload'));
     }
     return parsed as NonNullable<typeof parsed>;
   }
@@ -357,7 +358,7 @@ export const get115UserInfo: MyMiddleware = async ctx => {
 
   resSuccess(ctx, {
     code: 1,
-    message: '未登录',
+    message: t('auth.unauthorized'),
   });
 };
 
@@ -378,7 +379,7 @@ export const get115QrCodeStatus: MyMiddleware = async ctx => {
 export const login115ByApp: MyMiddleware = async ctx => {
   const { uid, app } = ctx.request.body;
   if (!uid || !app) {
-    badRequest('uid或app不能为空');
+    badRequest(t('pic115Api.loginParamsRequired'));
   }
 
   return login115WithAppAndSaveCookie(uid, app);

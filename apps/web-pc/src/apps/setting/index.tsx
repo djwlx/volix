@@ -3,6 +3,7 @@ import { Button, Nav, SideSheet, Toast } from '@douyinfe/semi-ui';
 import { IconCloudStroked, IconConfigStroked, IconDesktop, IconMenu, IconUserList } from '@douyinfe/semi-icons';
 import { IconAvatar } from '@douyinfe/semi-icons-lab';
 import { useLocation, Outlet } from 'react-router';
+import { useI18n } from '@/i18n';
 import { useAppPageContext } from '@/hooks';
 import type { ReactNode } from 'react';
 import styles from './index.module.scss';
@@ -41,6 +42,7 @@ function MenuIcon(props: { icon: ReactNode; bg: string; color: string }) {
 }
 
 function SettingApp() {
+  const { t } = useI18n();
   const location = useLocation();
   const [isCompactLayout, setIsCompactLayout] = useState(getCompactLayout);
   const [mobileNavVisible, setMobileNavVisible] = useState(false);
@@ -70,7 +72,7 @@ function SettingApp() {
         return;
       }
       if (key === 'user' && !isAdmin) {
-        Toast.warning('仅管理员可访问用户信息');
+        Toast.warning(t({ id: 'setting.user.adminOnly', defaultMessage: '仅管理员可访问用户信息' }));
         return;
       }
       requestNavigate(`/setting/${key}`);
@@ -101,11 +103,11 @@ function SettingApp() {
   const navItems = [
     {
       itemKey: 'common-settings',
-      text: '基础设置',
+      text: t({ id: 'setting.nav.common', defaultMessage: '基础设置' }),
       items: [
         {
           itemKey: 'info',
-          text: '个人信息',
+          text: t({ id: 'setting.nav.info', defaultMessage: '个人信息' }),
           icon: (
             <MenuIcon
               icon={<IconAvatar />}
@@ -116,7 +118,7 @@ function SettingApp() {
         },
         {
           itemKey: 'config/rsshub',
-          text: 'RSS 配置',
+          text: t({ id: 'setting.nav.rss', defaultMessage: 'RSS 配置' }),
           icon: (
             <MenuIcon
               icon={<IconCloudStroked />}
@@ -127,7 +129,7 @@ function SettingApp() {
         },
         {
           itemKey: 'config/account',
-          text: '账号管理',
+          text: t({ id: 'setting.nav.account', defaultMessage: '账号管理' }),
           icon: (
             <MenuIcon
               icon={<IconConfigStroked />}
@@ -138,7 +140,7 @@ function SettingApp() {
         },
         {
           itemKey: 'config/115',
-          text: '随机图片配置',
+          text: t({ id: 'setting.nav.pic', defaultMessage: '随机图片配置' }),
           icon: (
             <MenuIcon
               icon={<IconCloudStroked />}
@@ -153,11 +155,11 @@ function SettingApp() {
       ? [
           {
             itemKey: 'admin-settings',
-            text: '管理员设置',
+            text: t({ id: 'setting.nav.admin', defaultMessage: '管理员设置' }),
             items: [
               {
                 itemKey: 'user',
-                text: '用户管理',
+                text: t({ id: 'setting.nav.user', defaultMessage: '用户管理' }),
                 icon: (
                   <MenuIcon
                     icon={<IconUserList />}
@@ -168,7 +170,7 @@ function SettingApp() {
               },
               {
                 itemKey: 'system',
-                text: '系统配置',
+                text: t({ id: 'setting.nav.system', defaultMessage: '系统配置' }),
                 icon: (
                   <MenuIcon
                     icon={<IconDesktop />}
@@ -187,7 +189,7 @@ function SettingApp() {
     <div className={styles.page}>
       {isCompactLayout ? (
         <SideSheet
-          title="菜单"
+          title={t({ id: 'setting.nav.menu', defaultMessage: '菜单' })}
           visible={mobileNavVisible}
           onCancel={() => setMobileNavVisible(false)}
           placement="left"
@@ -230,7 +232,7 @@ function SettingApp() {
           {isCompactLayout ? (
             <div className={styles.mobileActionBar}>
               <Button icon={<IconMenu />} onClick={() => setMobileNavVisible(true)}>
-                菜单
+                {t({ id: 'setting.nav.menu', defaultMessage: '菜单' })}
               </Button>
             </div>
           ) : null}

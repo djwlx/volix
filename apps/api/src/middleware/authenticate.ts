@@ -1,6 +1,7 @@
 import JWT from '../utils/jwt';
 import config from '../../config/index';
 import { pathToRegexp } from 'path-to-regexp';
+import { t } from '../utils/i18n';
 import { resError } from '../utils/response';
 import { queryUser } from '../modules/user';
 import { UserRole } from '@volix/types';
@@ -44,7 +45,7 @@ const authenticate = (option?: AuthenticateParam): MyMiddleware => {
     if (!token) {
       resError(ctx, {
         code: 401,
-        message: '未进行权限认证',
+        message: t({ id: 'auth.middleware.missingAuth', defaultMessage: '未进行权限认证' }),
       });
     } else {
       // 认证成功后可以从数据库中取出用户信息放到ctx的state中,只捕获认证错误
@@ -55,14 +56,14 @@ const authenticate = (option?: AuthenticateParam): MyMiddleware => {
         if (!userInfo) {
           resError(ctx, {
             code: 401,
-            message: '用户不存在',
+            message: t({ id: 'auth.user.notFound', defaultMessage: '用户不存在' }),
           });
           return;
         }
         if (userInfo.dataValues.id === undefined || userInfo.dataValues.id === null || !userInfo.dataValues.email) {
           resError(ctx, {
             code: 401,
-            message: '用户信息异常',
+            message: t({ id: 'auth.user.invalid', defaultMessage: '用户信息异常' }),
           });
           return;
         }
@@ -77,7 +78,7 @@ const authenticate = (option?: AuthenticateParam): MyMiddleware => {
       } catch (e) {
         resError(ctx, {
           code: 401,
-          message: '权限认证错误',
+          message: t({ id: 'auth.middleware.invalidAuth', defaultMessage: '权限认证错误' }),
         });
       }
     }

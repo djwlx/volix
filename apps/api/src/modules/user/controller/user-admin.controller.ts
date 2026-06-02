@@ -1,4 +1,5 @@
 import { UserRole } from '@volix/types';
+import { t } from '../../../utils/i18n';
 import type {
   AdminCreateUserPayload,
   AdminUpdateUserPayload,
@@ -17,7 +18,7 @@ import {
 
 const ensureAdmin = (ctx: any) => {
   if (ctx.state.userInfo?.role !== UserRole.ADMIN) {
-    unauthorized('仅管理员可操作');
+    unauthorized(t({ id: 'user.admin.only', defaultMessage: '仅管理员可操作' }));
   }
 };
 
@@ -44,17 +45,17 @@ export const setUserRole: MyMiddleware = async ctx => {
   const { userId, role } = param;
 
   if (!userId || !role || !Object.values(UserRole).includes(role as UserRole)) {
-    badRequest('参数错误');
+    badRequest(t({ id: 'common.validation.invalidParams', defaultMessage: '参数错误' }));
   }
 
   const targetUser = await queryUser({ id: userId });
   if (!targetUser) {
-    badRequest('目标用户不存在');
+    badRequest(t({ id: 'user.target.notFound', defaultMessage: '目标用户不存在' }));
     return;
   }
 
   if (String(ctx.state.userInfo?.id) === String(userId) && role !== UserRole.ADMIN) {
-    badRequest('不能取消自己的管理员权限');
+    badRequest(t({ id: 'user.admin.selfDemoteForbidden', defaultMessage: '不能取消自己的管理员权限' }));
   }
 
   await updateUser(userId, { role });
@@ -74,7 +75,7 @@ export const setUserRole: MyMiddleware = async ctx => {
 export const assignUserRole: MyMiddleware = async ctx => {
   ensureAdmin(ctx);
   const _param = (ctx.request.body || {}) as AssignUserRolePayload;
-  badRequest('角色组已下线，请使用系统角色（admin/user）');
+  badRequest(t({ id: 'user.role.legacyRemoved', defaultMessage: '角色组已下线，请使用系统角色（admin/user）' }));
 };
 
 export const getUserDetail: MyMiddleware = async ctx => {
@@ -82,12 +83,12 @@ export const getUserDetail: MyMiddleware = async ctx => {
 
   const id = (ctx.params.id || '').trim();
   if (!id) {
-    badRequest('用户ID不能为空');
+    badRequest(t({ id: 'user.id.required', defaultMessage: '用户ID不能为空' }));
   }
 
   const user = await queryUser({ id });
   if (!user) {
-    badRequest('用户不存在');
+    badRequest(t({ id: 'auth.user.notFound', defaultMessage: '用户不存在' }));
     return;
   }
 
@@ -105,24 +106,26 @@ export const adminCreateUser: MyMiddleware = async ctx => {
   const role = (param.role || UserRole.USER) as UserRole;
 
   if (!email || !password) {
-    badRequest('邮箱或密码不能为空');
+    badRequest(t({ id: 'auth.validation.emailOrPasswordRequired', defaultMessage: '邮箱或密码不能为空' }));
   }
   if (!EMAIL_REGEXP.test(email)) {
-    badRequest('邮箱格式错误');
+    badRequest(t({ id: 'auth.validation.invalidEmail', defaultMessage: '邮箱格式错误' }));
   }
   if (nickname && nickname.length > 32) {
-    badRequest('昵称长度不能超过 32');
+    badRequest(t({ id: 'user.nickname.maxLength', defaultMessage: '昵称长度不能超过 32' }));
   }
   if (avatar && !AVATAR_URL_REGEXP.test(avatar)) {
-    badRequest('头像地址必须是 http/https 链接或 /file/ 开头的上传地址');
+    badRequest(
+      t({ id: 'user.avatar.invalid', defaultMessage: '头像地址必须是 http/https 链接或 /file/ 开头的上传地址' })
+    );
   }
   if (!Object.values(UserRole).includes(role)) {
-    badRequest('系统角色非法');
+    badRequest(t({ id: 'user.role.invalid', defaultMessage: '系统角色非法' }));
   }
 
   const exists = await queryUser({ email });
   if (exists) {
-    badRequest('用户已存在');
+    badRequest(t({ id: 'auth.user.exists', defaultMessage: '用户已存在' }));
   }
 
   const user = await addUser({
@@ -143,12 +146,12 @@ export const adminUpdateUser: MyMiddleware = async ctx => {
 
   const id = (ctx.params.id || '').trim();
   if (!id) {
-    badRequest('用户ID不能为空');
+    badRequest(t({ id: 'user.id.required', defaultMessage: '用户ID不能为空' }));
   }
 
   const target = await queryUser({ id });
   if (!target) {
-    badRequest('用户不存在');
+    badRequest(t({ id: 'auth.user.notFound', defaultMessage: '用户不存在' }));
     return;
   }
 
@@ -158,7 +161,7 @@ export const adminUpdateUser: MyMiddleware = async ctx => {
   if (typeof param.nickname === 'string') {
     const nickname = param.nickname.trim();
     if (nickname.length > 32) {
-      badRequest('昵称长度不能超过 32');
+      badRequest(t({ id: 'user.nickname.maxLength', defaultMessage: '昵称长度不能超过 32' }));
     }
     nextData.nickname = nickname;
   }
@@ -166,29 +169,31 @@ export const adminUpdateUser: MyMiddleware = async ctx => {
   if (typeof param.avatar === 'string') {
     const avatar = param.avatar.trim();
     if (avatar && !AVATAR_URL_REGEXP.test(avatar)) {
-      badRequest('头像地址必须是 http/https 链接或 /file/ 开头的上传地址');
+      badRequest(
+        t({ id: 'user.avatar.invalid', defaultMessage: '头像地址必须是 http/https 链接或 /file/ 开头的上传地址' })
+      );
     }
     nextData.avatar = avatar;
   }
 
   if (param.role !== undefined) {
     if (!Object.values(UserRole).includes(param.role)) {
-      badRequest('系统角色非法');
+      badRequest(t({ id: 'user.role.invalid', defaultMessage: '系统角色非法' }));
     }
     if (String(ctx.state.userInfo?.id) === id && param.role !== UserRole.ADMIN) {
-      badRequest('不能取消自己的管理员权限');
+      badRequest(t({ id: 'user.admin.selfDemoteForbidden', defaultMessage: '不能取消自己的管理员权限' }));
     }
     nextData.role = param.role;
   }
 
   if (Object.keys(nextData).length === 0) {
-    badRequest('未提供可更新字段');
+    badRequest(t({ id: 'common.validation.noFieldsToUpdate', defaultMessage: '未提供可更新字段' }));
   }
 
   await updateUser(id, nextData);
   const updated = await queryUser({ id });
   if (!updated) {
-    badRequest('用户不存在');
+    badRequest(t({ id: 'auth.user.notFound', defaultMessage: '用户不存在' }));
     return;
   }
 

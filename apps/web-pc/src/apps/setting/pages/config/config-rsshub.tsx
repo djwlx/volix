@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Empty, Input, InputNumber, Modal, Space, Toast, Typography } from '@douyinfe/semi-ui';
 import { AppForm } from '@/components';
+import { useI18n } from '@/i18n';
 import {
   addUserRssSubscription,
   clearRssStorage,
@@ -44,16 +45,17 @@ const formatBytes = (value: number) => {
 const formatTime = (value: string) => {
   const text = String(value || '').trim();
   if (!text) {
-    return '未知';
+    return 'Unknown';
   }
   const timestamp = Date.parse(text);
   if (Number.isNaN(timestamp)) {
-    return '未知';
+    return 'Unknown';
   }
   return new Date(timestamp).toLocaleString();
 };
 
 function SettingConfigRsshubApp() {
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [savingSetting, setSavingSetting] = useState(false);
   const [addingRoute, setAddingRoute] = useState(false);
@@ -145,7 +147,7 @@ function SettingConfigRsshubApp() {
         );
       }
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '加载 RSS 配置失败'));
+      Toast.error(getHttpErrorMessage(error, t({ id: 'setting.rss.loadFailed', defaultMessage: '加载 RSS 配置失败' })));
     } finally {
       setLoading(false);
     }
@@ -156,7 +158,9 @@ function SettingConfigRsshubApp() {
       const res = await getRssStorageStatus();
       setStorageStatus(res.data);
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '刷新存储状态失败'));
+      Toast.error(
+        getHttpErrorMessage(error, t({ id: 'setting.rss.storageRefreshFailed', defaultMessage: '刷新存储状态失败' }))
+      );
     }
   };
 
@@ -191,9 +195,9 @@ function SettingConfigRsshubApp() {
       };
       setFormInitValues(nextValues);
       formApi?.setValues(nextValues as unknown as Partial<Record<string, unknown>>);
-      Toast.success('RSS 配置已保存');
+      Toast.success(t({ id: 'setting.rss.saveSuccess', defaultMessage: 'RSS 配置已保存' }));
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '保存 RSS 配置失败'));
+      Toast.error(getHttpErrorMessage(error, t({ id: 'setting.rss.saveFailed', defaultMessage: '保存 RSS 配置失败' })));
     } finally {
       setSavingSetting(false);
     }
@@ -211,9 +215,11 @@ function SettingConfigRsshubApp() {
         }
         return [res.data, ...prev];
       });
-      Toast.success('订阅已添加');
+      Toast.success(t({ id: 'setting.rss.subscriptionAdded', defaultMessage: '订阅已添加' }));
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '添加订阅失败'));
+      Toast.error(
+        getHttpErrorMessage(error, t({ id: 'setting.rss.subscriptionAddFailed', defaultMessage: '添加订阅失败' }))
+      );
     } finally {
       setAddingRoute(false);
     }
@@ -224,16 +230,23 @@ function SettingConfigRsshubApp() {
       await removeUserRssSubscription(route);
       setSubscriptions(prev => prev.filter(item => item.route !== route));
       await refreshStorage();
-      Toast.success('订阅已移除');
+      Toast.success(t({ id: 'setting.rss.subscriptionRemoved', defaultMessage: '订阅已移除' }));
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '移除订阅失败'));
+      Toast.error(
+        getHttpErrorMessage(error, t({ id: 'setting.rss.subscriptionRemoveFailed', defaultMessage: '移除订阅失败' }))
+      );
     }
   };
 
   const onOpenClearRouteHistoryModal = (route: string) => {
     const routeItemCount = Number(routeStatsMap.get(route)?.itemCount || 0);
     if (routeItemCount <= 1) {
-      Toast.warning('该订阅至少需要 2 条以上历史数据，才支持按保留条数清理');
+      Toast.warning(
+        t({
+          id: 'setting.rss.clearHistoryNeedMoreItems',
+          defaultMessage: '该订阅至少需要 2 条以上历史数据，才支持按保留条数清理',
+        })
+      );
       return;
     }
     const maxKeepLatestItems = routeItemCount - 1;
@@ -253,7 +266,15 @@ function SettingConfigRsshubApp() {
       return;
     }
     if (!Number.isFinite(keepLatestItems) || keepLatestItems <= 0 || keepLatestItems > maxKeepLatestItems) {
-      Toast.error(`请输入有效数字，且必须大于 0 并小于等于 ${maxKeepLatestItems}`);
+      Toast.error(
+        t(
+          {
+            id: 'setting.rss.keepLatestItemsInvalid',
+            defaultMessage: '请输入有效数字，且必须大于 0 并小于等于 {maxKeepLatestItems}',
+          },
+          { maxKeepLatestItems }
+        )
+      );
       return;
     }
 
@@ -265,21 +286,35 @@ function SettingConfigRsshubApp() {
         keepLatestItems,
       });
       setStorageStatus(res.data);
-      Toast.success(`已清理，保留最新 ${keepLatestItems} 条`);
+      Toast.success(
+        t(
+          { id: 'setting.rss.clearHistorySuccess', defaultMessage: '已清理，保留最新 {keepLatestItems} 条' },
+          {
+            keepLatestItems,
+          }
+        )
+      );
       setClearHistoryModalState(prev => ({
         ...prev,
         visible: false,
         route: '',
       }));
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '清理订阅历史失败'));
+      Toast.error(
+        getHttpErrorMessage(error, t({ id: 'setting.rss.clearHistoryFailed', defaultMessage: '清理订阅历史失败' }))
+      );
     } finally {
       setClearingRouteHistory('');
     }
   };
 
   return (
-    <Card title="RSS 配置" shadows="hover" style={{ width: '100%' }} loading={loading}>
+    <Card
+      title={t({ id: 'setting.rss.title', defaultMessage: 'RSS 配置' })}
+      shadows="hover"
+      style={{ width: '100%' }}
+      loading={loading}
+    >
       <div style={{ display: 'grid', gap: 16 }}>
         {formInitValues ? (
           <AppForm
@@ -290,39 +325,53 @@ function SettingConfigRsshubApp() {
             onSubmit={onSaveSetting}
           >
             <AppForm.Input field="host" label="RSSHub Host" />
-            <AppForm.Input field="resourceProxyBaseUrl" label="静态资源代理地址（可空）" />
-            <AppForm.Input field="refreshIntervalMinutes" label="订阅刷新间隔（分钟）" />
+            <AppForm.Input
+              field="resourceProxyBaseUrl"
+              label={t({ id: 'setting.rss.resourceProxy', defaultMessage: '静态资源代理地址（可空）' })}
+            />
+            <AppForm.Input
+              field="refreshIntervalMinutes"
+              label={t({ id: 'setting.rss.refreshInterval', defaultMessage: '订阅刷新间隔（分钟）' })}
+            />
           </AppForm>
         ) : null}
 
         <Space>
           <Button type="primary" loading={savingSetting} onClick={() => formApi?.submitForm()}>
-            保存配置
+            {t({ id: 'common.action.saveConfig', defaultMessage: '保存配置' })}
           </Button>
           <Button
             onClick={() => {
               formApi?.setValue('host', DEFAULT_HOST);
             }}
           >
-            使用默认 Host
+            {t({ id: 'setting.rss.useDefaultHost', defaultMessage: '使用默认 Host' })}
           </Button>
         </Space>
 
         <div style={{ display: 'grid', gap: 8 }}>
-          <Typography.Text strong>订阅管理</Typography.Text>
+          <Typography.Text strong>
+            {t({ id: 'setting.rss.subscriptionManagement', defaultMessage: '订阅管理' })}
+          </Typography.Text>
           <Space align="start" wrap>
             <Input
               style={{ width: 420, maxWidth: '100%' }}
               value={routeInput}
-              placeholder="例如：/zhihu/daily"
+              placeholder={t({ id: 'setting.rss.route.placeholder', defaultMessage: '例如：/zhihu/daily' })}
               onChange={value => setRouteInput(String(value || ''))}
             />
             <Button type="primary" loading={addingRoute} onClick={() => onAddRoute()}>
-              新增订阅
+              {t({ id: 'setting.rss.addSubscription', defaultMessage: '新增订阅' })}
             </Button>
           </Space>
           {subscriptions.length === 0 ? (
-            <Empty title="暂无订阅" description="添加 route 后，阅读页会自动聚合订阅内容。" />
+            <Empty
+              title={t({ id: 'setting.rss.empty.title', defaultMessage: '暂无订阅' })}
+              description={t({
+                id: 'setting.rss.empty.description',
+                defaultMessage: '添加 route 后，阅读页会自动聚合订阅内容。',
+              })}
+            />
           ) : (
             <RssSubscriptionTable
               subscriptions={subscriptions}
@@ -337,10 +386,10 @@ function SettingConfigRsshubApp() {
         </div>
       </div>
       <Modal
-        title="清理订阅历史"
+        title={t({ id: 'setting.rss.clearHistory.title', defaultMessage: '清理订阅历史' })}
         visible={clearHistoryModalState.visible}
-        okText="确认清理"
-        cancelText="取消"
+        okText={t({ id: 'common.action.confirmClear', defaultMessage: '确认清理' })}
+        cancelText={t({ id: 'common.action.cancel', defaultMessage: '取消' })}
         okButtonProps={{
           type: 'danger',
           loading: clearingRouteHistory === clearHistoryModalState.route,
@@ -356,10 +405,10 @@ function SettingConfigRsshubApp() {
       >
         <div style={{ display: 'grid', gap: 12 }}>
           <Typography.Text>
-            当前订阅：<Typography.Text strong>{clearHistoryModalState.route}</Typography.Text>
+            Current route: <Typography.Text strong>{clearHistoryModalState.route}</Typography.Text>
           </Typography.Text>
           <Typography.Text type="secondary">
-            请输入要保留的最新条数（1 - {clearHistoryModalState.maxKeepLatestItems}）。
+            Keep the latest items count (1 - {clearHistoryModalState.maxKeepLatestItems}).
           </Typography.Text>
           <InputNumber
             min={1}

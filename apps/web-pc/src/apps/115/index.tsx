@@ -4,10 +4,12 @@ import { Button, Empty, Space, Skeleton } from '@douyinfe/semi-ui';
 import { FileTree } from './file-tree';
 import { useUserInfo } from './hooks/useUserInfo';
 import { useNavigate } from 'react-router';
+import { useI18n } from '@/i18n';
 
 function My115App() {
   const { data, loading } = useUserInfo();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   return (
     <div style={{ padding: 16 }}>
@@ -19,9 +21,13 @@ function My115App() {
             <FileTree />
           </Space>
         ) : (
-          <Empty title="尚未登录115账号" description="请先前往 设置 > 随机图片配置 完成登录" style={{ marginTop: 60 }}>
+          <Empty
+            title={t('pic115.empty.notLoggedIn.title')}
+            description={t('pic115.empty.notLoggedIn.description')}
+            style={{ marginTop: 60 }}
+          >
             <Button type="primary" onClick={() => navigate('/setting/config/115')}>
-              前往随机图片配置
+              {t('pic115.action.goToConfig')}
             </Button>
           </Empty>
         )}

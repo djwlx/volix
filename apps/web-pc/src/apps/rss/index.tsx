@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router';
 import { useIsMobile } from '@/hooks';
 import { isAuthenticated } from '@/utils';
 import { getHttpErrorMessage } from '@/utils/error';
+import { useI18n } from '@/i18n';
 import { formatFeedDate, parseFeed } from './feed-parser';
 import { getRssFeed, getUserRssSetting, getUserRssSubscriptions } from '@/services/rss';
 import type { RssReaderRawFeed, UserRssSubscriptionItem } from '@volix/types';
@@ -14,6 +15,7 @@ const FALLBACK_HOST = 'https://rsshub.app';
 
 function RssApp() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const isMobile = useIsMobile();
   const authed = isAuthenticated();
 
@@ -171,10 +173,10 @@ function RssApp() {
         setMobileOpenedItemKey('');
 
         if (failedRoutes.length > 0) {
-          Toast.warning(`部分订阅加载失败：${failedRoutes.slice(0, 2).join('；')}`);
+          Toast.warning(t('rss.partialLoadFailed', { routes: failedRoutes.slice(0, 2).join('; ') }));
         }
       } catch (error) {
-        Toast.error(getHttpErrorMessage(error, '加载 RSS 阅读器失败'));
+        Toast.error(getHttpErrorMessage(error, t('rss.error.loadFailed')));
       } finally {
         setLoading(false);
       }
@@ -204,11 +206,14 @@ function RssApp() {
     }
   }, [activeItemKey, aggregatedItems]);
 
-  const summaryText = `已聚合 ${filteredRoutes.length} 个订阅，共 ${aggregatedItems.length} 条内容`;
+  const summaryText = t('rss.summary', {
+    routeCount: filteredRoutes.length,
+    itemCount: aggregatedItems.length,
+  });
 
   const renderDetail = () => {
     if (!activeItem) {
-      return <Empty title="暂无内容" description="请先检查订阅是否可用，或稍后刷新重试。" />;
+      return <Empty title={t('rss.empty.content.title')} description={t('rss.empty.content.description')} />;
     }
 
     return (
@@ -218,36 +223,41 @@ function RssApp() {
           {activeItem.routeName} · {activeItem.route}
         </div>
         <div className={styles.detailMeta}>
-          {formatFeedDate(activeItem.publishedAt) || '未知时间'}
+          {formatFeedDate(activeItem.publishedAt) || t('rss.time.unknown')}
           {activeItem.author ? ` · ${activeItem.author}` : ''}
           {activeItem.feedTitle ? ` · ${activeItem.feedTitle}` : ''}
         </div>
         {activeItem.guid ? <div className={styles.detailMeta}>GUID: {activeItem.guid}</div> : null}
         {activeItem.updated ? (
-          <div className={styles.detailMeta}>更新时间: {formatFeedDate(activeItem.updated)}</div>
+          <div className={styles.detailMeta}>
+            {t('rss.meta.updatedAt', { value: formatFeedDate(activeItem.updated) })}
+          </div>
         ) : null}
         {activeItem.category && activeItem.category.length > 0 ? (
-          <div className={styles.detailMeta}>分类: {activeItem.category.join(' / ')}</div>
+          <div className={styles.detailMeta}>{t('rss.meta.category', { value: activeItem.category.join(' / ') })}</div>
         ) : null}
         {activeItem.doi ? <div className={styles.detailMeta}>DOI: {activeItem.doi}</div> : null}
         {typeof activeItem.comments === 'number' ||
         typeof activeItem.upvotes === 'number' ||
         typeof activeItem.downvotes === 'number' ? (
           <div className={styles.detailMeta}>
-            {typeof activeItem.comments === 'number' ? `评论 ${activeItem.comments}` : ''}
+            {typeof activeItem.comments === 'number' ? t('rss.meta.comments', { count: activeItem.comments }) : ''}
             {typeof activeItem.upvotes === 'number'
-              ? `${typeof activeItem.comments === 'number' ? ' · ' : ''}赞 ${activeItem.upvotes}`
+              ? `${typeof activeItem.comments === 'number' ? ' · ' : ''}${t('rss.meta.upvotes', {
+                  count: activeItem.upvotes,
+                })}`
               : ''}
             {typeof activeItem.downvotes === 'number'
-              ? `${typeof activeItem.comments === 'number' || typeof activeItem.upvotes === 'number' ? ' · ' : ''}踩 ${
-                  activeItem.downvotes
-                }`
+              ? `${typeof activeItem.comments === 'number' || typeof activeItem.upvotes === 'number' ? ' · ' : ''}${t(
+                  'rss.meta.downvotes',
+                  { count: activeItem.downvotes }
+                )}`
               : ''}
           </div>
         ) : null}
         {activeItem.enclosureUrl ? (
           <div className={styles.detailMeta}>
-            附件: {activeItem.enclosureType || 'unknown'}
+            {t('rss.meta.enclosure', { type: activeItem.enclosureType || 'unknown' })}
             {typeof activeItem.enclosureLength === 'number' ? ` · ${activeItem.enclosureLength} bytes` : ''}
           </div>
         ) : null}
@@ -255,22 +265,22 @@ function RssApp() {
           {activeItem.descriptionHtml ? (
             <div dangerouslySetInnerHTML={{ __html: activeItem.descriptionHtml }} />
           ) : (
-            activeItem.description || '该条目没有摘要内容。'
+            activeItem.description || t('rss.empty.description')
           )}
         </div>
         <div className={styles.detailActions}>
           {activeItem.link ? (
             <Button type="primary" theme="solid" onClick={() => window.open(activeItem.link, '_blank')}>
-              打开原文
+              {t('rss.action.openOriginal')}
             </Button>
           ) : null}
           {activeItem.enclosureUrl ? (
             <Button theme="light" onClick={() => window.open(activeItem.enclosureUrl, '_blank')}>
-              打开附件
+              {t('rss.action.openAttachment')}
             </Button>
           ) : null}
           <Button theme="borderless" onClick={() => navigate('/setting/config/rsshub')}>
-            管理订阅
+            {t('rss.action.manageSubscriptions')}
           </Button>
         </div>
       </div>
@@ -281,13 +291,13 @@ function RssApp() {
     <div className={styles.page}>
       {!authed ? (
         <div className={styles.emptyWrap}>
-          <Empty title="请先登录" description="登录后才可以读取你的 RSSHub 配置和订阅列表。" />
+          <Empty title={t('rss.empty.login.title')} description={t('rss.empty.login.description')} />
         </div>
       ) : subscriptions.length === 0 ? (
         <div className={styles.emptyWrap}>
-          <Empty title="还没有订阅" description="先去设置页添加 route，再来这里阅读。">
+          <Empty title={t('rss.empty.subscription.title')} description={t('rss.empty.subscription.description')}>
             <Button type="primary" onClick={() => navigate('/setting/config/rsshub')}>
-              去配置 RSS
+              {t('rss.action.goToSettings')}
             </Button>
           </Empty>
         </div>
@@ -300,7 +310,7 @@ function RssApp() {
                   Host: {host}
                 </div>
                 <Button size="small" theme="borderless" loading={loading} onClick={() => loadPanel({ force: true })}>
-                  刷新
+                  {t('rss.action.refresh')}
                 </Button>
               </div>
 
@@ -313,7 +323,7 @@ function RssApp() {
                   optionList={routeFilterOptions}
                   value={selectedRoutes}
                   style={{ width: '100%' }}
-                  placeholder="按订阅多选过滤（名称 / URL）"
+                  placeholder={t('rss.filter.placeholder')}
                   onChange={value => {
                     if (Array.isArray(value)) {
                       setSelectedRoutes(value.map(item => String(item)));
@@ -343,13 +353,15 @@ function RssApp() {
                         }}
                       >
                         <div className={styles.itemTitle}>{item.title}</div>
-                        <div className={styles.itemMeta}>{formatFeedDate(item.publishedAt) || '未知时间'}</div>
+                        <div className={styles.itemMeta}>
+                          {formatFeedDate(item.publishedAt) || t('rss.time.unknown')}
+                        </div>
                         <div className={styles.itemSource}>{item.routeName}</div>
                       </button>
                     );
                   })
                 ) : (
-                  <Empty title="没有匹配结果" description="可以调整过滤条件，或先去配置页检查订阅。" />
+                  <Empty title={t('rss.empty.filtered.title')} description={t('rss.empty.filtered.description')} />
                 )}
               </div>
             </div>
@@ -360,7 +372,7 @@ function RssApp() {
               <div className={styles.mobileDetailPane}>
                 <div className={styles.mobileDetailHeader}>
                   <Button theme="borderless" onClick={() => setMobileOpenedItemKey('')}>
-                    返回列表
+                    {t('rss.action.backToList')}
                   </Button>
                 </div>
                 {renderDetail()}

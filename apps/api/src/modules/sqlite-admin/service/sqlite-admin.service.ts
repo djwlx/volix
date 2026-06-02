@@ -9,6 +9,7 @@ import type {
 } from '@volix/types';
 import sequelize from '../../../utils/sequelize';
 import { badRequest } from '../../shared/http-handler';
+import { t } from '../../../utils/i18n';
 
 type SqliteTableInfoRow = {
   cid: number;
@@ -50,15 +51,15 @@ const listTableNames = async () => {
 const ensureValidTableName = async (tableName: string) => {
   const normalized = String(tableName || '').trim();
   if (!normalized) {
-    badRequest('表名不能为空');
+    badRequest(t('sqliteAdminApi.tableName.required'));
   }
   if (normalized.startsWith(SQLITE_SYSTEM_TABLE_PREFIX)) {
-    badRequest('不支持系统表');
+    badRequest(t('sqliteAdminApi.systemTableUnsupported'));
   }
 
   const tables = await listTableNames();
   if (!tables.includes(normalized)) {
-    badRequest(`表不存在: ${normalized}`);
+    badRequest(t('sqliteAdminApi.tableNotFound', { table: normalized }));
   }
 
   return normalized;
@@ -99,13 +100,13 @@ const buildIdentitySpec = (
   const rawValues = identity?.values;
 
   if (!rawValues || typeof rawValues !== 'object') {
-    badRequest('identity.values 不能为空');
+    badRequest(t('sqliteAdminApi.identityValuesRequired'));
   }
   const identityValues = rawValues as Record<string, unknown>;
 
   const replacements = identityColumns.map(columnName => {
     if (!(columnName in identityValues)) {
-      badRequest(`缺少 identity 字段: ${columnName}`);
+      badRequest(t('sqliteAdminApi.identityFieldMissing', { field: columnName }));
     }
     return identityValues[columnName];
   });
@@ -132,22 +133,22 @@ const ensureEditableValues = (
   disallowedColumns: string[] = []
 ) => {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    badRequest('values 必须是对象');
+    badRequest(t('sqliteAdminApi.valuesMustBeObject'));
   }
 
   const entries = Object.entries(payload);
   if (!entries.length) {
-    badRequest('values 不能为空');
+    badRequest(t('sqliteAdminApi.valuesRequired'));
   }
 
   const allowedColumns = new Set(columns.map(item => item.name));
 
   for (const [key] of entries) {
     if (!allowedColumns.has(key)) {
-      badRequest(`非法字段: ${key}`);
+      badRequest(t('sqliteAdminApi.invalidField', { field: key }));
     }
     if (disallowedColumns.includes(key)) {
-      badRequest(`不允许直接修改标识字段: ${key}`);
+      badRequest(t('sqliteAdminApi.identityFieldReadonly', { field: key }));
     }
   }
 

@@ -4,6 +4,7 @@ import { sendCurrentUserEmailVerifyCode, updateCurrentUserProfile, verifyCurrent
 import { uploadLocalFile } from '@/services/file';
 import { AppForm } from '@/components';
 import { useAppPageContext } from '@/hooks';
+import { useI18n } from '@/i18n';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 
 interface InfoFormValues {
@@ -13,6 +14,7 @@ interface InfoFormValues {
 }
 
 function SettingInfoApp() {
+  const { t } = useI18n();
   const { user, refreshUser } = useAppPageContext();
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -55,10 +57,10 @@ function SettingInfoApp() {
         avatar: payload.avatar,
       });
       await refreshUser();
-      Toast.success('个人信息已保存');
+      Toast.success(t('setting.info.saveSuccess'));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '保存失败');
+      Toast.error(message || t('common.action.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -75,10 +77,10 @@ function SettingInfoApp() {
       const res = await uploadLocalFile(file);
       formApi?.setValue('avatar', res.data.path);
       setPreview(prev => ({ ...prev, avatar: res.data.path }));
-      Toast.success('头像上传成功');
+      Toast.success(t('setting.info.avatarUploadSuccess'));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '头像上传失败');
+      Toast.error(message || t('setting.info.avatarUploadFailed'));
     } finally {
       setUploading(false);
     }
@@ -89,10 +91,10 @@ function SettingInfoApp() {
       setSendingCode(true);
       await sendCurrentUserEmailVerifyCode();
       setCountdown(60);
-      Toast.success('验证码已发送，请检查邮箱');
+      Toast.success(t('auth.register.codeSent'));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '发送验证码失败');
+      Toast.error(message || t('setting.info.verifyCodeSendFailed'));
     } finally {
       setSendingCode(false);
     }
@@ -100,7 +102,7 @@ function SettingInfoApp() {
 
   const onVerifyEmail = async () => {
     if (!verifyCode.trim()) {
-      Toast.warning('请输入邮箱验证码');
+      Toast.warning(t('auth.verifyCode.required'));
       return;
     }
 
@@ -111,23 +113,23 @@ function SettingInfoApp() {
       });
       setVerifyCode('');
       await refreshUser();
-      Toast.success('邮箱验证成功');
+      Toast.success(t('setting.info.emailVerifySuccess'));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '邮箱验证失败');
+      Toast.error(message || t('setting.info.emailVerifyFailed'));
     } finally {
       setVerifyingEmail(false);
     }
   };
 
   return (
-    <Card title="个人信息" shadows="hover" style={{ width: '100%' }}>
+    <Card title={t('setting.info.title')} shadows="hover" style={{ width: '100%' }}>
       <div style={{ display: 'grid', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Avatar size="large" src={preview.avatar}>
             {preview.nickname?.slice(0, 1) || user?.email?.slice(0, 1)?.toUpperCase() || 'U'}
           </Avatar>
-          <Typography.Text type="secondary">支持填写头像图片 URL，保存后即时生效</Typography.Text>
+          <Typography.Text type="secondary">{t('setting.info.avatarHint')}</Typography.Text>
         </div>
 
         {user && formInitValues ? (
@@ -145,43 +147,53 @@ function SettingInfoApp() {
             }}
             onSubmit={onSave}
           >
-            <AppForm.Input field="email" label="邮箱" disabled />
+            <AppForm.Input field="email" label={t('auth.email.label')} disabled />
             <div style={{ marginBottom: 16 }}>
               <Typography.Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                邮箱验证状态
+                {t('setting.info.emailVerifyStatus')}
               </Typography.Text>
               <Space align="center" wrap>
-                {user.emailVerified ? <Tag color="green">已验证</Tag> : <Tag color="orange">未验证</Tag>}
+                {user.emailVerified ? (
+                  <Tag color="green">{t('setting.info.verified')}</Tag>
+                ) : (
+                  <Tag color="orange">{t('setting.info.unverified')}</Tag>
+                )}
                 {!user.emailVerified ? (
                   <>
                     <Input
                       value={verifyCode}
                       onChange={value => setVerifyCode(value)}
-                      placeholder="请输入邮箱验证码"
+                      placeholder={t('auth.verifyCode.placeholder')}
                       style={{ width: 220 }}
                     />
                     <Button loading={sendingCode} disabled={countdown > 0} onClick={onSendVerifyCode}>
-                      {countdown > 0 ? `${countdown}s 后重发` : '发送验证码'}
+                      {countdown > 0 ? t('auth.verifyCode.resendCountdown', { countdown }) : t('auth.verifyCode.send')}
                     </Button>
                     <Button type="primary" loading={verifyingEmail} onClick={onVerifyEmail}>
-                      验证邮箱
+                      {t('setting.info.verifyEmail')}
                     </Button>
                   </>
                 ) : null}
               </Space>
             </div>
-            <AppForm.Input field="nickname" label="昵称" maxLength={32} placeholder="请输入昵称" showClear />
+            <AppForm.Input
+              field="nickname"
+              label={t('setting.info.nickname')}
+              maxLength={32}
+              placeholder={t('setting.info.nicknamePlaceholder')}
+              showClear
+            />
             <AppForm.Input
               field="avatar"
-              label="头像 URL"
-              placeholder="请输入头像链接（http/https 或 /file/）"
+              label={t('setting.info.avatarUrl')}
+              placeholder={t('setting.info.avatarUrlPlaceholder')}
               showClear
             />
           </AppForm>
         ) : null}
         <Space>
           <Button loading={uploading} onClick={() => fileInputRef.current?.click()}>
-            上传头像
+            {t('setting.info.uploadAvatar')}
           </Button>
           <input
             ref={fileInputRef}
@@ -194,7 +206,7 @@ function SettingInfoApp() {
 
         <div>
           <Button type="primary" theme="solid" loading={saving} onClick={() => formApi?.submitForm()}>
-            保存修改
+            {t('setting.info.save')}
           </Button>
         </div>
       </div>

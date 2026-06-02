@@ -1,12 +1,14 @@
 import { Button, Empty, Space, Typography } from '@douyinfe/semi-ui';
 import { isRouteErrorResponse, useNavigate, useRouteError } from 'react-router';
+import { useI18n } from '@/i18n';
 
 function AppErrorBoundary() {
   const error = useRouteError();
   const navigate = useNavigate();
+  const { t } = useI18n();
 
-  let title = '页面加载失败';
-  let description = '应用发生了一个未处理错误，请稍后重试。';
+  let title = t({ id: 'error.pageLoad.title', defaultMessage: '页面加载失败' });
+  let description = t({ id: 'error.pageLoad.description', defaultMessage: '应用发生了一个未处理错误，请稍后重试。' });
 
   if (isRouteErrorResponse(error)) {
     title = `${error.status} ${error.statusText}`;
@@ -33,9 +35,11 @@ function AppErrorBoundary() {
           <Space vertical align="center" spacing={8}>
             <Typography.Text type="secondary">{description}</Typography.Text>
             <Space>
-              <Button onClick={() => window.location.reload()}>刷新页面</Button>
+              <Button onClick={() => window.location.reload()}>
+                {t({ id: 'error.pageLoad.refresh', defaultMessage: '刷新页面' })}
+              </Button>
               <Button type="primary" onClick={() => navigate('/', { replace: true })}>
-                返回首页
+                {t({ id: 'error.pageLoad.goHome', defaultMessage: '返回首页' })}
               </Button>
             </Space>
           </Space>

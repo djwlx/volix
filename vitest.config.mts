@@ -2,10 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['test/**/*.test.ts'],
-    environment: 'node',
-    globals: true,
-    testTimeout: 15000,
-    hookTimeout: 15000,
+    include: ['**/*.{test,spec}.ts'],
+    exclude: ['**/node_modules/**', '**/.git/**', '**/dist/**'],
   },
 });

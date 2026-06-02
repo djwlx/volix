@@ -1,8 +1,10 @@
 import { AsyncLocalStorage } from 'async_hooks';
+import type { Locale } from '@volix/i18n';
 
 export interface RequestContextValue {
   userAgent?: string;
   actingUserId?: string;
+  locale?: Locale;
 }
 
 const requestContextStorage = new AsyncLocalStorage<RequestContextValue>();
@@ -29,4 +31,8 @@ export const setRequestContext = (next: Partial<RequestContextValue>) => {
 
 export const getRequestActingUserId = () => {
   return String(getRequestContext()?.actingUserId || '').trim() || undefined;
+};
+
+export const getRequestLocale = () => {
+  return getRequestContext()?.locale;
 };

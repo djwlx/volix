@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Space, Toast } from '@douyinfe/semi-ui';
 import { AppForm, Loading } from '@/components';
+import { useI18n } from '@/i18n';
 import { getSystemConfig, getUserList, updateSystemConfig } from '@/services/user';
 import { useAppPageContext } from '@/hooks';
 import type { SmtpAccountConfigItem } from '@volix/types';
@@ -26,6 +27,7 @@ const DEFAULT_VALUES: SystemConfigFormValues = {
 };
 
 function SettingSystemApp() {
+  const { t } = useI18n();
   const { user, requestNavigate } = useAppPageContext();
   const [initialValues, setInitialValues] = useState<SystemConfigFormValues>(DEFAULT_VALUES);
   const [userOptions, setUserOptions] = useState<Array<{ label: string; value: string }>>([]);
@@ -80,7 +82,7 @@ function SettingSystemApp() {
         }));
         setUserOptions(options);
       })
-      .catch(() => Toast.error('加载系统配置失败'))
+      .catch(() => Toast.error(t({ id: 'setting.system.loadFailed', defaultMessage: '加载系统配置失败' })))
       .finally(() => setLoading(false));
   }, [user, isAdmin, requestNavigate]);
 
@@ -106,7 +108,9 @@ function SettingSystemApp() {
         normalizedSmtp.port <= 0 ||
         normalizedSmtp.port > 65535
       ) {
-        Toast.error('开启注册邮箱验证码时，请完整填写系统 SMTP 配置');
+        Toast.error(
+          t({ id: 'setting.system.smtpIncomplete', defaultMessage: '开启注册邮箱验证码时，请完整填写系统 SMTP 配置' })
+        );
         return;
       }
     }
@@ -127,17 +131,21 @@ function SettingSystemApp() {
       });
       setInitialValues(savedValues);
       setShowSmtpFields(savedValues.registerEmailVerifyEnabled);
-      Toast.success('系统配置保存成功');
+      Toast.success(t({ id: 'setting.system.saveSuccess', defaultMessage: '系统配置保存成功' }));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || '保存失败');
+      Toast.error(message || t({ id: 'common.action.saveFailed', defaultMessage: '保存失败' }));
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Card title="系统配置" shadows="hover" style={{ width: '100%' }}>
+    <Card
+      title={t({ id: 'setting.system.title', defaultMessage: '系统配置' })}
+      shadows="hover"
+      style={{ width: '100%' }}
+    >
       {loading ? (
         <Loading rows={4} />
       ) : (
@@ -152,44 +160,72 @@ function SettingSystemApp() {
           >
             <AppForm.Select
               field="randomPicDefaultUserId"
-              label="未登录随机图默认用户"
-              placeholder="请选择用户（未登录访问 /api/115/pic 时生效）"
+              label={t({ id: 'setting.system.randomPicUser', defaultMessage: '未登录随机图默认用户' })}
+              placeholder={t({
+                id: 'setting.system.randomPicUser.placeholder',
+                defaultMessage: '请选择用户（未登录访问 /api/115/pic 时生效）',
+              })}
               optionList={userOptions}
               showClear
             />
-            <AppForm.RadioGroup field="registerEmailVerifyEnabled" label="注册是否需要邮箱验证码" type="button">
-              <AppForm.Radio value={true}>开启</AppForm.Radio>
-              <AppForm.Radio value={false}>关闭</AppForm.Radio>
+            <AppForm.RadioGroup
+              field="registerEmailVerifyEnabled"
+              label={t({ id: 'setting.system.registerEmailVerify', defaultMessage: '注册是否需要邮箱验证码' })}
+              type="button"
+            >
+              <AppForm.Radio value={true}>{t({ id: 'common.toggle.on', defaultMessage: '开启' })}</AppForm.Radio>
+              <AppForm.Radio value={false}>{t({ id: 'common.toggle.off', defaultMessage: '关闭' })}</AppForm.Radio>
             </AppForm.RadioGroup>
             {showSmtpFields ? (
               <>
-                <AppForm.Input field="registerEmailVerifySmtp.host" label="SMTP Host" placeholder="如 smtp.gmail.com" />
-                <AppForm.Input field="registerEmailVerifySmtp.port" label="SMTP Port" placeholder="如 465 / 587" />
-                <AppForm.RadioGroup field="registerEmailVerifySmtp.secure" label="连接方式" type="button">
+                <AppForm.Input
+                  field="registerEmailVerifySmtp.host"
+                  label="SMTP Host"
+                  placeholder={t({ id: 'setting.system.smtp.host.placeholder', defaultMessage: '如 smtp.gmail.com' })}
+                />
+                <AppForm.Input
+                  field="registerEmailVerifySmtp.port"
+                  label="SMTP Port"
+                  placeholder={t({ id: 'setting.system.smtp.port.placeholder', defaultMessage: '如 465 / 587' })}
+                />
+                <AppForm.RadioGroup
+                  field="registerEmailVerifySmtp.secure"
+                  label={t({ id: 'setting.system.smtp.secure', defaultMessage: '连接方式' })}
+                  type="button"
+                >
                   <AppForm.Radio value={true}>SSL/TLS</AppForm.Radio>
                   <AppForm.Radio value={false}>STARTTLS/Plain</AppForm.Radio>
                 </AppForm.RadioGroup>
                 <AppForm.Input
                   field="registerEmailVerifySmtp.username"
-                  label="SMTP 用户名"
-                  placeholder="请输入 SMTP 用户名"
+                  label={t({ id: 'setting.system.smtp.username', defaultMessage: 'SMTP 用户名' })}
+                  placeholder={t({
+                    id: 'setting.system.smtp.username.placeholder',
+                    defaultMessage: '请输入 SMTP 用户名',
+                  })}
                 />
                 <AppForm.Input
                   field="registerEmailVerifySmtp.password"
                   mode="password"
-                  label="SMTP 密码"
-                  placeholder="请输入 SMTP 密码"
+                  label={t({ id: 'setting.system.smtp.password', defaultMessage: 'SMTP 密码' })}
+                  placeholder={t({
+                    id: 'setting.system.smtp.password.placeholder',
+                    defaultMessage: '请输入 SMTP 密码',
+                  })}
                 />
                 <AppForm.Input
                   field="registerEmailVerifySmtp.fromEmail"
-                  label="发件邮箱"
-                  placeholder="验证码邮件显示的发件人邮箱"
+                  label={t({ id: 'setting.system.smtp.fromEmail', defaultMessage: '发件邮箱' })}
+                  placeholder={t({
+                    id: 'setting.system.smtp.fromEmail.placeholder',
+                    defaultMessage: '验证码邮件显示的发件人邮箱',
+                  })}
                 />
               </>
             ) : null}
             <Space>
               <Button type="primary" htmlType="submit" loading={saving}>
-                保存配置
+                {t({ id: 'common.action.saveConfig', defaultMessage: '保存配置' })}
               </Button>
             </Space>
           </AppForm>

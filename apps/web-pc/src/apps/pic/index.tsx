@@ -5,6 +5,7 @@ import { get115FileList, get115Pic, get115PicFromParent, get115PicPathByPc, like
 import { Loading } from '@/components';
 import { getHttpErrorMessage } from '@/utils/error';
 import { useUser } from '@/hooks';
+import { useI18n } from '@/i18n';
 import type { Random115PicResponse } from '@volix/types';
 import { UserRole } from '@volix/types';
 
@@ -18,6 +19,7 @@ interface PicMeta {
 }
 
 function PicApp() {
+  const { t } = useI18n();
   const { user } = useUser(false);
   const [picMeta, setPicMeta] = useState<PicMeta | null>(null);
   const [picPath, setPicPath] = useState('');
@@ -114,7 +116,7 @@ function PicApp() {
       const res = await get115PicFromParent(picMeta.pc);
       applyPicMeta(res.data);
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '同文件夹随机失败'));
+      Toast.error(getHttpErrorMessage(error, t('pic.error.fetchSiblingFailed')));
     } finally {
       setLoading(false);
     }
@@ -133,9 +135,9 @@ function PicApp() {
       });
       const liked = Boolean(result.data?.liked);
       setPicMeta(prev => (prev ? { ...prev, liked } : prev));
-      Toast.success(liked ? '已加入我的喜欢，后端正在缓存图片' : '已取消喜欢并清理缓存');
+      Toast.success(t(liked ? 'pic.like.added' : 'pic.like.removed'));
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, '喜欢失败'));
+      Toast.error(getHttpErrorMessage(error, t('pic.error.likeFailed')));
     } finally {
       setLiking(false);
     }
@@ -197,33 +199,33 @@ function PicApp() {
       <div className={styles.actions}>
         <Space className={styles.actionButtons}>
           <Button theme="solid" type="tertiary" onClick={() => fetchImg()}>
-            换一张
+            {t('pic.action.next')}
           </Button>
           {isAdmin && pathTooltipContent ? (
             <Tooltip content={pathTooltipContent} position="top" trigger="hover">
               <span className={styles.tooltipTrigger}>
                 <Button theme="solid" type="secondary" disabled={!picMeta.pc} onClick={() => fetchSiblingImg()}>
-                  同文件夹随机
+                  {t('pic.action.randomSibling')}
                 </Button>
               </span>
             </Tooltip>
           ) : (
             <span className={styles.tooltipTrigger}>
               <Button theme="solid" type="secondary" disabled={!picMeta.pc} onClick={() => fetchSiblingImg()}>
-                同文件夹随机
+                {t('pic.action.randomSibling')}
               </Button>
             </span>
           )}
           {user && !picMeta.remoteSource ? (
             <Button theme="solid" type="primary" loading={liking} onClick={onLike}>
-              {picMeta.liked ? '取消喜欢' : '喜欢'}
+              {t(picMeta.liked ? 'pic.action.unlike' : 'pic.action.like')}
             </Button>
           ) : null}
         </Space>
       </div>
     </div>
   ) : (
-    <Loading type="page" text="正在加载随机图片..." />
+    <Loading type="page" text={t('pic.loading')} />
   );
 }
 

@@ -14,10 +14,13 @@
     "@douyinfe/semi-icons": "^2.95.1",
     "@douyinfe/semi-icons-lab": "^2.95.1",
     "@douyinfe/semi-ui": "^2.95.1",
+    "@volix/i18n": "workspace:*",
     "@volix/utils": "workspace:*",
     "axios": "^1.6.8",
+    "i18next": "^26.3.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
+    "react-i18next": "^17.0.8",
     "react-router": "^7.6.2",
     "reset-css": "^5.0.2",
     "zustand": "^5.0.9"

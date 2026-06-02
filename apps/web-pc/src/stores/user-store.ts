@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { translateClient } from '@/i18n';
 import type { UserInfoResponse } from '@volix/types';
 import { getCurrentUser } from '@/services/user';
 import { clearAuthToken, getAuthToken } from '@/utils';
@@ -49,7 +50,13 @@ export const useUserStore = create<UserState>(set => ({
         authError: null,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : '获取用户信息失败';
+      const message =
+        error instanceof Error
+          ? error.message
+          : translateClient({
+              id: 'auth.currentUser.loadFailed',
+              defaultMessage: '获取用户信息失败',
+            });
       clearAuthToken();
       set({
         currentUser: null,
@@ -73,7 +80,13 @@ export const useUserStore = create<UserState>(set => ({
       });
       return res.data;
     } catch (error) {
-      const message = error instanceof Error ? error.message : '获取用户信息失败';
+      const message =
+        error instanceof Error
+          ? error.message
+          : translateClient({
+              id: 'auth.currentUser.loadFailed',
+              defaultMessage: '获取用户信息失败',
+            });
       clearAuthToken();
       set({
         currentUser: null,

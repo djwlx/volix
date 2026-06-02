@@ -24,6 +24,7 @@ import {
   mergeNotice,
 } from './picture-cache-random-meta-queue';
 import { getRequestActingUserId } from '../../../../utils/request-context';
+import { t } from '../../../../utils/i18n';
 
 const randomPickedHistoryByUser = new Map<string, Array<{ pc: string; pickedAt: number }>>();
 
@@ -160,7 +161,7 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
       totalMs: Date.now() - startAt,
       dedupe: dedupeLogMeta,
     });
-    badRequest('暂无缓存图片，请先缓存');
+    badRequest(t('pic115Api.cacheEmpty'));
   }
 
   const selectedSource = pickRandomSourceByWeights(randomCacheConfig.sourceWeights);
@@ -174,7 +175,7 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
     if (randomCacheList.length > 0) {
       const localUnseenList = randomCacheList.filter(item => !recentPickedPcSet.has(item.pc));
       if (localUnseenList.length === 0) {
-        sourceUnavailableNotice.push('本地缓存在去重窗口内均已出现，已兜底到115云');
+        sourceUnavailableNotice.push(t('pic115Api.notice.localDedupeExhausted'));
       } else {
         const localTryList = [...localUnseenList];
         let localItem: (typeof localUnseenList)[number] | undefined;
@@ -199,7 +200,7 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
         }
 
         if (!localItem || !safeDbFile) {
-          sourceUnavailableNotice.push('本地缓存未命中当前缓存目录，已兜底到115云');
+          sourceUnavailableNotice.push(t('pic115Api.notice.localCacheMiss'));
         } else {
           const buildMetaStartAt = Date.now();
           const meta = await buildRandomMetaFromRandomLocalCacheItem(localItem, mergeNotice(limitNotice));
@@ -229,7 +230,7 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
         }
       }
     } else {
-      sourceUnavailableNotice.push('本地文件缓存为空，已兜底到115云');
+      sourceUnavailableNotice.push(t('pic115Api.notice.localEmpty'));
     }
   }
 
@@ -241,7 +242,7 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
     selectedFile = await getFile115RandomByCidList(availableRootCids);
     dedupeBypass = Boolean(selectedFile?.pc && recentPickedPcSet.has(selectedFile.pc));
   }
-  const safeSelectedFile = selectedFile || badRequest('暂无可用缓存图片，请稍后重试');
+  const safeSelectedFile = selectedFile || badRequest(t('pic115Api.cacheUnavailable'));
   const pickFileMs = Date.now() - pickFileStartAt;
   const buildMetaStartAt = Date.now();
   const meta = await buildRandomPicMetaFromFile(safeSelectedFile, userAgent);
@@ -293,14 +294,14 @@ export async function getRandom115PicFromParentMeta(params: { pc: string; userAg
   const dedupeLogMeta = getDedupeLogMeta(randomPickedHistory, recentPickedPcSet, dedupeWindowMs, dedupeMaxCount);
   const pc = params.pc.trim();
   if (!pc) {
-    badRequest('缺少图片参数');
+    badRequest(t('pic115Api.picParamRequired'));
   }
 
   const findCurrentStartAt = Date.now();
   const currentFile = await getFile115ByPc(pc);
   const findCurrentFileMs = Date.now() - findCurrentStartAt;
   if (!currentFile) {
-    badRequest('未找到当前图片');
+    badRequest(t('pic115Api.currentPicNotFound'));
   }
   const safeCurrentFile = currentFile as Cloud115DbFileItem;
 
@@ -314,7 +315,7 @@ export async function getRandom115PicFromParentMeta(params: { pc: string; userAg
 
   if (siblingFiles.length === 0) {
     const buildMetaStartAt = Date.now();
-    const meta = await buildRandomPicMetaFromFile(safeCurrentFile, params.userAgent, '当前目录没有其他图片可切换');
+    const meta = await buildRandomPicMetaFromFile(safeCurrentFile, params.userAgent, t('pic115Api.notice.noSibling'));
     const buildMetaMs = Date.now() - buildMetaStartAt;
     rememberPickedPc(randomPickedHistory, meta.pc, Date.now(), dedupeWindowMs, dedupeMaxCount);
     log.info('[115-random] 同目录随机图片结果', {
@@ -336,7 +337,7 @@ export async function getRandom115PicFromParentMeta(params: { pc: string; userAg
 
   const siblingUnseenList = siblingFiles.filter(item => !recentPickedPcSet.has(item.pc));
   const nextFile =
-    pickRandomItem(siblingUnseenList) || pickRandomItem(siblingFiles) || badRequest('当前目录没有可用图片');
+    pickRandomItem(siblingUnseenList) || pickRandomItem(siblingFiles) || badRequest(t('pic115Api.noSiblingAvailable'));
   const dedupeBypass = siblingUnseenList.length === 0;
   const buildMetaStartAt = Date.now();
   const meta = await buildRandomPicMetaFromFile(nextFile, params.userAgent);

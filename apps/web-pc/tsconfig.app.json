@@ -10,6 +10,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
+      "@volix/i18n": ["../../packages/i18n/src"],
       "@volix/types": ["../../packages/types/src"],
       "@volix/utils": ["../../packages/utils/src"]
     },

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Space, Toast, Typography } from '@douyinfe/semi-ui';
 import { AppForm, Loading } from '@/components';
+import { useI18n } from '@/i18n';
 import { getAccountConfigs, testAccountConfig, updateAccountConfig } from '@/services/user';
 import { useAppPageContext } from '@/hooks';
 import { AccountConfigPlatform } from '@volix/types';
@@ -36,6 +37,7 @@ const EMPTY_BANGUMI_VALUES: BangumiAccountConfigItem = {
 };
 
 function ServiceAccountCard({ title, platform, initialConfig, onSaved }: ServiceCardProps) {
+  const { t } = useI18n();
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const initialValues = useMemo<ServiceFormValues>(
@@ -66,10 +68,10 @@ function ServiceAccountCard({ title, platform, initialConfig, onSaved }: Service
         config: nextData,
       });
       onSaved(nextData);
-      Toast.success(`${title} 配置保存成功`);
+      Toast.success(t('setting.account.platformSaveSuccess', { title }));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || `${title} 配置保存失败`);
+      Toast.error(message || t('setting.account.platformSaveFailed', { title }));
     } finally {
       setSaving(false);
     }
@@ -86,10 +88,10 @@ function ServiceAccountCard({ title, platform, initialConfig, onSaved }: Service
           password: formValues.password.trim(),
         },
       });
-      Toast.success(res.data?.message || `${title} 联通成功`);
+      Toast.success(res.data?.message || t('setting.account.platformConnectionSuccess', { title }));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || `${title} 联通失败`);
+      Toast.error(message || t('setting.account.platformConnectionFailed', { title }));
     } finally {
       setTesting(false);
     }
@@ -110,15 +112,28 @@ function ServiceAccountCard({ title, platform, initialConfig, onSaved }: Service
         }}
         onSubmit={onSubmit}
       >
-        <AppForm.Input field="baseUrl" label="服务地址" placeholder="请输入 http(s) 地址" />
-        <AppForm.Input field="username" label="账号" placeholder="请输入账号" />
-        <AppForm.Input field="password" label="密码" mode="password" placeholder="请输入密码" />
+        <AppForm.Input
+          field="baseUrl"
+          label={t('setting.account.baseUrl')}
+          placeholder={t('setting.account.baseUrl.placeholder')}
+        />
+        <AppForm.Input
+          field="username"
+          label={t('setting.account.username')}
+          placeholder={t('setting.account.username.placeholder')}
+        />
+        <AppForm.Input
+          field="password"
+          label={t('setting.account.password')}
+          mode="password"
+          placeholder={t('setting.account.password.placeholder')}
+        />
         <Space>
           <Button type="primary" htmlType="submit" loading={saving}>
-            保存配置
+            {t('common.action.saveConfig')}
           </Button>
           <Button loading={testing} onClick={onTestConnection}>
-            测试联通性
+            {t('setting.account.testConnection')}
           </Button>
         </Space>
       </AppForm>
@@ -127,6 +142,7 @@ function ServiceAccountCard({ title, platform, initialConfig, onSaved }: Service
 }
 
 function BangumiAccountCard({ initialConfig, onSaved }: BangumiCardProps) {
+  const { t } = useI18n();
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const initialValues = useMemo<BangumiAccountConfigItem>(
@@ -155,10 +171,10 @@ function BangumiAccountCard({ initialConfig, onSaved }: BangumiCardProps) {
         config: nextData,
       });
       onSaved(nextData);
-      Toast.success('Bangumi 配置保存成功');
+      Toast.success(t('setting.account.platformSaveSuccess', { title: 'Bangumi' }));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || 'Bangumi 配置保存失败');
+      Toast.error(message || t('setting.account.platformSaveFailed', { title: 'Bangumi' }));
     } finally {
       setSaving(false);
     }
@@ -174,10 +190,10 @@ function BangumiAccountCard({ initialConfig, onSaved }: BangumiCardProps) {
           accessToken: formValues.accessToken.trim(),
         },
       });
-      Toast.success(res.data?.message || 'Bangumi 联通成功');
+      Toast.success(res.data?.message || t('setting.account.platformConnectionSuccess', { title: 'Bangumi' }));
     } catch (error) {
       const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      Toast.error(message || 'Bangumi 联通失败');
+      Toast.error(message || t('setting.account.platformConnectionFailed', { title: 'Bangumi' }));
     } finally {
       setTesting(false);
     }
@@ -186,9 +202,7 @@ function BangumiAccountCard({ initialConfig, onSaved }: BangumiCardProps) {
   return (
     <Card title="Bangumi" shadows="hover" style={{ width: '100%' }}>
       <Space vertical spacing={12} style={{ width: '100%' }}>
-        <Typography.Text type="secondary">
-          Access Token 可在 Bangumi 开发者页面生成。请求会优先使用当前浏览器的 User-Agent。
-        </Typography.Text>
+        <Typography.Text type="secondary">{t('setting.account.bangumi.accessTokenHint')}</Typography.Text>
         <AppForm
           key={JSON.stringify(initialValues)}
           initValues={initialValues}
@@ -201,14 +215,19 @@ function BangumiAccountCard({ initialConfig, onSaved }: BangumiCardProps) {
           }}
           onSubmit={onSubmit}
         >
-          <AppForm.Input field="baseUrl" label="服务地址" placeholder="https://api.bgm.tv" />
-          <AppForm.Input field="accessToken" label="Access Token" mode="password" placeholder="请输入 Bangumi Token" />
+          <AppForm.Input field="baseUrl" label={t('setting.account.baseUrl')} placeholder="https://api.bgm.tv" />
+          <AppForm.Input
+            field="accessToken"
+            label="Access Token"
+            mode="password"
+            placeholder={t('setting.account.bangumi.accessTokenPlaceholder')}
+          />
           <Space>
             <Button type="primary" htmlType="submit" loading={saving}>
-              保存配置
+              {t('common.action.saveConfig')}
             </Button>
             <Button loading={testing} onClick={onTestConnection}>
-              测试联通性
+              {t('setting.account.testConnection')}
             </Button>
           </Space>
         </AppForm>
@@ -218,6 +237,7 @@ function BangumiAccountCard({ initialConfig, onSaved }: BangumiCardProps) {
 }
 
 function SettingConfigAccountCenterApp() {
+  const { t } = useI18n();
   const { user, requestNavigate } = useAppPageContext();
   const [loading, setLoading] = useState(true);
   const [accountConfigs, setAccountConfigs] = useState<AccountConfigMap>({
@@ -241,25 +261,23 @@ function SettingConfigAccountCenterApp() {
         });
       })
       .catch(() => {
-        Toast.error('加载账号配置失败');
+        Toast.error(t('setting.account.loadFailed'));
       })
       .finally(() => setLoading(false));
-  }, [user]);
+  }, [user, requestNavigate]);
 
   if (!user) {
     return null;
   }
 
   return (
-    <Card title="账号管理" shadows="hover" style={{ width: '100%' }}>
+    <Card title={t('route.settingAccount.title')} shadows="hover" style={{ width: '100%' }}>
       {loading ? (
         <Loading rows={8} />
       ) : (
         <Space vertical spacing={16} style={{ width: '100%' }}>
-          <Typography.Text type="secondary">
-            这里的账号配置是用户级别，每个用户拥有自己独立的服务凭据与测试结果。
-          </Typography.Text>
-          <Typography.Text type="secondary">SMTP 已迁移到「系统配置」，由管理员统一维护。</Typography.Text>
+          <Typography.Text type="secondary">{t('setting.account.description')}</Typography.Text>
+          <Typography.Text type="secondary">{t('setting.account.smtpMoved')}</Typography.Text>
           <div
             style={{
               width: '100%',
