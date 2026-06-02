@@ -70,7 +70,7 @@ export const getFile115CachePolicyByPcList = async (pcList: string[]) => {
   }
 
   const rows = (await File115Model.findAll({
-    attributes: ['pc', 'isLiked', 'localCacheFileName', 'updatedAt'],
+    attributes: ['pc', 'isLiked', 'localCacheFileName', ['updated_at', 'updatedAt']],
     where: {
       pc: {
         [Op.in]: normalizedPcList,
