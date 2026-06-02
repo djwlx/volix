@@ -13,3 +13,18 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - Fix garbled Chinese error message text in 115 liked-picture cache fallback path.
 - Fix repeated settings data requests caused by unstable i18n hook dependencies, and restore missing translated status labels in the 115 cache UI.
+
+
+## [1.1.2] - 2026-06-02
+
+### 中文
+#### Added
+- 新增权限功能 (DJWL)
+#### Changed
+- 更新 Docker 发布工作流
+
+### English
+#### Added
+- Add permission feature (DJWL)
+#### Changed
+- Update Docker release workflow
