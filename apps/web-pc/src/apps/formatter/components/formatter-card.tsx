@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Button, Card, Space, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 import type { ClipboardEvent, CSSProperties, ChangeEvent, ReactNode } from 'react';
+import { useI18n } from '@/i18n';
 import { JsonCodeView } from './json-code-view';
 import { formatContent } from '../utils/format-content';
 import { monoFont } from '../utils/shared';
@@ -108,6 +109,7 @@ const renderXmlHighlighted = (value: string) => {
 };
 
 export function FormatterCard() {
+  const { t } = useI18n();
   const [source, setSource] = useState('');
   const [formatted, setFormatted] = useState('');
   const [formatType, setFormatType] = useState<FormatType | null>(null);
@@ -158,21 +160,21 @@ export function FormatterCard() {
       setFormatType(null);
       setDetailType(null);
       setParsedJson(null);
-      Toast.error(error instanceof Error ? error.message : '格式化失败');
+      Toast.error(error instanceof Error ? error.message : t('formatter.error.formatFailed'));
     }
   };
 
   const onCopy = async () => {
     if (!formatted) {
-      Toast.warning('暂无可复制的内容');
+      Toast.warning(t('formatter.error.copyEmpty'));
       return;
     }
 
     try {
       await navigator.clipboard.writeText(formatted);
-      Toast.success('格式化结果已复制');
+      Toast.success(t('formatter.action.copyResult'));
     } catch {
-      Toast.error('复制失败');
+      Toast.error(t('formatter.error.copyFailed'));
     }
   };
 
@@ -197,28 +199,28 @@ export function FormatterCard() {
           const textarea = event.currentTarget;
           window.setTimeout(() => runFormat(textarea.value), 0);
         }}
-        placeholder="把 JSON、XML 或 Base64 内容粘贴到这里"
+        placeholder={t('formatter.placeholder.input')}
         style={textAreaStyle}
       />
       <Space wrap>
         <Button theme="solid" type="primary" onClick={() => runFormat(source)}>
-          智能格式化
+          {t('formatter.action.format')}
         </Button>
         <Button onClick={onCopy} disabled={!formatted}>
-          复制结果
+          {t('formatter.action.copyResult')}
         </Button>
         <Button type="tertiary" onClick={resetState}>
-          清空
+          {t('formatter.action.clear')}
         </Button>
       </Space>
       <div style={{ display: 'grid', gap: 8 }}>
         <Typography.Text strong style={{ color: 'var(--app-text)' }}>
-          格式化结果
+          {t('formatter.result.title')}
         </Typography.Text>
         {formatType === 'json' && parsedJson ? (
           <JsonCodeView value={parsedJson} />
         ) : (
-          <pre style={previewStyle}>{highlightedResult || '格式化结果会显示在这里'}</pre>
+          <pre style={previewStyle}>{highlightedResult || t('formatter.placeholder.result')}</pre>
         )}
       </div>
     </Card>

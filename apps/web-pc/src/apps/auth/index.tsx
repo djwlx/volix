@@ -11,9 +11,9 @@ import { useUserStore } from '@/stores';
 
 type Mode = 'login' | 'register';
 
-const getErrorMessage = (error: unknown) => {
+const getErrorMessage = (error: unknown, t: (key: string, values?: Record<string, unknown>) => string) => {
   const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
-  return message || '请求失败，请稍后重试';
+  return message || t('common.error.requestFailed');
 };
 
 function AuthApp() {
@@ -71,7 +71,7 @@ function AuthApp() {
       Toast.success(t({ id: 'auth.login.success', defaultMessage: '登录成功' }));
       navigate(redirectTo, { replace: true });
     } catch (error) {
-      Toast.error(getErrorMessage(error));
+      Toast.error(getErrorMessage(error, t));
     } finally {
       setLoading(false);
     }
@@ -89,7 +89,7 @@ function AuthApp() {
       setCountdown(60);
       Toast.success(t({ id: 'auth.register.codeSent', defaultMessage: '验证码已发送，请检查邮箱' }));
     } catch (error) {
-      Toast.error(getErrorMessage(error));
+      Toast.error(getErrorMessage(error, t));
     } finally {
       setSendingCode(false);
     }

@@ -34,11 +34,6 @@ interface AppHeaderProps {
   };
 }
 
-const localeOptions: Array<{ value: Locale; label: string }> = [
-  { value: 'zh-CN', label: '简体中文' },
-  { value: 'en-US', label: 'English' },
-];
-
 const getNextLocale = (locale: Locale): Locale => {
   return locale === 'zh-CN' ? 'en-US' : 'zh-CN';
 };
@@ -61,6 +56,10 @@ export function AppHeader(props: AppHeaderProps) {
   const authed = isAuthenticated();
   const theme = useGlobalConfigStore(state => state.config.theme);
   const nextLocale = getNextLocale(locale);
+  const localeOptions: Array<{ value: Locale; label: string }> = [
+    { value: 'zh-CN', label: t('header.locale.zhCn') },
+    { value: 'en-US', label: t('header.locale.enUs') },
+  ];
   const currentLocaleLabel = localeOptions.find(item => item.value === locale)?.label || locale;
 
   const currentUser = userOverride || user;

@@ -1,4 +1,6 @@
 import type { RssReaderRawFeed } from '@volix/types';
+import { translateClient } from '@/i18n';
+import { getStoredLocale } from '@/i18n';
 
 export interface ReaderItem {
   id: string;
@@ -28,6 +30,10 @@ export interface ReaderFeed {
   link: string;
   items: ReaderItem[];
 }
+
+const formatFeedCopy = (key: string, values?: Record<string, unknown>) => {
+  return translateClient(key, values);
+};
 
 const buildItemStableKey = (item: ReaderItem): string => {
   const id = String(item.id || '').trim();
@@ -255,7 +261,7 @@ export const formatFeedDate = (value: string): string => {
     return value;
   }
 
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat(getStoredLocale(), {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(timestamp));
@@ -264,14 +270,16 @@ export const formatFeedDate = (value: string): string => {
 export const parseFeed = (rawFeed: RssReaderRawFeed): ReaderFeed => {
   if (Array.isArray(rawFeed.items) && rawFeed.items.length > 0) {
     return {
-      title: String(rawFeed.title || '').trim() || '未命名订阅',
+      title: String(rawFeed.title || '').trim() || formatFeedCopy('rss.feed.unnamedSubscription'),
       description: String(rawFeed.description || '').trim(),
       link: String(rawFeed.link || '').trim(),
       items: rawFeed.items.map(item => {
         const normalizedHtml = sanitizeHtml(String(item.descriptionHtml || item.description || ''));
         return {
           id: String(item.id || ''),
-          title: String(item.title || '未命名条目').trim() || '未命名条目',
+          title:
+            String(item.title || formatFeedCopy('rss.feed.unnamedItem')).trim() ||
+            formatFeedCopy('rss.feed.unnamedItem'),
           link: String(item.link || ''),
           description: String(item.description || '').trim() || stripHtml(normalizedHtml),
           descriptionHtml: normalizedHtml,
@@ -300,17 +308,18 @@ export const parseFeed = (rawFeed: RssReaderRawFeed): ReaderFeed => {
   const doc = new DOMParser().parseFromString(xml, 'application/xml');
   const parserError = doc.querySelector('parsererror');
   if (parserError) {
-    throw new Error('解析 RSS 失败，返回内容不是标准 XML');
+    throw new Error(formatFeedCopy('rss.feed.invalidXml'));
   }
 
   const channel = doc.querySelector('rss > channel');
   if (channel) {
-    const title = getTagText(channel, ['title']) || '未命名订阅';
+    const title = getTagText(channel, ['title']) || formatFeedCopy('rss.feed.unnamedSubscription');
     const description = getTagText(channel, ['description']);
     const link = getTagText(channel, ['link']);
     const items = Array.from(channel.getElementsByTagName('item'))
       .map((item, index) => {
-        const itemTitle = getTagText(item, ['title']) || `未命名条目 #${index + 1}`;
+        const itemTitle =
+          getTagText(item, ['title']) || formatFeedCopy('rss.feed.unnamedItemWithIndex', { index: index + 1 });
         const itemLink = getTagText(item, ['link', 'guid']);
         const itemDescription = getTagText(item, ['description', 'content:encoded', 'content']);
         const sanitizedDescriptionHtml = sanitizeHtml(itemDescription);
@@ -354,14 +363,15 @@ export const parseFeed = (rawFeed: RssReaderRawFeed): ReaderFeed => {
 
   const atomFeed = doc.querySelector('feed');
   if (atomFeed) {
-    const title = getTagText(atomFeed, ['title']) || '未命名订阅';
+    const title = getTagText(atomFeed, ['title']) || formatFeedCopy('rss.feed.unnamedSubscription');
     const description = getTagText(atomFeed, ['subtitle']);
     const link = getAtomEntryLink(atomFeed);
     const entries = Array.from(atomFeed.getElementsByTagName('entry'));
 
     const items = entries
       .map((entry, index) => {
-        const itemTitle = getTagText(entry, ['title']) || `未命名条目 #${index + 1}`;
+        const itemTitle =
+          getTagText(entry, ['title']) || formatFeedCopy('rss.feed.unnamedItemWithIndex', { index: index + 1 });
         const itemLink = getAtomEntryLink(entry);
         const itemDescription = getTagText(entry, ['summary', 'content']);
         const sanitizedDescriptionHtml = sanitizeHtml(itemDescription);
@@ -407,7 +417,7 @@ export const parseFeed = (rawFeed: RssReaderRawFeed): ReaderFeed => {
     };
   }
 
-  throw new Error('当前订阅既不是 RSS2.0，也不是 Atom 格式');
+  throw new Error(formatFeedCopy('rss.feed.unsupportedFormat'));
 };
 
 export const mergeFeeds = (feeds: RssReaderRawFeed[]): ReaderFeed => {
@@ -423,7 +433,7 @@ export const mergeFeeds = (feeds: RssReaderRawFeed[]): ReaderFeed => {
 
   if (parsedFeeds.length === 0) {
     return {
-      title: '未命名订阅',
+      title: formatFeedCopy('rss.feed.unnamedSubscription'),
       description: '',
       link: '',
       items: [],

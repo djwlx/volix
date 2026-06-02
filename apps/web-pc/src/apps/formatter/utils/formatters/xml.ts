@@ -1,4 +1,5 @@
 import { tryParseNestedStringValue } from '../nested';
+import { translateClient } from '@/i18n';
 
 const indentMultiline = (value: string, level: number) => {
   const indent = '  '.repeat(level);
@@ -79,11 +80,11 @@ export function formatXml(value: string) {
   const errorNode = doc.querySelector('parsererror');
 
   if (errorNode) {
-    throw new Error(errorNode.textContent?.trim() || 'XML 格式不正确');
+    throw new Error(translateClient('formatter.error.xmlInvalid'));
   }
 
   if (!doc.documentElement) {
-    throw new Error('XML 内容为空');
+    throw new Error(translateClient('formatter.error.xmlEmpty'));
   }
 
   const xmlDeclarationMatch = value.trim().match(/^<\?xml[\s\S]*?\?>/);

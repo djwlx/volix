@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Button, Card, Space, Toast, Typography } from '@douyinfe/semi-ui';
+import { useI18n } from '@/i18n';
 import { useIsMobile } from '@/hooks';
 
 interface EyeDropperConstructor {
@@ -18,20 +19,20 @@ interface ColorInfo {
   hsl: string;
 }
 
-const getEyeDropperUnavailableReason = () => {
+const getEyeDropperUnavailableReason = (t: (key: string, values?: Record<string, unknown>) => string) => {
   if (!window.isSecureContext) {
-    return '网页取色要求安全上下文。请使用 localhost/127.0.0.1 或 HTTPS 打开页面。';
+    return t('colorPicker.unavailable.insecureContext');
   }
 
   if (window.top !== window.self) {
-    return '网页取色只能在顶层页面使用，当前页面可能被嵌在 iframe 或内嵌浏览器里。';
+    return t('colorPicker.unavailable.inIframe');
   }
 
   if (!('EyeDropper' in window)) {
-    return '当前环境没有暴露 EyeDropper API。即使是 Chrome，如果版本过旧、被策略禁用，或运行在某些 WebView/内嵌容器里，也会这样。';
+    return t('colorPicker.unavailable.eyeDropperMissing');
   }
 
-  return '当前环境暂时无法使用网页取色。';
+  return t('colorPicker.unavailable.fallback');
 };
 
 const pageStyle = {
@@ -115,16 +116,17 @@ const getColorInfo = (r: number, g: number, b: number): ColorInfo => {
   return { hex, rgb, hsl };
 };
 
-const copyText = async (value: string, label: string) => {
+const copyText = async (value: string, label: string, t: (key: string, values?: Record<string, unknown>) => string) => {
   try {
     await navigator.clipboard.writeText(value);
-    Toast.success(`${label} 已复制`);
+    Toast.success(t('colorPicker.copySuccess', { label }));
   } catch {
-    Toast.error('复制失败');
+    Toast.error(t('colorPicker.error.copyFailed'));
   }
 };
 
 function ColorPickerApp() {
+  const { t } = useI18n();
   const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -140,7 +142,7 @@ function ColorPickerApp() {
     const EyeDropperApi = (window as WindowWithEyeDropper).EyeDropper;
 
     if (!EyeDropperApi) {
-      const reason = getEyeDropperUnavailableReason();
+      const reason = getEyeDropperUnavailableReason(t);
       console.warn('[ColorPicker] EyeDropper unavailable', {
         isSecureContext: window.isSecureContext,
         isTopLevel: window.top === window.self,
@@ -161,7 +163,7 @@ function ColorPickerApp() {
       const b = numeric & 255;
       setColorInfo(getColorInfo(r, g, b));
     } catch {
-      Toast.warning('已取消网页取色');
+      Toast.warning(t('colorPicker.status.cancelled'));
     }
   };
 
@@ -180,7 +182,7 @@ function ColorPickerApp() {
 
       const context = canvas.getContext('2d');
       if (!context) {
-        Toast.error('无法读取图片内容');
+        Toast.error(t('colorPicker.error.imageUnavailable'));
         return;
       }
 
@@ -191,7 +193,7 @@ function ColorPickerApp() {
     };
 
     image.onerror = () => {
-      Toast.error('图片加载失败');
+      Toast.error(t('colorPicker.error.imageLoadFailed'));
     };
 
     image.src = src;
@@ -208,7 +210,7 @@ function ColorPickerApp() {
         drawImageToCanvas(reader.result, file.name);
       }
     };
-    reader.onerror = () => Toast.error('读取图片失败');
+    reader.onerror = () => Toast.error(t('colorPicker.error.imageReadFailed'));
     reader.readAsDataURL(file);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -223,7 +225,7 @@ function ColorPickerApp() {
 
     const context = canvas.getContext('2d');
     if (!context) {
-      Toast.error('无法读取画布数据');
+      Toast.error(t('colorPicker.error.canvasReadFailed'));
       return;
     }
 
@@ -247,7 +249,7 @@ function ColorPickerApp() {
           }}
         >
           <Card shadows="hover" style={cardStyle} bodyStyle={{ display: 'grid', gap: 14 }}>
-            <div style={sectionTitleStyle}>颜色信息</div>
+            <div style={sectionTitleStyle}>{t('colorPicker.section.colorInfo')}</div>
             <div
               style={{
                 height: 120,
@@ -265,9 +267,11 @@ function ColorPickerApp() {
                   cursor: 'pointer',
                   background: 'var(--app-surface)',
                 }}
-                onClick={() => copyText(colorInfo.hex, 'HEX')}
+                onClick={() => copyText(colorInfo.hex, t('colorPicker.copyLabel.hex'), t)}
               >
-                <Typography.Text style={{ color: 'var(--app-text-muted)' }}>HEX</Typography.Text>
+                <Typography.Text style={{ color: 'var(--app-text-muted)' }}>
+                  {t('colorPicker.copyLabel.hex')}
+                </Typography.Text>
                 <Typography.Text strong style={{ display: 'block', color: 'var(--app-text)' }}>
                   {colorInfo.hex}
                 </Typography.Text>
@@ -280,9 +284,11 @@ function ColorPickerApp() {
                   cursor: 'pointer',
                   background: 'var(--app-surface)',
                 }}
-                onClick={() => copyText(colorInfo.rgb, 'RGB')}
+                onClick={() => copyText(colorInfo.rgb, t('colorPicker.copyLabel.rgb'), t)}
               >
-                <Typography.Text style={{ color: 'var(--app-text-muted)' }}>RGB</Typography.Text>
+                <Typography.Text style={{ color: 'var(--app-text-muted)' }}>
+                  {t('colorPicker.copyLabel.rgb')}
+                </Typography.Text>
                 <Typography.Text strong style={{ display: 'block', color: 'var(--app-text)' }}>
                   {colorInfo.rgb}
                 </Typography.Text>
@@ -295,9 +301,11 @@ function ColorPickerApp() {
                   cursor: 'pointer',
                   background: 'var(--app-surface)',
                 }}
-                onClick={() => copyText(colorInfo.hsl, 'HSL')}
+                onClick={() => copyText(colorInfo.hsl, t('colorPicker.copyLabel.hsl'), t)}
               >
-                <Typography.Text style={{ color: 'var(--app-text-muted)' }}>HSL</Typography.Text>
+                <Typography.Text style={{ color: 'var(--app-text-muted)' }}>
+                  {t('colorPicker.copyLabel.hsl')}
+                </Typography.Text>
                 <Typography.Text strong style={{ display: 'block', color: 'var(--app-text)' }}>
                   {colorInfo.hsl}
                 </Typography.Text>
@@ -306,12 +314,12 @@ function ColorPickerApp() {
           </Card>
 
           <Card shadows="hover" style={cardStyle} bodyStyle={cardBodyStyle}>
-            <div style={sectionTitleStyle}>取色方式</div>
+            <div style={sectionTitleStyle}>{t('colorPicker.section.pickMode')}</div>
             <Space wrap>
               <Button theme="solid" type="primary" onClick={openEyeDropper}>
-                网页取色
+                {t('colorPicker.action.pickFromPage')}
               </Button>
-              <Button onClick={() => fileInputRef.current?.click()}>上传图片取色</Button>
+              <Button onClick={() => fileInputRef.current?.click()}>{t('colorPicker.action.pickFromImage')}</Button>
               {imageLoaded ? (
                 <Button
                   type="tertiary"
@@ -325,7 +333,7 @@ function ColorPickerApp() {
                     setImageName('');
                   }}
                 >
-                  清空图片
+                  {t('colorPicker.action.clearImage')}
                 </Button>
               ) : null}
             </Space>
@@ -374,15 +382,15 @@ function ColorPickerApp() {
                     fontSize: 12,
                   }}
                 >
-                  {imageName || '点击图片任意位置取色'}
+                  {imageName || t('colorPicker.hint.clickToPick')}
                 </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: 24 }}>
                   <Typography.Text strong style={{ display: 'block', marginBottom: 8 }}>
-                    上传一张图片后，点击任意像素即可取色
+                    {t('colorPicker.hint.imageUpload')}
                   </Typography.Text>
                   <Typography.Text style={{ color: 'var(--app-text-muted)' }}>
-                    也可以直接使用“网页取色”，从当前屏幕选取任意颜色。
+                    {t('colorPicker.hint.pagePick')}
                   </Typography.Text>
                 </div>
               )}

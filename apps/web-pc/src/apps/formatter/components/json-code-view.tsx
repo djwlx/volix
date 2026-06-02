@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Toast } from '@douyinfe/semi-ui';
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from 'react';
+import { useI18n } from '@/i18n';
 import type { JsonValue } from '../types';
 
 interface JsonCodeViewProps {
@@ -215,6 +216,7 @@ function JsonCodeNode(props: JsonNodeProps) {
 
 export function JsonCodeView(props: JsonCodeViewProps) {
   const { value } = props;
+  const { t } = useI18n();
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
@@ -258,7 +260,7 @@ export function JsonCodeView(props: JsonCodeViewProps) {
       Toast.success(successMessage);
       setContextMenu(null);
     } catch {
-      Toast.error('复制失败');
+      Toast.error(t('formatter.error.copyFailed'));
     }
   };
 
@@ -276,7 +278,7 @@ export function JsonCodeView(props: JsonCodeViewProps) {
             cursor: 'pointer',
           }}
         >
-          默认展开
+          {t('formatter.jsonView.action.defaultExpand')}
         </button>
         <button
           type="button"
@@ -289,7 +291,7 @@ export function JsonCodeView(props: JsonCodeViewProps) {
             cursor: 'pointer',
           }}
         >
-          全部展开
+          {t('formatter.jsonView.action.expandAll')}
         </button>
         <button
           type="button"
@@ -302,7 +304,7 @@ export function JsonCodeView(props: JsonCodeViewProps) {
             cursor: 'pointer',
           }}
         >
-          全部收起
+          {t('formatter.jsonView.action.collapseAll')}
         </button>
       </div>
       <div style={previewStyle}>
@@ -348,7 +350,9 @@ export function JsonCodeView(props: JsonCodeViewProps) {
           >
             <button
               type="button"
-              onClick={() => copyText(JSON.stringify(contextMenu.value, null, 2), '字段内容已复制')}
+              onClick={() =>
+                copyText(JSON.stringify(contextMenu.value, null, 2), t('formatter.jsonView.copyFieldContentSuccess'))
+              }
               style={{
                 display: 'block',
                 width: '100%',
@@ -360,12 +364,12 @@ export function JsonCodeView(props: JsonCodeViewProps) {
                 cursor: 'pointer',
               }}
             >
-              复制该字段内容
+              {t('formatter.jsonView.action.copyFieldContent')}
             </button>
             {contextMenu.fieldName ? (
               <button
                 type="button"
-                onClick={() => copyText(contextMenu.fieldName || '', '字段名已复制')}
+                onClick={() => copyText(contextMenu.fieldName || '', t('formatter.jsonView.copyFieldNameSuccess'))}
                 style={{
                   display: 'block',
                   width: '100%',
@@ -377,7 +381,7 @@ export function JsonCodeView(props: JsonCodeViewProps) {
                   cursor: 'pointer',
                 }}
               >
-                复制字段名
+                {t('formatter.jsonView.action.copyFieldName')}
               </button>
             ) : null}
           </div>
