@@ -1,6 +1,12 @@
+import fs from 'fs';
 import path from 'path';
 
 const resolveAppRoot = () => {
+  const cwd = process.cwd();
+  if (fs.existsSync(path.join(cwd, 'app.js')) || fs.existsSync(path.join(cwd, 'app.ts'))) {
+    return cwd;
+  }
+
   const candidate = path.resolve(__dirname, '../..');
   return path.basename(candidate) === 'dist' ? path.resolve(candidate, '..') : candidate;
 };
