@@ -5,6 +5,7 @@ import { secret } from './secret';
 import { TokenType } from './types';
 
 const CLOUD115_MIN_REQUEST_INTERVAL_MS = 1000;
+const CLOUD115_INVALID_DOWNLOAD_PAYLOAD_CODE = 'CLOUD115_INVALID_DOWNLOAD_PAYLOAD';
 
 type AppType = 'web' | 'android' | 'ios' | 'tv';
 
@@ -26,6 +27,28 @@ let cloud115RequestQueue = Promise.resolve();
 let lastCloud115RequestAt = 0;
 
 const waitTime = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const getPayloadSnippet = (value: unknown) => {
+  return String(value ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120);
+};
+
+export class Cloud115InvalidDownloadPayloadError extends Error {
+  code = CLOUD115_INVALID_DOWNLOAD_PAYLOAD_CODE;
+  payloadSnippet: string;
+
+  constructor(message: string, options?: { payloadSnippet?: string }) {
+    super(message);
+    this.name = 'Cloud115InvalidDownloadPayloadError';
+    this.payloadSnippet = options?.payloadSnippet || '';
+  }
+}
+
+export const isCloud115InvalidDownloadPayloadError = (error: unknown): error is Cloud115InvalidDownloadPayloadError => {
+  return error instanceof Cloud115InvalidDownloadPayloadError;
+};
 
 const runCloud115SerialRequest = async <T>(runner: () => Promise<T>) => {
   const task = async () => {
@@ -180,8 +203,27 @@ export function create115Sdk(options?: Create115SdkOptions) {
       })
     );
 
-    const str = secret.decode(result.data?.data, key);
-    return JSON.parse(str);
+    const encryptedPayload = result.data?.data;
+    if (typeof encryptedPayload !== 'string' || !encryptedPayload.trim()) {
+      throw new Cloud115InvalidDownloadPayloadError('115 未返回有效的下载信息密文');
+    }
+
+    let decodedPayload = '';
+    try {
+      decodedPayload = secret.decode(encryptedPayload, key);
+    } catch {
+      throw new Cloud115InvalidDownloadPayloadError('115 下载信息解密失败', {
+        payloadSnippet: getPayloadSnippet(encryptedPayload),
+      });
+    }
+
+    try {
+      return JSON.parse(decodedPayload);
+    } catch {
+      throw new Cloud115InvalidDownloadPayloadError('115 返回了无法解析的下载信息', {
+        payloadSnippet: getPayloadSnippet(decodedPayload),
+      });
+    }
   };
 
   return {

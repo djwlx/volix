@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { pipeline } from 'stream/promises';
 import mime from 'mime-types';
+import { isCloud115InvalidDownloadPayloadError } from '../../../../sdk/115';
 import { AppConfigEnum } from '../../../config/model/config.model';
 import { clearConfig, getConfig, setConfig } from '../../../config/service/config.service';
 import { badRequest } from '../../../shared/http-handler';
@@ -364,6 +365,14 @@ export const ensureLocalPicCacheByFileAsync = (file: Cloud115DbFileItem, userAge
         pc: file.pc,
       });
     } catch (error) {
+      if (isCloud115InvalidDownloadPayloadError(error)) {
+        log.warn('[115-liked-cache] 跳过图片缓存，115 下载信息异常', {
+          pc: file.pc,
+          message: error.message,
+          payloadSnippet: error.payloadSnippet,
+        });
+        return;
+      }
       log.error('[115-liked-cache] 图片缓存失败', file.pc, error);
     } finally {
       likeCacheDownloadJobMap.delete(file.pc);
@@ -482,6 +491,14 @@ export const ensureRandomLocalPicCacheByFileAsync = (file: Cloud115DbFileItem, u
     try {
       await ensureRandomLocalPicCacheByFile(file, userAgent);
     } catch (error) {
+      if (isCloud115InvalidDownloadPayloadError(error)) {
+        log.warn('[115-random-local-cache] 跳过图片缓存，115 下载信息异常', {
+          pc: file.pc,
+          message: error.message,
+          payloadSnippet: error.payloadSnippet,
+        });
+        return;
+      }
       log.error('[115-random-local-cache] 图片缓存失败', file.pc, error);
     } finally {
       randomCacheDownloadJobMap.delete(file.pc);

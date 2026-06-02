@@ -4,11 +4,15 @@ const getFile115ByPcMock = vi.fn();
 const get115FileDataMock = vi.fn();
 const getLocalRandomPicCacheByPcMock = vi.fn();
 const getLocalRandomPicCacheByFileNameMock = vi.fn();
+const getLocalPicCacheByFileMock = vi.fn();
+const getLocalPicCacheByPcFromFsMock = vi.fn();
 const parsePcFromLocalCacheFileNameMock = vi.fn();
 const sanitizeCacheFileNameMock = vi.fn();
 const ensureRandomLocalPicCacheByFileMock = vi.fn();
 const ensureRandomLocalPicCacheByFileAsyncMock = vi.fn();
+const ensureLocalPicCacheByFileAsyncMock = vi.fn();
 const parse115FileMetaMock = vi.fn();
+const resolvePicCacheByFormatMock = vi.fn();
 
 vi.mock('../../apps/api/src/modules/115/service/file-db.service', () => ({
   getFile115ByPc: getFile115ByPcMock,
@@ -28,22 +32,30 @@ vi.mock('../../apps/api/src/modules/115/service/picture/picture-cache-random-cor
   DEFAULT_MIME_TYPE: 'application/octet-stream',
   getLocalRandomPicCacheByPc: getLocalRandomPicCacheByPcMock,
   getLocalRandomPicCacheByFileName: getLocalRandomPicCacheByFileNameMock,
+  getPicCachePublicUrl: vi.fn((pc: string) => `/api/115/pic/cache/${pc}`),
   parsePcFromLocalCacheFileName: parsePcFromLocalCacheFileNameMock,
   sanitizeCacheFileName: sanitizeCacheFileNameMock,
 }));
 
 vi.mock('../../apps/api/src/modules/115/service/picture/picture-cache-fs-folder', () => ({
   clearLocalPicCacheByPcFromFs: vi.fn(),
-  ensureLocalPicCacheByFileAsync: vi.fn(),
+  ensureLocalPicCacheByFileAsync: ensureLocalPicCacheByFileAsyncMock,
   ensureRandomLocalPicCacheByFile: ensureRandomLocalPicCacheByFileMock,
   ensureRandomLocalPicCacheByFileAsync: ensureRandomLocalPicCacheByFileAsyncMock,
-  getLocalPicCacheByFile: vi.fn(),
+  getLocalPicCacheByFile: getLocalPicCacheByFileMock,
   getLocalPicCacheByPc: vi.fn(),
-  getLocalPicCacheByPcFromFs: vi.fn(),
+  getLocalPicCacheByPcFromFs: getLocalPicCacheByPcFromFsMock,
   parse115FileMeta: parse115FileMetaMock,
 }));
 
-describe('115 random-cache fallback', () => {
+vi.mock('../../apps/api/src/modules/115/service/picture/picture-cache-format', () => ({
+  clearWebpCacheByPc: vi.fn(),
+  normalizePicCacheFormat: vi.fn((format?: string) => format || ''),
+  normalizePicCacheFormatOptions: vi.fn((options?: { width?: string; quality?: string }) => options || {}),
+  resolvePicCacheByFormat: resolvePicCacheByFormatMock,
+}));
+
+describe('115 cache read-through', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -57,45 +69,44 @@ describe('115 random-cache fallback', () => {
       isLiked: false,
       localCacheFileName: '',
     });
-  });
-
-  test('returns remote image and queues async rebuild when local random cache file was deleted', async () => {
     getLocalRandomPicCacheByFileNameMock.mockResolvedValue(null);
-    ensureRandomLocalPicCacheByFileAsyncMock.mockReturnValue(new Promise(() => undefined));
     getLocalRandomPicCacheByPcMock.mockResolvedValue(null);
+    getLocalPicCacheByPcFromFsMock.mockResolvedValue(null);
+    getLocalPicCacheByFileMock.mockResolvedValue(null);
     get115FileDataMock.mockResolvedValue({ info: {} });
     parse115FileMetaMock.mockReturnValue({
       url: 'https://img.example.com/01.jpg',
       fileName: '01.jpg',
     });
+    resolvePicCacheByFormatMock.mockImplementation(
+      async ({ source }: { source: { filePath: string; fileName: string; mimeType: string } }) => source
+    );
+  });
+
+  test('returns remote random-cache source immediately and schedules async rebuild when local file is missing', async () => {
+    ensureRandomLocalPicCacheByFileAsyncMock.mockReturnValue(new Promise(() => undefined));
 
     const { get115RandomPicCacheFileData } = await import('../../apps/api/src/modules/115/service/picture/api-liked');
     const result = await get115RandomPicCacheFileData('pc-1.01.jpg', 'agent-a');
 
+    expect(result).toMatchObject({
+      kind: 'remote',
+      pc: 'pc-1',
+      url: 'https://img.example.com/01.jpg',
+      fileName: '01.jpg',
+    });
     expect(ensureRandomLocalPicCacheByFileAsyncMock).toHaveBeenCalledWith(
       expect.objectContaining({ pc: 'pc-1' }),
       'agent-a'
     );
-    expect(result).toMatchObject({
-      kind: 'remote',
-      pc: 'pc-1',
-      url: 'https://img.example.com/01.jpg',
-    });
     expect(ensureRandomLocalPicCacheByFileMock).not.toHaveBeenCalled();
   });
 
-  test('falls back to remote image when local rebuild fails', async () => {
-    getLocalRandomPicCacheByFileNameMock.mockResolvedValue(null);
-    ensureRandomLocalPicCacheByFileAsyncMock.mockRejectedValue(new Error('cache rebuild failed'));
-    getLocalRandomPicCacheByPcMock.mockResolvedValue(null);
-    get115FileDataMock.mockResolvedValue({ info: {} });
-    parse115FileMetaMock.mockReturnValue({
-      url: 'https://img.example.com/01.jpg',
-      fileName: '01.jpg',
-    });
+  test('returns remote pc-cache source immediately and schedules async local cache warmup on cache miss', async () => {
+    ensureLocalPicCacheByFileAsyncMock.mockReturnValue(new Promise(() => undefined));
 
-    const { get115RandomPicCacheFileData } = await import('../../apps/api/src/modules/115/service/picture/api-liked');
-    const result = await get115RandomPicCacheFileData('pc-1.01.jpg', 'agent-b');
+    const { get115PicCacheFileByPcData } = await import('../../apps/api/src/modules/115/service/picture/api-liked');
+    const result = await get115PicCacheFileByPcData('pc-1', 'agent-b');
 
     expect(result).toMatchObject({
       kind: 'remote',
@@ -103,9 +114,6 @@ describe('115 random-cache fallback', () => {
       url: 'https://img.example.com/01.jpg',
       fileName: '01.jpg',
     });
-    expect(ensureRandomLocalPicCacheByFileAsyncMock).toHaveBeenCalledWith(
-      expect.objectContaining({ pc: 'pc-1' }),
-      'agent-b'
-    );
+    expect(ensureLocalPicCacheByFileAsyncMock).toHaveBeenCalledWith(expect.objectContaining({ pc: 'pc-1' }), 'agent-b');
   });
 });

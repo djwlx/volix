@@ -2,6 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import { getLikedPicCacheDir } from './picture-cache-random-core';
+import { configureSharpRuntime } from '../../../../utils/sharp-runtime';
+
+configureSharpRuntime(sharp);
 
 const webpBuildJobMap = new Map<string, Promise<FormattedLocalPicCache>>();
 

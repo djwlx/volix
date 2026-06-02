@@ -28,7 +28,7 @@ import {
   toFixedMb,
   setRandomCacheConfig,
 } from './picture-cache-random-core';
-import { getUnifiedPicCacheUsage } from './picture-cache-unified';
+import { ensureUnifiedPicCacheWithinLimit, getUnifiedPicCacheUsage } from './picture-cache-unified';
 import {
   getPicCacheFolders,
   normalizeFolderPaths,
@@ -41,29 +41,26 @@ import { ensure115PicQueueRunning } from './picture-cache-random-meta-queue';
 import { t } from '../../../../utils/i18n';
 
 export async function get115PicInfoData() {
-  const [
-    picConfig,
-    folders,
-    cidCountMap,
-    count,
-    cachedCids,
-    cachedFolderPaths,
-    likedCount,
-    randomCacheConfig,
-    randomCacheList,
-  ] = await Promise.all([
-    getConfig(AppConfigEnum.is_115_picture_caching),
-    getPicCacheFolders(),
-    getFile115CountByCid(),
-    getFile115Len(),
-    getFile115CachedCidList(),
-    getFile115CachedFolderPathList(),
-    getLikedFile115Count(),
-    getRandomCacheConfig(),
+  const [picConfig, folders, cidCountMap, count, cachedCids, cachedFolderPaths, likedCount, randomCacheConfig] =
+    await Promise.all([
+      getConfig(AppConfigEnum.is_115_picture_caching),
+      getPicCacheFolders(),
+      getFile115CountByCid(),
+      getFile115Len(),
+      getFile115CachedCidList(),
+      getFile115CachedFolderPathList(),
+      getLikedFile115Count(),
+      getRandomCacheConfig(),
+    ]);
+  await ensureUnifiedPicCacheWithinLimit({
+    maxSizeBytes: randomCacheConfig.localMaxSizeMb * 1024 * 1024,
+    wait: true,
+  });
+  const [randomCacheList, unifiedUsage] = await Promise.all([
     getLocalRandomPicCacheFileList(),
+    getUnifiedPicCacheUsage(),
   ]);
   const randomCacheStats: PicRandomCacheStats = getRandomCacheStats(randomCacheConfig, randomCacheList);
-  const unifiedUsage = await getUnifiedPicCacheUsage();
   const unifiedRandomCacheStats: PicRandomCacheStats = {
     ...randomCacheStats,
     localFileCount: unifiedUsage.totalFileCount,

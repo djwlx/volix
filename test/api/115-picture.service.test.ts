@@ -28,6 +28,8 @@ const setFile115ListMock = vi.fn();
 const get115FileDataMock = vi.fn();
 const get115FileListDataMock = vi.fn();
 const generateRandomNumberMock = vi.fn();
+const getUnifiedPicCacheUsageMock = vi.fn();
+const ensureUnifiedPicCacheWithinLimitMock = vi.fn();
 
 vi.mock('../../apps/api/src/modules/config/service/config.service', () => ({
   getConfig: getConfigMock,
@@ -69,6 +71,11 @@ vi.mock('../../apps/api/src/utils/number', () => ({
   generateRandomNumber: generateRandomNumberMock,
 }));
 
+vi.mock('../../apps/api/src/modules/115/service/picture/picture-cache-unified', () => ({
+  getUnifiedPicCacheUsage: getUnifiedPicCacheUsageMock,
+  ensureUnifiedPicCacheWithinLimit: ensureUnifiedPicCacheWithinLimitMock,
+}));
+
 describe('115 picture service random meta', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -93,6 +100,15 @@ describe('115 picture service random meta', () => {
     getFile115CachedParentCidSetByRootCidMock.mockResolvedValue(new Set());
     getFile115RandomByCidListExcludePcMock.mockResolvedValue(undefined);
     getFile115RandomByCidListMock.mockResolvedValue(undefined);
+    getUnifiedPicCacheUsageMock.mockResolvedValue({
+      rootFileCount: 0,
+      rootTotalSizeBytes: 0,
+      formattedFileCount: 0,
+      formattedTotalSizeBytes: 0,
+      totalFileCount: 0,
+      totalSizeBytes: 0,
+    });
+    ensureUnifiedPicCacheWithinLimitMock.mockResolvedValue(undefined);
   });
 
   test('getRandom115PicMeta returns path and parentPath for the selected image', async () => {
@@ -269,6 +285,31 @@ describe('115 picture service random meta', () => {
       expect.any(String),
       expect.stringContaining('"cid":"root-cid","status":"pending"')
     );
+  });
+
+  test('get115PicInfoData triggers unified cache eviction when local cache is over limit', async () => {
+    getConfigMock.mockResolvedValueOnce(null);
+    getConfigMock.mockResolvedValueOnce({
+      picture_115_random_weights: JSON.stringify({
+        localMaxSizeMb: 2048,
+      }),
+    });
+    getUnifiedPicCacheUsageMock.mockResolvedValue({
+      rootFileCount: 10,
+      rootTotalSizeBytes: 1024,
+      formattedFileCount: 5,
+      formattedTotalSizeBytes: 512,
+      totalFileCount: 15,
+      totalSizeBytes: 2300 * 1024 * 1024,
+    });
+
+    const { get115PicInfoData } = await import('../../apps/api/src/modules/115/service/picture.service');
+    await get115PicInfoData();
+
+    expect(ensureUnifiedPicCacheWithinLimitMock).toHaveBeenCalledWith({
+      maxSizeBytes: 2048 * 1024 * 1024,
+      wait: true,
+    });
   });
 });
 

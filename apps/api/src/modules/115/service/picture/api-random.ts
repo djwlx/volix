@@ -17,7 +17,7 @@ import {
   toFixedMb,
 } from './picture-cache-random-core';
 import { ensureRandomLocalPicCacheByFileAsync, getPicCacheFolders } from './picture-cache-fs-folder';
-import { getUnifiedPicCacheUsage } from './picture-cache-unified';
+import { ensureUnifiedPicCacheWithinLimit, getUnifiedPicCacheUsage } from './picture-cache-unified';
 import {
   buildRandomMetaFromRandomLocalCacheItem,
   buildRandomPicMetaFromFile,
@@ -140,6 +140,9 @@ export async function getRandom115PicMeta(userAgent: string): Promise<RandomPicM
   const dedupeMaxCount = Math.max(0, Math.round(Number(randomCacheConfig.randomNoRepeatMaxCount || 0)));
   const recentPickedPcSet = getRecentPickedPcSet(randomPickedHistory, startAt, dedupeWindowMs, dedupeMaxCount);
   const dedupeLogMeta = getDedupeLogMeta(randomPickedHistory, recentPickedPcSet, dedupeWindowMs, dedupeMaxCount);
+  void ensureUnifiedPicCacheWithinLimit({
+    maxSizeBytes: randomCacheConfig.localMaxSizeMb * 1024 * 1024,
+  });
   const availableRootCids = folders
     .filter(item => item.status === 'cached' || item.status === 'caching')
     .map(item => item.cid);

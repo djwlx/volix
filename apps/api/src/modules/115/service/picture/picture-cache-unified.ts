@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { getFile115CachePolicyByPcList, setFile115LocalCacheFileNameByPc } from '../file-db.service';
+import { getRequestActingUserId } from '../../../../utils/request-context';
 import {
   clearLocalRandomPicCacheByPc,
   getRandomPicCacheDir,
@@ -39,6 +40,9 @@ export type UnifiedPicCacheUsage = {
   totalFileCount: number;
   totalSizeBytes: number;
 };
+
+const unifiedCacheEvictionJobMap = new Map<string, Promise<UnifiedPicCacheUsage>>();
+const getUnifiedCacheScopeKey = () => String(getRequestActingUserId() || 'public').replace(/[^\w.-]/g, '_');
 
 const resolveCacheDir = (cacheDir?: string) => cacheDir || getRandomPicCacheDir();
 const getWebpCacheDir = (cacheDir?: string) => path.join(resolveCacheDir(cacheDir), WEBP_CACHE_DIR_NAME);
@@ -309,4 +313,39 @@ export const evictUnifiedPicCacheToFit = async (params: {
   }
 
   return getUnifiedPicCacheUsage();
+};
+
+export const ensureUnifiedPicCacheWithinLimit = async (params: {
+  maxSizeBytes: number;
+  wait?: boolean;
+  keepPc?: string;
+}) => {
+  const maxSizeBytes = Math.max(0, Number(params.maxSizeBytes || 0));
+  const scopeKey = getUnifiedCacheScopeKey();
+  const runningJob = unifiedCacheEvictionJobMap.get(scopeKey);
+  if (runningJob) {
+    return params.wait ? runningJob : undefined;
+  }
+
+  const usage = await getUnifiedPicCacheUsage();
+  if (maxSizeBytes <= 0 || usage.totalSizeBytes <= maxSizeBytes) {
+    return usage;
+  }
+
+  const job = (async () => {
+    try {
+      return await evictUnifiedPicCacheToFit({
+        maxSizeBytes,
+        keepPc: params.keepPc,
+      });
+    } finally {
+      unifiedCacheEvictionJobMap.delete(scopeKey);
+    }
+  })();
+
+  unifiedCacheEvictionJobMap.set(scopeKey, job);
+  if (params.wait) {
+    return job;
+  }
+  return usage;
 };

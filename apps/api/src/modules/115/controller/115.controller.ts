@@ -15,8 +15,8 @@ import { resSuccess } from '../../../utils/response';
 import { badRequest } from '../../shared/http-handler';
 import { get115FileData, get115FileListData } from '../service/file.service';
 import { getFile115ByPc } from '../service/file-db.service';
-import { getLocalRandomPicCacheByPc } from '../service/picture/picture-cache-random-core';
-import { ensureRandomLocalPicCacheByFile } from '../service/picture/picture-cache-fs-folder';
+import { getLocalRandomPicCacheByPc, getPicCachePublicUrl } from '../service/picture/picture-cache-random-core';
+import { ensureRandomLocalPicCacheByFileAsync } from '../service/picture/picture-cache-fs-folder';
 import {
   buildRemoteEndpointUrl,
   buildRemoteParentRandomEndpoint,
@@ -57,15 +57,13 @@ const ensureLocalProxyUrlByPc = async (pc: string, userAgent: string) => {
     badRequest(t('pic115Api.proxyCacheRecordNotFound'));
   }
   const safeFile = file as NonNullable<typeof file>;
-  await ensureRandomLocalPicCacheByFile(safeFile, userAgent, {
-    force: true,
-  });
   const cached = await getLocalRandomPicCacheByPc(normalizedPc);
-  if (!cached) {
-    badRequest(t('pic115Api.proxyCacheFailed'));
+  if (cached) {
+    const safeCached = cached as NonNullable<typeof cached>;
+    return safeCached.url;
   }
-  const safeCached = cached as NonNullable<typeof cached>;
-  return safeCached.url;
+  void ensureRandomLocalPicCacheByFileAsync(safeFile, userAgent);
+  return getPicCachePublicUrl(normalizedPc);
 };
 
 export const getRandom115Pic: MyMiddleware = async ctx => {

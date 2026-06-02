@@ -15,7 +15,6 @@ import {
   DEFAULT_115_DOWNLOAD_UA,
   DEFAULT_FILE_NAME,
   DEFAULT_MIME_TYPE,
-  getLocalRandomPicCacheByPc,
   getLocalRandomPicCacheByFileName,
   getPicCachePublicUrl,
   parsePcFromLocalCacheFileName,
@@ -23,7 +22,7 @@ import {
 } from './picture-cache-random-core';
 import {
   clearLocalPicCacheByPcFromFs,
-  ensureRandomLocalPicCacheByFile,
+  ensureRandomLocalPicCacheByFileAsync,
   ensureLocalPicCacheByFileAsync,
   getLocalPicCacheByFile,
   getLocalPicCacheByPc,
@@ -34,9 +33,50 @@ import {
   clearWebpCacheByPc,
   normalizePicCacheFormat,
   normalizePicCacheFormatOptions,
+  type PicCacheFormatOptions,
   resolvePicCacheByFormat,
 } from './picture-cache-format';
 import { t } from '../../../../utils/i18n';
+
+const buildRemotePicSourceFromFile = async (file: Cloud115DbFileItem, userAgent: string, errorMessageKey: string) => {
+  const meta = parse115FileMeta(await get115FileData(file.pc, userAgent || DEFAULT_115_DOWNLOAD_UA));
+  if (!meta.url) {
+    badRequest(t(errorMessageKey));
+  }
+
+  return {
+    kind: 'remote' as const,
+    pc: file.pc,
+    url: meta.url,
+    fileName: meta.fileName || (file.fullPath ? path.posix.basename(file.fullPath) : DEFAULT_FILE_NAME),
+    mimeType: mime.lookup(meta.fileName || '') || DEFAULT_MIME_TYPE,
+  };
+};
+
+const prewarmWebpCacheByFileAsync = (
+  targetFile: Cloud115DbFileItem,
+  normalizedUserAgent: string,
+  formatOptions: PicCacheFormatOptions
+) => {
+  void ensureLocalPicCacheByFileAsync(targetFile, normalizedUserAgent)
+    .then(async () => {
+      const latestCache = await getLocalPicCacheByPc(targetFile.pc);
+      if (!latestCache) {
+        return;
+      }
+      await resolvePicCacheByFormat({
+        format: 'webp',
+        options: formatOptions,
+        source: {
+          pc: latestCache.pc,
+          filePath: latestCache.filePath,
+          fileName: latestCache.fileName,
+          mimeType: latestCache.mimeType,
+        },
+      });
+    })
+    .catch(() => undefined);
+};
 
 export async function like115PicData(params: Like115PicParams, userAgent: string) {
   const pc = params.pc?.trim() || '';
@@ -176,37 +216,12 @@ export async function get115RandomPicCacheFileData(cacheFileName: string, userAg
     badRequest(t('pic115Api.localRandomCacheNotFound'));
   }
   const safeFile = file as Cloud115DbFileItem;
-
-  try {
-    await ensureRandomLocalPicCacheByFile(safeFile, userAgent || DEFAULT_115_DOWNLOAD_UA, { force: true });
-  } catch {
-    // ignore
-  }
-
-  const rebuiltCache = await getLocalRandomPicCacheByPc(pc);
-  if (rebuiltCache) {
-    return {
-      kind: 'local' as const,
-      pc: rebuiltCache.pc,
-      filePath: rebuiltCache.filePath,
-      fileName: rebuiltCache.fileName,
-      mimeType: rebuiltCache.mimeType,
-      url: rebuiltCache.url,
-    };
-  }
-
-  const meta = parse115FileMeta(await get115FileData(safeFile.pc, userAgent || DEFAULT_115_DOWNLOAD_UA));
-  if (!meta.url) {
-    badRequest(t('pic115Api.localRandomCacheNotFound'));
-  }
-
-  return {
-    kind: 'remote' as const,
-    pc: safeFile.pc,
-    url: meta.url,
-    fileName: meta.fileName || (safeFile.fullPath ? path.posix.basename(safeFile.fullPath) : DEFAULT_FILE_NAME),
-    mimeType: mime.lookup(meta.fileName || '') || DEFAULT_MIME_TYPE,
-  };
+  void ensureRandomLocalPicCacheByFileAsync(safeFile, userAgent || DEFAULT_115_DOWNLOAD_UA);
+  return buildRemotePicSourceFromFile(
+    safeFile,
+    userAgent || DEFAULT_115_DOWNLOAD_UA,
+    'pic115Api.localRandomCacheNotFound'
+  );
 }
 
 export async function get115PicCacheFileByPcData(
@@ -257,27 +272,6 @@ export async function get115PicCacheFileByPcData(
   const safeFile = file as Cloud115DbFileItem;
   const normalizedUserAgent = userAgent || DEFAULT_115_DOWNLOAD_UA;
 
-  const prewarmWebpCacheByFileAsync = (targetFile: Cloud115DbFileItem) => {
-    void ensureLocalPicCacheByFileAsync(targetFile, normalizedUserAgent)
-      .then(async () => {
-        const latestCache = await getLocalPicCacheByPc(targetFile.pc);
-        if (!latestCache) {
-          return;
-        }
-        await resolvePicCacheByFormat({
-          format: 'webp',
-          options: formatOptions,
-          source: {
-            pc: latestCache.pc,
-            filePath: latestCache.filePath,
-            fileName: latestCache.fileName,
-            mimeType: latestCache.mimeType,
-          },
-        });
-      })
-      .catch(() => undefined);
-  };
-
   const cache = await getLocalPicCacheByFile({
     pc: safeFile.pc,
     localCacheFileName: safeFile.localCacheFileName,
@@ -303,35 +297,10 @@ export async function get115PicCacheFileByPcData(
   }
 
   if (cacheFormat === 'webp') {
-    prewarmWebpCacheByFileAsync(safeFile);
-    const meta = parse115FileMeta(await get115FileData(safeFile.pc, normalizedUserAgent));
-    if (!meta.url) {
-      badRequest(t('pic115Api.picUrlResolveFailed'));
-    }
-
-    return {
-      kind: 'remote' as const,
-      pc: safeFile.pc,
-      url: meta.url,
-      fileName: meta.fileName || (safeFile.fullPath ? path.posix.basename(safeFile.fullPath) : DEFAULT_FILE_NAME),
-      mimeType: mime.lookup(meta.fileName || '') || DEFAULT_MIME_TYPE,
-    };
-  }
-
-  if (safeFile.isLiked) {
+    prewarmWebpCacheByFileAsync(safeFile, normalizedUserAgent, formatOptions);
+  } else {
     void ensureLocalPicCacheByFileAsync(safeFile, normalizedUserAgent);
   }
 
-  const meta = parse115FileMeta(await get115FileData(safeFile.pc, normalizedUserAgent));
-  if (!meta.url) {
-    badRequest(t('pic115Api.picUrlResolveFailed'));
-  }
-
-  return {
-    kind: 'remote' as const,
-    pc: safeFile.pc,
-    url: meta.url,
-    fileName: meta.fileName || (safeFile.fullPath ? path.posix.basename(safeFile.fullPath) : DEFAULT_FILE_NAME),
-    mimeType: mime.lookup(meta.fileName || '') || DEFAULT_MIME_TYPE,
-  };
+  return buildRemotePicSourceFromFile(safeFile, normalizedUserAgent, 'pic115Api.picUrlResolveFailed');
 }
