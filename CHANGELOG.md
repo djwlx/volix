@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.1.5] - 2026-06-03
+
+### 中文
+#### Added
+- 新增云代理功能，支持通过云端代理获取图片
+- 新增自动图片功能，可自动选择随机图片
+- 新增图片缓存随机配置模块
+- 新增云代理服务模块
+- 新增相关文档和测试
+#### Changed
+- 重构随机图片控制器，移除旧的随机代理控制器
+- 优化图片设置页面，简化配置选项
+- 更新国际化翻译
+- 更新依赖版本
+#### Fixed
+- 修复已知问题
+
+### English
+#### Added
+- Added cloud proxy feature to fetch images via cloud proxy
+- Added auto image feature to automatically select random images
+- Added picture cache random config module
+- Added cloud proxy service module
+- Added related documentation and tests
+#### Changed
+- Refactored random picture controller, removed old random proxy controller
+- Optimized picture settings page, simplified configuration options
+- Updated i18n translations
+- Updated dependency versions
+#### Fixed
+- Fixed known issues
+
 ## [1.1.4] - 2026-06-03
 
 ### 中文
