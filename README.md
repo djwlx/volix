@@ -2,82 +2,161 @@
 
 [简体中文](./README.zh-CN.md)
 
-Volix is an open-source personal toolkit for self-hosted daily utilities. It combines a web UI, authentication, permission control, and modular tool pages in a single full-stack project.
+Volix is an open-source self-hosted toolkit for personal daily utilities. It packages a web UI, authentication, permissions, storage, and multiple built-in tools into one full-stack project so you can keep frequently used utilities in a single deployable app.
 
-## Intro
+## What Volix Does
 
-Volix is designed for running small, frequently used personal tools in one place. The project focuses on a simple full-stack setup that is easy to develop locally and straightforward to deploy on a lightweight server.
+Volix is built for people who want a lightweight personal toolbox they can run on their own server and expand over time.
 
-## Features
+- Random image workflows are the centerpiece: pull images from a 115 library, jump to the next image, browse random siblings, autoplay, and save favorites
+- Developer tools are built in: formatter, color picker, and SQLite Admin help with debugging payloads, inspecting data, and fixing content quickly
+- RSS reading is self-hosted: manage RSSHub subscriptions, read aggregated feeds, pause routes, and inspect local cache/history
+- Self-hosted accounts and permissions are included: sign in, sign up, optional email verification, profile management, and role-based access
+- Configuration is centralized: manage random image cache strategy, RSS settings, SMTP, registration rules, and per-user service accounts
+- Bilingual interface: Simplified Chinese and English i18n support
 
-- User accounts with role-based access control
-- Personal settings with avatar upload support
-- Modular tool pages rendered by feature visibility
-- Monorepo structure for shared types and utilities
+## Built-In Features
 
-## Installation
+### Random Image System
+
+- Pull random images from 115-backed sources with a fast next-image flow
+- Jump to another random image from the same folder when you want related material
+- Save favorites and manage them in My Likes
+- Enable autoplay with a configurable interval
+- Tune local/cloud source weights, no-repeat windows, cache size limits, proxy behavior, and random-image endpoint settings
+- Review cache status, folder tasks, retry failures, and clear cached data from the management page
+
+### Developer and Debugging Tools
+
+- Formatter: auto-detect, recursively decode, and inspect JSON, XML, and Base64 content
+- Color Picker: sample colors from web pages or uploaded images, generate HEX/RGB/HSL values, and copy them quickly
+- SQLite Admin: browse tables, page through records, create/edit/delete rows, and work with JSON, booleans, numbers, and `null` values directly
+
+### RSS Reading and Subscription Management
+
+- Manage personal RSSHub route subscriptions
+- Aggregate items from multiple feeds into one reader sorted by time
+- Filter by subscription, force refresh, and surface partial-load errors
+- Pause/resume routes, remove subscriptions, clear history, and inspect queue/local storage usage
+
+### Accounts, Permissions, and System Settings
+
+- User registration, sign-in, and optional email-verification sign-up
+- Profile editing with nickname, avatar upload, and email verification
+- `admin` / `user` roles with feature-level visibility control
+- Administrator controls for users, SMTP, registration policy, and the default random-image user for guests
+- Per-user service account settings so each user can keep separate credentials and test results
+
+## Deployment
+
+### Option 1: Run a Published Docker Image
+
+Docker Hub:
+
+```bash
+docker run -d \
+  --name volix \
+  -p 3000:3000 \
+  -v "$(pwd)/data:/app/data" \
+  djwl/volix:latest
+```
+
+GHCR:
+
+```bash
+docker run -d \
+  --name volix \
+  -p 3000:3000 \
+  -v "$(pwd)/data:/app/data" \
+  ghcr.io/djwlx/volix:latest
+```
+
+Then open `http://localhost:3000`.
+
+Published image registries:
+
+- Docker Hub: [`djwl/volix`](https://hub.docker.com/r/djwl/volix)
+- GHCR: [`ghcr.io/djwlx/volix`](https://github.com/djwlx/volix/pkgs/container/volix)
+
+### Option 2: Build and Deploy from Source
+
+Requirements:
+
+- Node.js `>=20 <25`
+- `nvm` with `.nvmrc` support
+- pnpm `8.15.9`
+- Docker
+
+Build the app and image:
+
+```bash
+nvm use
+pnpm install
+pnpm release
+pnpm build
+docker build -t volix:latest .
+```
+
+Run the container:
+
+```bash
+docker run -d \
+  --name volix \
+  -p 3000:3000 \
+  -v "$(pwd)/data:/app/data" \
+  volix:latest
+```
+
+### Data and Upgrades
+
+- Mount `./data` to `/app/data` to keep the database and uploaded files across container replacement
+- Rebuild the image and recreate the container when upgrading a source-based deployment
+- Use version tags instead of `latest` if you want a pinned release
+
+For the full Docker workflow, see [Docker Guide](./docs/docker.md).
+
+## Development
 
 ### Requirements
 
 - Node.js `>=20 <25`
+- `nvm`
 - pnpm `8.15.9`
 
-### Install dependencies
+### Local Setup
 
 ```bash
+nvm use
 pnpm install
-```
-
-### Start the development environment
-
-```bash
 pnpm dev
 ```
 
 Default local endpoints:
 
-- Web app: Vite dev server on port `5173`
+- Web app: `http://localhost:5173`
 - API: `http://localhost:3000`
 
-### Build for production
+### Common Commands
 
 ```bash
+pnpm dev
+pnpm test
+pnpm typecheck
 pnpm release
 pnpm build
 ```
 
-For Docker usage, see [Docker Guide](./docs/docker.md).
-
-## Deployment
-
-Volix can be deployed either from published container images or from a local source build.
-
-- Published images:
-  - Docker Hub: [`djwl/volix`](https://hub.docker.com/r/djwl/volix)
-  - GHCR: [`ghcr.io/djwlx/volix`](https://github.com/djwlx/volix/pkgs/container/volix)
-- Verified tags on June 2, 2026: `latest`, `v1.0.29`, `v1.0.28`, `v1.0.27`, `v1.0.26`
-- For deployment commands and upgrade steps, see [Docker Guide](./docs/docker.md).
-
-## Project Structure
+## Project Layout
 
 ```txt
 volix/
 ├─ apps/
-│  ├─ web-pc/
-│  └─ api/
+│  ├─ api/
+│  └─ web-pc/
 ├─ packages/
+│  ├─ i18n/
 │  ├─ types/
 │  └─ utils/
-├─ data/
-└─ dist/
-```
-
-## Development
-
-```bash
-pnpm dev
-pnpm release
-pnpm build
-pnpm test
-pnpm typecheck
+├─ docs/
+└─ data/
 ```

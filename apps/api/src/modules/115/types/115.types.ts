@@ -37,6 +37,7 @@ export interface PicRandomCacheConfig {
   randomNoRepeatMaxCount: number;
   randomPicEndpoint: string;
   localProxyEnabled: boolean;
+  autoPlayIntervalSeconds: number;
 }
 
 export interface PicRandomCacheStats {

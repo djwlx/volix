@@ -41,6 +41,17 @@
   flex-wrap: wrap;
 }
 
+.autoPlay {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 45%);
+  backdrop-filter: blur(10px);
+}
+
 .tooltipTrigger {
   display: inline-flex;
 }

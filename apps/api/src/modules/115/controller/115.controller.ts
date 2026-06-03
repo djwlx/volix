@@ -109,6 +109,7 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
       return {
         ...remoteMeta,
         remoteSource: true,
+        autoPlayIntervalSeconds: randomPicOptions.autoPlayIntervalSeconds,
       };
     }
 
@@ -170,6 +171,7 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
       liked,
       notice,
       remoteSource: false,
+      autoPlayIntervalSeconds: randomPicOptions.autoPlayIntervalSeconds,
     };
   }
 
@@ -208,6 +210,7 @@ export const getRandom115PicByParent: MyMiddleware = async ctx => {
     return {
       ...remoteMeta,
       remoteSource: true,
+      autoPlayIntervalSeconds: randomPicOptions.autoPlayIntervalSeconds,
     };
   }
 
@@ -223,6 +226,7 @@ export const getRandom115PicByParent: MyMiddleware = async ctx => {
     ...result,
     url: responseUrl,
     remoteSource: false,
+    autoPlayIntervalSeconds: randomPicOptions.autoPlayIntervalSeconds,
   };
 };
 

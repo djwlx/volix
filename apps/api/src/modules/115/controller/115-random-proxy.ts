@@ -167,6 +167,7 @@ export const getConfiguredRandomPicOptions = async () => {
   return {
     endpoint: toAbsoluteRemoteUrl(config.randomPicEndpoint || ''),
     localProxyEnabled: Boolean(config.localProxyEnabled),
+    autoPlayIntervalSeconds: Number(config.autoPlayIntervalSeconds || 0),
   };
 };
 

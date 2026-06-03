@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Button, Image, Space, Toast, Tooltip } from '@douyinfe/semi-ui';
+import { useEffect, useRef, useState } from 'react';
+import { Button, Image, Space, Switch, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
 import styles from './index.module.scss';
 import { get115FileList, get115Pic, get115PicFromParent, get115PicPathByPc, like115Pic } from '@/services/115';
 import { Loading } from '@/components';
@@ -8,6 +8,8 @@ import { useUser } from '@/hooks';
 import { useI18n } from '@/i18n';
 import type { Random115PicResponse } from '@volix/types';
 import { UserRole } from '@volix/types';
+
+const { Text } = Typography;
 
 interface PicMeta {
   src: string;
@@ -25,6 +27,9 @@ function PicApp() {
   const [picPath, setPicPath] = useState('');
   const [loading, setLoading] = useState(true);
   const [liking, setLiking] = useState(false);
+  const [autoPlayEnabled, setAutoPlayEnabled] = useState(false);
+  const [autoPlayIntervalSeconds, setAutoPlayIntervalSeconds] = useState(10);
+  const fetchImgRef = useRef<() => Promise<void>>(async () => undefined);
   const isAdmin = user?.role === UserRole.ADMIN;
 
   const applyPicMeta = (data?: Random115PicResponse | null) => {
@@ -38,6 +43,9 @@ function PicApp() {
         remoteSource: Boolean(data.remoteSource),
       });
       setPicPath(data.path || '');
+      if (typeof data.autoPlayIntervalSeconds === 'number' && Number.isFinite(data.autoPlayIntervalSeconds)) {
+        setAutoPlayIntervalSeconds(Math.max(1, Math.round(data.autoPlayIntervalSeconds)));
+      }
 
       if (data.notice) {
         Toast.info(data.notice);
@@ -106,6 +114,10 @@ function PicApp() {
     }
   };
 
+  useEffect(() => {
+    fetchImgRef.current = fetchImg;
+  });
+
   const fetchSiblingImg = async () => {
     if (!picMeta?.pc) {
       return;
@@ -146,6 +158,18 @@ function PicApp() {
   useEffect(() => {
     fetchImg();
   }, []);
+
+  useEffect(() => {
+    if (!autoPlayEnabled || loading || !picMeta?.src) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void fetchImgRef.current();
+    }, autoPlayIntervalSeconds * 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [autoPlayEnabled, autoPlayIntervalSeconds, loading, picMeta?.src]);
 
   useEffect(() => {
     if (!isAdmin || !picMeta?.pc || picPath) {
@@ -197,30 +221,38 @@ function PicApp() {
         }}
       />
       <div className={styles.actions}>
-        <Space className={styles.actionButtons}>
-          <Button theme="solid" type="tertiary" onClick={() => fetchImg()}>
-            {t('pic.action.next')}
-          </Button>
-          {isAdmin && pathTooltipContent ? (
-            <Tooltip content={pathTooltipContent} position="top" trigger="hover">
+        <Space vertical align="end" spacing={8}>
+          <Space className={styles.actionButtons}>
+            <Button theme="solid" type="tertiary" onClick={() => fetchImg()}>
+              {t('pic.action.next')}
+            </Button>
+            {isAdmin && pathTooltipContent ? (
+              <Tooltip content={pathTooltipContent} position="top" trigger="hover">
+                <span className={styles.tooltipTrigger}>
+                  <Button theme="solid" type="secondary" disabled={!picMeta.pc} onClick={() => fetchSiblingImg()}>
+                    {t('pic.action.randomSibling')}
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : (
               <span className={styles.tooltipTrigger}>
                 <Button theme="solid" type="secondary" disabled={!picMeta.pc} onClick={() => fetchSiblingImg()}>
                   {t('pic.action.randomSibling')}
                 </Button>
               </span>
-            </Tooltip>
-          ) : (
-            <span className={styles.tooltipTrigger}>
-              <Button theme="solid" type="secondary" disabled={!picMeta.pc} onClick={() => fetchSiblingImg()}>
-                {t('pic.action.randomSibling')}
+            )}
+            {user && !picMeta.remoteSource ? (
+              <Button theme="solid" type="primary" loading={liking} onClick={onLike}>
+                {t(picMeta.liked ? 'pic.action.unlike' : 'pic.action.like')}
               </Button>
-            </span>
-          )}
-          {user && !picMeta.remoteSource ? (
-            <Button theme="solid" type="primary" loading={liking} onClick={onLike}>
-              {t(picMeta.liked ? 'pic.action.unlike' : 'pic.action.like')}
-            </Button>
-          ) : null}
+            ) : null}
+          </Space>
+          <div className={styles.autoPlay}>
+            <Switch checked={autoPlayEnabled} onChange={checked => setAutoPlayEnabled(Boolean(checked))} size="small" />
+            <Text type="tertiary" size="small">
+              {t('pic.autoPlay.summary', { seconds: autoPlayIntervalSeconds })}
+            </Text>
+          </div>
         </Space>
       </div>
     </div>

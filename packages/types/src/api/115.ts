@@ -71,6 +71,7 @@ export interface Random115PicResponse {
   liked: boolean;
   notice?: string;
   remoteSource?: boolean;
+  autoPlayIntervalSeconds?: number;
 }
 
 export interface PicPathByPcResponse {
@@ -122,6 +123,7 @@ export interface PicRandomCacheConfig {
   randomNoRepeatMaxCount: number;
   randomPicEndpoint: string;
   localProxyEnabled: boolean;
+  autoPlayIntervalSeconds: number;
 }
 
 export interface PicRandomCacheStats {
@@ -178,4 +180,5 @@ export interface SetPicRandomCacheConfigParams {
   randomNoRepeatMaxCount?: number;
   randomPicEndpoint?: string;
   localProxyEnabled?: boolean;
+  autoPlayIntervalSeconds?: number;
 }

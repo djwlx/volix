@@ -20,6 +20,7 @@ interface RandomCacheFormValues {
   randomNoRepeatMaxCount: number;
   randomPicEndpoint: string;
   localProxyEnabled: boolean;
+  autoPlayIntervalSeconds: number;
 }
 
 interface RandomPicEndpointItem {
@@ -36,6 +37,7 @@ const RANDOM_CACHE_FIELDS: Array<keyof RandomCacheFormValues> = [
   'randomNoRepeatMaxCount',
   'randomPicEndpoint',
   'localProxyEnabled',
+  'autoPlayIntervalSeconds',
 ];
 
 const DEFAULT_RANDOM_CACHE_FORM_VALUES: RandomCacheFormValues = {
@@ -46,6 +48,7 @@ const DEFAULT_RANDOM_CACHE_FORM_VALUES: RandomCacheFormValues = {
   randomNoRepeatMaxCount: 50,
   randomPicEndpoint: '',
   localProxyEnabled: false,
+  autoPlayIntervalSeconds: 10,
 };
 
 const RANDOM_CACHE_FIELD_WIDTH = 430;
@@ -99,6 +102,7 @@ export function PicSetting() {
           randomNoRepeatMaxCount?: number;
           randomPicEndpoint?: string;
           localProxyEnabled?: boolean;
+          autoPlayIntervalSeconds?: number;
         }
       | null
       | undefined,
@@ -119,6 +123,9 @@ export function PicSetting() {
       ).trim(),
       localProxyEnabled: Boolean(
         randomCacheConfig?.localProxyEnabled ?? DEFAULT_RANDOM_CACHE_FORM_VALUES.localProxyEnabled
+      ),
+      autoPlayIntervalSeconds: Number(
+        randomCacheConfig?.autoPlayIntervalSeconds ?? DEFAULT_RANDOM_CACHE_FORM_VALUES.autoPlayIntervalSeconds
       ),
     };
     randomCacheFormApiRef.current?.setValues(nextValues);
@@ -202,6 +209,7 @@ export function PicSetting() {
       randomNoRepeatMaxCount: Number(values.randomNoRepeatMaxCount || 50),
       randomPicEndpoint: String(values.randomPicEndpoint || '').trim(),
       localProxyEnabled: Boolean(values.localProxyEnabled),
+      autoPlayIntervalSeconds: Number(values.autoPlayIntervalSeconds || 10),
     };
     const sum = payload.localWeight + payload.cloudWeight;
     if (sum !== 100) {
@@ -221,6 +229,7 @@ export function PicSetting() {
         randomNoRepeatMaxCount: payload.randomNoRepeatMaxCount,
         randomPicEndpoint: payload.randomPicEndpoint,
         localProxyEnabled: payload.localProxyEnabled,
+        autoPlayIntervalSeconds: payload.autoPlayIntervalSeconds,
       });
       await fetch(true);
       Toast.success(t('pic115.form.saveSuccess'));
@@ -365,6 +374,13 @@ export function PicSetting() {
                 label={t('pic115.form.noRepeatMaxCount')}
                 min={1}
                 max={10000}
+                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+              />
+              <Form.InputNumber
+                field="autoPlayIntervalSeconds"
+                label={t('pic115.form.autoPlayIntervalSeconds')}
+                min={1}
+                max={3600}
                 style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
               />
               <Button
