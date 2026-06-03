@@ -1,7 +1,6 @@
 import { Button, Descriptions, Form, Popconfirm, Space, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconDelete } from '@douyinfe/semi-icons';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Data } from '@douyinfe/semi-ui/lib/es/descriptions';
+import { useEffect, useRef, useState } from 'react';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 import type { PicCacheFolderItem } from '@volix/types';
 import { clear115Pic, get115PicInfo, retry115Pic, set115PicRandomCacheConfig } from '@/services/115';
@@ -9,6 +8,7 @@ import { getHttpErrorMessage } from '@/utils/error';
 import { useI18n } from '@/i18n';
 import { FilePath } from './components';
 import { picCacheStatusOrder, renderPicCacheStatusTag } from './pic-cache-status';
+import { buildPicSettingStatsData } from './pic-setting-stats';
 
 const { Text } = Typography;
 
@@ -204,42 +204,42 @@ export function PicSetting() {
     }
   };
 
-  const data: Data[] = useMemo(() => {
-    return [
-      { key: t('pic115.stats.cacheCount'), value: count },
-      { key: t('pic115.stats.cacheFolderCount'), value: folders.length },
-      { key: t('pic115.stats.localFileCount'), value: localCacheFileCount },
-      { key: t('pic115.stats.localUsage'), value: `${localCacheTotalSizeMb} MB` },
-      {
-        key: t('pic115.stats.status'),
-        value: isCaching ? (
-          <Tag size="small" shape="circle" color="amber">
-            {t('pic115.status.caching')}
-          </Tag>
-        ) : count ? (
-          <Tag size="small" shape="circle" color="green">
-            {t('pic115.status.cached')}
-          </Tag>
-        ) : (
-          <Tag size="small" shape="circle" color="orange">
-            {t('pic115.status.notCached')}
-          </Tag>
-        ),
-      },
-      {
-        key: t('pic115.stats.localCapacity'),
-        value: localCacheLimitExceeded ? (
-          <Tag size="small" shape="circle" color="red">
-            {t('pic115.status.overLimit')}
-          </Tag>
-        ) : (
-          <Tag size="small" shape="circle" color="green">
-            {t('pic115.status.normal')}
-          </Tag>
-        ),
-      },
-    ];
-  }, [count, folders.length, isCaching, localCacheFileCount, localCacheLimitExceeded, localCacheTotalSizeMb, t]);
+  const data = buildPicSettingStatsData({
+    count,
+    folderCount: folders.length,
+    localCacheFileCount,
+    localCacheTotalSizeMb,
+    labels: {
+      cacheCount: t('pic115.stats.cacheCount'),
+      cacheFolderCount: t('pic115.stats.cacheFolderCount'),
+      localFileCount: t('pic115.stats.localFileCount'),
+      localUsage: t('pic115.stats.localUsage'),
+      status: t('pic115.stats.status'),
+      localCapacity: t('pic115.stats.localCapacity'),
+    },
+    statusTag: isCaching ? (
+      <Tag size="small" shape="circle" color="amber">
+        {t('pic115.status.caching')}
+      </Tag>
+    ) : count ? (
+      <Tag size="small" shape="circle" color="green">
+        {t('pic115.status.cached')}
+      </Tag>
+    ) : (
+      <Tag size="small" shape="circle" color="orange">
+        {t('pic115.status.notCached')}
+      </Tag>
+    ),
+    localCapacityTag: localCacheLimitExceeded ? (
+      <Tag size="small" shape="circle" color="red">
+        {t('pic115.status.overLimit')}
+      </Tag>
+    ) : (
+      <Tag size="small" shape="circle" color="green">
+        {t('pic115.status.normal')}
+      </Tag>
+    ),
+  });
 
   return (
     <Space vertical align="start" spacing={16} style={{ width: '100%' }}>

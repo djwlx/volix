@@ -31,7 +31,8 @@ export const sanitizeCacheFileName = (rawFileName: string) => {
 };
 export const getPicCacheFileName = (pc: string, fileName: string) => `${pc}.${sanitizeCacheFileName(fileName)}`;
 export const getPicCacheFilePath = (fileName: string) => path.join(getLikedPicCacheDir(), fileName);
-export const likeCacheDownloadJobMap = new Map<string, Promise<void>>();
+export const picCacheDownloadJobMap = new Map<string, Promise<void>>();
+export const likeCacheDownloadJobMap = picCacheDownloadJobMap;
 
 export type RandomLocalCacheItem = {
   pc: string;
@@ -336,7 +337,7 @@ export const getLocalRandomPicCacheByFileName = async (fileName: string) => {
   }
 };
 
-export const randomCacheDownloadJobMap = new Map<string, Promise<void>>();
+export const randomCacheDownloadJobMap = picCacheDownloadJobMap;
 
 export const getRandomMemoryCacheByFileName = (fileName: string) => {
   const key = randomMemoryCacheKeyByFileName.get(fileName);

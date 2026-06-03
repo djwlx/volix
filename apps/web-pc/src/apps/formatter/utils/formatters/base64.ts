@@ -13,7 +13,7 @@ export const tryDecodeBase64 = (value: string) => {
   try {
     const binary = window.atob(trimmed);
     const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
-    const decoded = new TextDecoder().decode(bytes).trim();
+    const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes).trim();
 
     if (!decoded || !isProbablyText(decoded)) {
       return null;

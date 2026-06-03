@@ -17,6 +17,7 @@ export const formatContent = (value: string): FormatResult => {
           formatted: result.formatted,
           parsedJson: result.parsedJson,
           detailType: 'json',
+          sourceMode: 'direct',
         };
       } catch {
         continue;
@@ -29,6 +30,7 @@ export const formatContent = (value: string): FormatResult => {
           formatType: 'xml',
           formatted: formatXml(candidate),
           detailType: 'xml',
+          sourceMode: 'direct',
         };
       } catch {
         continue;
@@ -43,6 +45,7 @@ export const formatContent = (value: string): FormatResult => {
       formatted: base64Result.formatted,
       parsedJson: base64Result.kind === 'json' ? base64Result.parsedJson : undefined,
       detailType: base64Result.kind,
+      sourceMode: 'decoded-base64',
     };
   }
 
@@ -50,5 +53,6 @@ export const formatContent = (value: string): FormatResult => {
     formatType: 'base64',
     formatted: encodeBase64(value),
     detailType: 'text',
+    sourceMode: 'encoded-base64',
   };
 };

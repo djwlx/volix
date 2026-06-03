@@ -37,13 +37,11 @@ interface ContextMenuState {
 
 const previewStyle: CSSProperties = {
   margin: 0,
-  padding: 12,
-  borderRadius: 8,
-  border: '1px solid var(--semi-color-border)',
-  background: 'linear-gradient(180deg, #fbfdff 0%, #f5f9fc 100%)',
-  overflow: 'auto',
+  minHeight: '100%',
+  background: 'transparent',
+  overflow: 'visible',
   fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-  fontSize: 13,
+  fontSize: 14,
   lineHeight: 1.7,
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
@@ -264,50 +262,10 @@ export function JsonCodeView(props: JsonCodeViewProps) {
     }
   };
 
+  const isStringValue = typeof contextMenu?.value === 'string';
+
   return (
-    <div style={{ display: 'grid', gap: 8 }}>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          onClick={() => setExpandedPaths(new Set(allPaths))}
-          style={{
-            border: '1px solid var(--semi-color-border)',
-            background: '#fff',
-            borderRadius: 6,
-            padding: '4px 10px',
-            cursor: 'pointer',
-          }}
-        >
-          {t('formatter.jsonView.action.defaultExpand')}
-        </button>
-        <button
-          type="button"
-          onClick={() => setExpandedPaths(new Set(allPaths))}
-          style={{
-            border: '1px solid var(--semi-color-border)',
-            background: '#fff',
-            borderRadius: 6,
-            padding: '4px 10px',
-            cursor: 'pointer',
-          }}
-        >
-          {t('formatter.jsonView.action.expandAll')}
-        </button>
-        <button
-          type="button"
-          onClick={() => setExpandedPaths(new Set())}
-          style={{
-            border: '1px solid var(--semi-color-border)',
-            background: '#fff',
-            borderRadius: 6,
-            padding: '4px 10px',
-            cursor: 'pointer',
-          }}
-        >
-          {t('formatter.jsonView.action.collapseAll')}
-        </button>
-      </div>
-      <div style={previewStyle}>
+    <div style={previewStyle}>
         <JsonCodeNode
           value={value}
           path="root"
@@ -384,9 +342,26 @@ export function JsonCodeView(props: JsonCodeViewProps) {
                 {t('formatter.jsonView.action.copyFieldName')}
               </button>
             ) : null}
+            {isStringValue ? (
+              <button
+                type="button"
+                onClick={() => copyText(String(contextMenu.value), t('formatter.jsonView.copyStringValueSuccess'))}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  border: 0,
+                  background: 'transparent',
+                  padding: '8px 10px',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                }}
+              >
+                {t('formatter.jsonView.action.copyStringValue')}
+              </button>
+            ) : null}
           </div>
         ) : null}
-      </div>
     </div>
   );
 }

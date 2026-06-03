@@ -4,19 +4,12 @@ import type { ReactNode } from 'react';
 import type { Locale } from '@volix/i18n';
 import { useI18n } from '@/i18n';
 import { useNavigate } from 'react-router';
-import { useUser } from '@/hooks';
+import { useIsMobile, useUser } from '@/hooks';
 import { clearAuthToken, isAuthenticated } from '@/utils';
 import { useGlobalConfigStore } from '@/stores';
 import { setAppTheme } from '@/utils/theme';
+import { buildHeaderDropdownItems, type HeaderDropdownItem } from './menu-items';
 import styles from './index.module.scss';
-
-interface HeaderMenuItem {
-  key: string;
-  label: string;
-  icon?: ReactNode;
-  type?: 'danger' | 'primary' | 'secondary' | 'tertiary' | 'warning';
-  onClick: () => void;
-}
 
 interface AppHeaderProps {
   title: ReactNode;
@@ -24,7 +17,7 @@ interface AppHeaderProps {
   logo: ReactNode;
   onLogoClick?: () => void;
   beforeLogo?: ReactNode;
-  menuItems?: HeaderMenuItem[];
+  menuItems?: HeaderDropdownItem[];
   showUserName?: boolean;
   userBadge?: ReactNode;
   userOverride?: {
@@ -53,6 +46,7 @@ export function AppHeader(props: AppHeaderProps) {
   const navigate = useNavigate();
   const { locale, setLocale, t } = useI18n();
   const { user } = useUser(false);
+  const isMobile = useIsMobile();
   const authed = isAuthenticated();
   const theme = useGlobalConfigStore(state => state.config.theme);
   const nextLocale = getNextLocale(locale);
@@ -61,9 +55,10 @@ export function AppHeader(props: AppHeaderProps) {
     { value: 'en-US', label: t('header.locale.enUs') },
   ];
   const currentLocaleLabel = localeOptions.find(item => item.value === locale)?.label || locale;
+  const nextTheme = theme === 'dark' ? 'light' : 'dark';
 
   const currentUser = userOverride || user;
-  const defaultMenuItems: HeaderMenuItem[] = authed
+  const defaultMenuItems: HeaderDropdownItem[] = authed
     ? [
         {
           key: 'setting',
@@ -84,6 +79,31 @@ export function AppHeader(props: AppHeaderProps) {
       ]
     : [];
   const resolvedMenuItems = menuItems.length > 0 ? menuItems : defaultMenuItems;
+  const localeMenuItem: HeaderDropdownItem = {
+    key: 'locale',
+    label: t(nextLocale === 'zh-CN' ? 'header.locale.switchToZhCn' : 'header.locale.switchToEnUs'),
+    onClick: () => setLocale(nextLocale),
+  };
+  const themeMenuItem: HeaderDropdownItem = {
+    key: 'theme',
+    label: t(theme === 'dark' ? 'header.theme.switchToLight' : 'header.theme.switchToDark'),
+    icon: theme === 'dark' ? <IconSun /> : <IconMoon />,
+    onClick: () => setAppTheme(nextTheme),
+  };
+  const loginMenuItem: HeaderDropdownItem = {
+    key: 'login',
+    label: t({ id: 'header.menu.login', defaultMessage: '去登录' }),
+    icon: <IconSetting />,
+    onClick: () => navigate('/auth'),
+  };
+  const dropdownItems = buildHeaderDropdownItems({
+    isMobile,
+    authed,
+    menuItems: resolvedMenuItems,
+    localeItem: localeMenuItem,
+    themeItem: themeMenuItem,
+    loginItem: loginMenuItem,
+  });
   const dropdownContent = (
     <div
       style={{
@@ -96,16 +116,11 @@ export function AppHeader(props: AppHeaderProps) {
       }}
     >
       <Dropdown.Menu>
-        {resolvedMenuItems.map(item => (
+        {dropdownItems.map(item => (
           <Dropdown.Item key={item.key} icon={item.icon} type={item.type} onClick={item.onClick}>
             {item.label}
           </Dropdown.Item>
         ))}
-        {!authed ? (
-          <Dropdown.Item icon={<IconSetting />} onClick={() => navigate('/auth')}>
-            {t({ id: 'header.menu.login', defaultMessage: '去登录' })}
-          </Dropdown.Item>
-        ) : null}
       </Dropdown.Menu>
     </div>
   );
@@ -140,29 +155,33 @@ export function AppHeader(props: AppHeaderProps) {
       }}
       footer={
         <div className={styles.headerTools}>
-          <button
-            type="button"
-            className={styles.localeButton}
-            title={currentLocaleLabel}
-            aria-label={t(nextLocale === 'zh-CN' ? 'header.locale.switchToZhCn' : 'header.locale.switchToEnUs')}
-            onClick={() => setLocale(nextLocale)}
-          >
-            <span className={styles.localeGlyph} aria-hidden="true">
-              <span className={styles.localeGlyphLatin}>A</span>
-              <span className={styles.localeGlyphCjk}>文</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            className={`${styles.themeToggle} ${theme === 'dark' ? styles.themeToggleDark : ''}`}
-            title={t(theme === 'dark' ? 'header.theme.currentDark' : 'header.theme.currentLight')}
-            aria-label={t(theme === 'dark' ? 'header.theme.switchToLight' : 'header.theme.switchToDark')}
-            onClick={() => setAppTheme(theme === 'dark' ? 'light' : 'dark')}
-          >
-            <span className={styles.themeTrackIcon}>
-              {theme === 'dark' ? <IconMoon size="small" /> : <IconSun size="small" />}
-            </span>
-          </button>
+          {!isMobile ? (
+            <>
+              <button
+                type="button"
+                className={styles.localeButton}
+                title={currentLocaleLabel}
+                aria-label={t(nextLocale === 'zh-CN' ? 'header.locale.switchToZhCn' : 'header.locale.switchToEnUs')}
+                onClick={() => setLocale(nextLocale)}
+              >
+                <span className={styles.localeGlyph} aria-hidden="true">
+                  <span className={styles.localeGlyphLatin}>A</span>
+                  <span className={styles.localeGlyphCjk}>文</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.themeToggle} ${theme === 'dark' ? styles.themeToggleDark : ''}`}
+                title={t(theme === 'dark' ? 'header.theme.currentDark' : 'header.theme.currentLight')}
+                aria-label={t(theme === 'dark' ? 'header.theme.switchToLight' : 'header.theme.switchToDark')}
+                onClick={() => setAppTheme(nextTheme)}
+              >
+                <span className={styles.themeTrackIcon}>
+                  {theme === 'dark' ? <IconMoon size="small" /> : <IconSun size="small" />}
+                </span>
+              </button>
+            </>
+          ) : null}
           <Dropdown trigger="click" position="bottomRight" render={dropdownContent}>
             {authed ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 0 }}>

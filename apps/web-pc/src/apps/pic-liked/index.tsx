@@ -5,6 +5,8 @@ import type { Liked115PicItem } from '@volix/types';
 import { get115LikedPics, like115Pic } from '@/services/115';
 import { getHttpErrorMessage } from '@/utils/error';
 import { useI18n } from '@/i18n';
+import { useIsMobile } from '@/hooks';
+import { shouldUseLikedWallCompactLayout } from './layout';
 import styles from './index.module.scss';
 
 type LikedPicCard = Liked115PicItem;
@@ -166,6 +168,7 @@ function LikedPicWallItem({
 
 function PicLikedApp() {
   const { t } = useI18n();
+  const isMobile = useIsMobile();
   const [list, setList] = useState<LikedPicCard[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -191,6 +194,7 @@ function PicLikedApp() {
   }, [list]);
 
   const hasMore = list.length < total;
+  const useCompactWall = shouldUseLikedWallCompactLayout(list.length, isMobile);
 
   const fetchPage = useCallback(async (nextOffset: number, append: boolean) => {
     if (loadingRef.current) {
@@ -367,7 +371,7 @@ function PicLikedApp() {
         <Empty title={t('picLiked.empty.title')} description={t('picLiked.empty.description')} />
       ) : (
         <>
-          <div className={styles.wall}>
+          <div className={`${styles.wall} ${useCompactWall ? styles.wallCompact : ''}`}>
             {list.map(item => (
               <LikedPicWallItem
                 key={item.pc}

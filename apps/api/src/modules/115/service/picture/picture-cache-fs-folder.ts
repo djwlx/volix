@@ -1,7 +1,6 @@
 import type { PicCacheFolderItem } from '@volix/types';
 import fs from 'fs';
 import path from 'path';
-import { pipeline } from 'stream/promises';
 import mime from 'mime-types';
 import { isCloud115InvalidDownloadPayloadError } from '../../../../sdk/115';
 import { AppConfigEnum } from '../../../config/model/config.model';
@@ -10,7 +9,6 @@ import { badRequest } from '../../../shared/http-handler';
 import { calculateTimeDifference, waitTime } from '../../../../utils/date';
 import { lightLocks } from '../../../../utils/light-lock';
 import { log } from '../../../../utils/logger';
-import request from '../../../../utils/request';
 import { getRequestActingUserId } from '../../../../utils/request-context';
 import type { Cloud115DbFileItem } from '../../types/115.types';
 import { get115FileData } from '../file.service';
@@ -39,6 +37,7 @@ import {
   sanitizeCacheFileName,
   setRandomCacheMetaByPc,
 } from './picture-cache-random-core';
+import { downloadPicCacheToTempFile } from './picture-cache-download';
 import { evictUnifiedPicCacheToFit, getUnifiedPicCacheUsage } from './picture-cache-unified';
 
 export const getLocalPicCacheFileList = async () => {
@@ -315,6 +314,7 @@ export const ensureLocalPicCacheByFile = async (file: Cloud115DbFileItem, userAg
   if (!url) {
     badRequest('未获取到图片下载链接');
   }
+  const proxyConfig = await getRandomCacheConfig();
 
   await fs.promises.mkdir(getLikedPicCacheDir(), { recursive: true });
 
@@ -323,25 +323,15 @@ export const ensureLocalPicCacheByFile = async (file: Cloud115DbFileItem, userAg
   const tempPath = `${targetPath}.tmp`;
   const mimeType = mime.lookup(fileName) || DEFAULT_MIME_TYPE;
 
-  try {
-    const response = await request.get(url, {
-      responseType: 'stream',
-      headers: {
-        'User-Agent': userAgent || DEFAULT_115_DOWNLOAD_UA,
-      },
-    });
-
-    await clearLocalPicCacheByPc(file.pc);
-    await pipeline(response.data, fs.createWriteStream(tempPath));
-    await fs.promises.rename(tempPath, targetPath);
-    await setFile115LocalCacheFileNameByPc(file.pc, targetFileName);
-  } catch (error) {
-    await fs.promises
-      .access(tempPath, fs.constants.F_OK)
-      .then(() => fs.promises.unlink(tempPath))
-      .catch(() => undefined);
-    throw error;
-  }
+  await clearLocalPicCacheByPc(file.pc);
+  await downloadPicCacheToTempFile({
+    originUrl: url,
+    cloudProxyUrl: proxyConfig.cloudProxyUrl,
+    userAgent,
+    tempPath,
+  });
+  await fs.promises.rename(tempPath, targetPath);
+  await setFile115LocalCacheFileNameByPc(file.pc, targetFileName);
 
   return {
     pc: file.pc,
@@ -426,59 +416,47 @@ export const ensureRandomLocalPicCacheByFile = async (
   const tempPath = `${targetPath}.tmp`;
   await clearLocalRandomPicCacheByPc(file.pc, targetFileName);
 
-  try {
-    const response = await request.get(url, {
-      responseType: 'stream',
-      headers: {
-        'User-Agent': userAgent || DEFAULT_115_DOWNLOAD_UA,
-      },
+  const { sizeBytes: tempSizeBytes } = await downloadPicCacheToTempFile({
+    originUrl: url,
+    cloudProxyUrl: config.cloudProxyUrl,
+    userAgent: userAgent || DEFAULT_115_DOWNLOAD_UA,
+    tempPath,
+  });
+  if (!force) {
+    const usageAfterEvict = await evictUnifiedPicCacheToFit({
+      maxSizeBytes,
+      reserveSizeBytes: tempSizeBytes,
+      keepPc: file.pc,
     });
-
-    await pipeline(response.data, fs.createWriteStream(tempPath));
-    const stat = await fs.promises.stat(tempPath);
-    const tempSizeBytes = Number(stat.size || 0);
-    if (!force) {
-      const usageAfterEvict = await evictUnifiedPicCacheToFit({
-        maxSizeBytes,
-        reserveSizeBytes: tempSizeBytes,
-        keepPc: file.pc,
-      });
-      if (usageAfterEvict.totalSizeBytes + tempSizeBytes > maxSizeBytes) {
-        await fs.promises.unlink(tempPath).catch(() => undefined);
-        return undefined;
-      }
+    if (usageAfterEvict.totalSizeBytes + tempSizeBytes > maxSizeBytes) {
+      await fs.promises.unlink(tempPath).catch(() => undefined);
+      return undefined;
     }
-
-    await fs.promises.rename(tempPath, targetPath);
-    await setRandomCacheMetaByPc(file.pc, {
-      pc: file.pc,
-      cid: file.cid,
-      path: file.fullPath || '',
-      parentPath: file.fullPath ? path.posix.dirname(file.fullPath) : '',
-      liked: Boolean(file.isLiked),
-      fileName: sanitizeCacheFileName(fileName),
-      mimeType: String(mime.lookup(fileName) || DEFAULT_MIME_TYPE),
-      localCacheFileName: targetFileName,
-      updatedAtMs: Date.now(),
-    });
-    await setFile115LocalCacheFileNameByPc(file.pc, targetFileName);
-    return {
-      pc: file.pc,
-      localCacheFileName: targetFileName,
-      filePath: targetPath,
-      fileName: sanitizeCacheFileName(fileName),
-      mimeType: String(mime.lookup(fileName) || DEFAULT_MIME_TYPE),
-      updatedAtMs: Date.now(),
-      sizeBytes: tempSizeBytes,
-      url: getRandomPicCachePublicUrl(targetFileName),
-    };
-  } catch (error) {
-    await fs.promises
-      .access(tempPath, fs.constants.F_OK)
-      .then(() => fs.promises.unlink(tempPath))
-      .catch(() => undefined);
-    throw error;
   }
+
+  await fs.promises.rename(tempPath, targetPath);
+  await setRandomCacheMetaByPc(file.pc, {
+    pc: file.pc,
+    cid: file.cid,
+    path: file.fullPath || '',
+    parentPath: file.fullPath ? path.posix.dirname(file.fullPath) : '',
+    liked: Boolean(file.isLiked),
+    fileName: sanitizeCacheFileName(fileName),
+    mimeType: String(mime.lookup(fileName) || DEFAULT_MIME_TYPE),
+    localCacheFileName: targetFileName,
+    updatedAtMs: Date.now(),
+  });
+  await setFile115LocalCacheFileNameByPc(file.pc, targetFileName);
+  return {
+    pc: file.pc,
+    localCacheFileName: targetFileName,
+    filePath: targetPath,
+    fileName: sanitizeCacheFileName(fileName),
+    mimeType: String(mime.lookup(fileName) || DEFAULT_MIME_TYPE),
+    updatedAtMs: Date.now(),
+    sizeBytes: tempSizeBytes,
+    url: getRandomPicCachePublicUrl(targetFileName),
+  };
 };
 
 export const ensureRandomLocalPicCacheByFileAsync = (file: Cloud115DbFileItem, userAgent: string) => {

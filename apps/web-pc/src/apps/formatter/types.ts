@@ -1,4 +1,5 @@
 export type FormatType = 'json' | 'xml' | 'base64';
+export type FormatSourceMode = 'direct' | 'decoded-base64' | 'encoded-base64';
 export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 export type NestedSource = 'direct' | 'base64';
 
@@ -12,4 +13,5 @@ export interface FormatResult {
   formatted: string;
   parsedJson?: JsonValue;
   detailType?: 'json' | 'xml' | 'text';
+  sourceMode: FormatSourceMode;
 }

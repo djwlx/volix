@@ -87,6 +87,7 @@ export const router = createBrowserRouter([
         path: 'formatter',
         Component: FormatterApp,
         handle: routeHandle({
+          contentSpacing: 'flush',
           appHeader: {
             title: msg('route.formatter.title', '智能格式化'),
             description: msg('route.formatter.description', '支持 JSON、XML、Base64 的智能识别、递归解码和结构化查看'),
