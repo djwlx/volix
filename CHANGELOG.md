@@ -1,5 +1,47 @@
 # Changelog
 
+## [1.1.6] - 2026-06-03
+
+### 中文
+#### Added
+- 新增图片缓存下载功能及相关测试
+- 新增图片下载URL生成功能及相关测试
+- 新增图片设置统计功能及相关测试
+- 新增格式化器面板状态管理及相关测试
+- 新增格式化器卡片样式模块
+- 新增图片喜欢布局组件及相关测试
+- 新增应用头部菜单项组件及相关测试
+#### Changed
+- 优化图片缓存随机核心逻辑
+- 重构图片缓存文件系统文件夹处理
+- 改进格式化器卡片组件和JSON代码视图
+- 更新图片设置页面
+- 更新图片喜欢页面样式
+- 更新应用头部组件
+- 更新路由配置
+- 更新国际化翻译（中英文）
+- 更新多个包的依赖版本
+
+### English
+#### Added
+- Added picture cache download feature and related tests
+- Added picture download URL generation feature and related tests
+- Added picture setting statistics feature and related tests
+- Added formatter panel state management and related tests
+- Added formatter card style module
+- Added picture liked layout component and related tests
+- Added app header menu items component and related tests
+#### Changed
+- Optimized picture cache random core logic
+- Refactored picture cache filesystem folder handling
+- Improved formatter card component and JSON code view
+- Updated picture settings page
+- Updated picture liked page styles
+- Updated app header component
+- Updated router configuration
+- Updated i18n translations (Chinese and English)
+- Updated dependency versions of multiple packages
+
 ## [1.1.5] - 2026-06-03
 
 ### 中文
