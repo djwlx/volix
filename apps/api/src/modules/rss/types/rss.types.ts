@@ -92,10 +92,16 @@ export interface CreateUserRssSubscriptionPayload {
   name?: string;
 }
 
+export interface UpdateUserRssSubscriptionEnabledPayload {
+  route: string;
+  enabled: boolean;
+}
+
 export interface UserRssSubscriptionItem {
   id: number;
   route: string;
   name?: string;
+  enabled: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

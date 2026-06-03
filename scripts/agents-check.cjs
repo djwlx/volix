@@ -8,6 +8,9 @@ const MAX_CODE_LINES = 500;
 const MAX_DIR_CHILDREN = 50;
 
 const CODE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.cjs', '.mjs', '.css', '.scss', '.html']);
+const LINE_COUNT_WHITELIST = [
+  `${path.sep}packages${path.sep}i18n${path.sep}src${path.sep}locales${path.sep}`,
+];
 
 const SKIP_PATH_SEGMENTS = [
   `${path.sep}.git${path.sep}`,
@@ -25,6 +28,10 @@ const isSkippedPath = filePath => {
 
 const isCodeFile = fileName => {
   return CODE_EXTENSIONS.has(path.extname(fileName));
+};
+
+const isLineCountWhitelisted = filePath => {
+  return LINE_COUNT_WHITELIST.some(segment => filePath.includes(segment));
 };
 
 const countLines = filePath => {
@@ -72,6 +79,9 @@ const walk = dirPath => {
       continue;
     }
     if (isSkippedPath(fullPath)) {
+      continue;
+    }
+    if (isLineCountWhitelisted(fullPath)) {
       continue;
     }
 

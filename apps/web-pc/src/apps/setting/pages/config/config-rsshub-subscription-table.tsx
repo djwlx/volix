@@ -16,8 +16,10 @@ interface SubscriptionTableProps {
   subscriptions: UserRssSubscriptionItem[];
   routeStatsMap: Map<string, RouteStat>;
   clearingRouteHistory: string;
+  togglingRouteEnabled: string;
   onDeleteRoute: (route: string) => void;
   onOpenClearRouteHistoryModal: (route: string) => void;
+  onToggleRouteEnabled: (route: string, enabled: boolean) => void;
   formatBytes: (value: number) => string;
   formatTime: (value: string) => string;
 }
@@ -32,14 +34,17 @@ type SubscriptionRow = {
   storageSizeBytes: number;
   lastUpdatedAt: string;
   nextUpdateAt: string;
+  enabled: boolean;
 };
 
 export function RssSubscriptionTable({
   subscriptions,
   routeStatsMap,
   clearingRouteHistory,
+  togglingRouteEnabled,
   onDeleteRoute,
   onOpenClearRouteHistoryModal,
+  onToggleRouteEnabled,
   formatBytes,
   formatTime,
 }: SubscriptionTableProps) {
@@ -59,6 +64,7 @@ export function RssSubscriptionTable({
         storageSizeBytes: routeStat?.storageSizeBytes || 0,
         lastUpdatedAt: routeStat?.lastUpdatedAt || '',
         nextUpdateAt: routeStat?.nextUpdateAt || '',
+        enabled: item.enabled !== false,
       };
     });
   }, [routeStatsMap, subscriptions]);
@@ -73,8 +79,10 @@ export function RssSubscriptionTable({
           <div style={{ display: 'grid', gap: 4 }}>
             <Space spacing={8} align="center" wrap>
               <Typography.Text strong>{record.title}</Typography.Text>
-              <Tag size="small" color={record.pendingCount > 0 ? 'orange' : 'green'}>
-                {record.pendingCount > 0
+              <Tag size="small" color={!record.enabled ? 'grey' : record.pendingCount > 0 ? 'orange' : 'green'}>
+                {!record.enabled
+                  ? t('setting.rss.table.statusPaused')
+                  : record.pendingCount > 0
                   ? t('setting.rss.table.pendingCount', { count: record.pendingCount })
                   : t('setting.rss.table.statusNormal')}
               </Tag>
@@ -123,7 +131,9 @@ export function RssSubscriptionTable({
               {t('setting.rss.table.lastUpdatedAt', { time: formatTime(record.lastUpdatedAt) })}
             </Typography.Text>
             <Typography.Text size="small" type="tertiary">
-              {t('setting.rss.table.nextUpdatedAt', { time: formatTime(record.nextUpdateAt) })}
+              {record.enabled
+                ? t('setting.rss.table.nextUpdatedAt', { time: formatTime(record.nextUpdateAt) })
+                : t('setting.rss.table.nextUpdatePaused')}
             </Typography.Text>
           </div>
         ),
@@ -135,6 +145,14 @@ export function RssSubscriptionTable({
         width: 180,
         render: (_: unknown, record: SubscriptionRow) => (
           <Space spacing={8}>
+            <Button
+              theme="borderless"
+              size="small"
+              loading={togglingRouteEnabled === record.route}
+              onClick={() => onToggleRouteEnabled(record.route, !record.enabled)}
+            >
+              {record.enabled ? t('setting.rss.table.pause') : t('setting.rss.table.enable')}
+            </Button>
             <Popconfirm
               title={t('setting.rss.table.deleteConfirmTitle')}
               content={t('setting.rss.table.deleteConfirmDescription')}
@@ -156,7 +174,15 @@ export function RssSubscriptionTable({
         ),
       },
     ];
-  }, [clearingRouteHistory, formatBytes, formatTime, onDeleteRoute, onOpenClearRouteHistoryModal]);
+  }, [
+    clearingRouteHistory,
+    formatBytes,
+    formatTime,
+    onDeleteRoute,
+    onOpenClearRouteHistoryModal,
+    onToggleRouteEnabled,
+    togglingRouteEnabled,
+  ]);
 
   return (
     <div

@@ -10,6 +10,7 @@ import {
   getUserRssSetting,
   getUserRssSubscriptions,
   removeUserRssSubscription,
+  updateUserRssSubscriptionEnabled,
   updateUserRssSetting,
 } from '@/services/rss';
 import { getHttpErrorMessage } from '@/utils/error';
@@ -60,6 +61,7 @@ function SettingConfigRsshubApp() {
   const [savingSetting, setSavingSetting] = useState(false);
   const [addingRoute, setAddingRoute] = useState(false);
   const [clearingRouteHistory, setClearingRouteHistory] = useState('');
+  const [togglingRouteEnabled, setTogglingRouteEnabled] = useState('');
   const [routeInput, setRouteInput] = useState('');
   const [subscriptions, setSubscriptions] = useState<UserRssSubscriptionItem[]>([]);
   const [formApi, setFormApi] = useState<FormApi<Record<string, unknown>>>();
@@ -238,6 +240,33 @@ function SettingConfigRsshubApp() {
     }
   };
 
+  const onToggleRouteEnabled = async (route: string, enabled: boolean) => {
+    setTogglingRouteEnabled(route);
+    try {
+      const res = await updateUserRssSubscriptionEnabled({ route, enabled });
+      setSubscriptions(prev => prev.map(item => (item.route === route ? res.data : item)));
+      await refreshStorage();
+      Toast.success(
+        t({
+          id: enabled ? 'setting.rss.subscriptionEnabled' : 'setting.rss.subscriptionDisabled',
+          defaultMessage: enabled ? '订阅已启用' : '订阅已暂停',
+        })
+      );
+    } catch (error) {
+      Toast.error(
+        getHttpErrorMessage(
+          error,
+          t({
+            id: enabled ? 'setting.rss.subscriptionEnableFailed' : 'setting.rss.subscriptionDisableFailed',
+            defaultMessage: enabled ? '启用订阅失败' : '暂停订阅失败',
+          })
+        )
+      );
+    } finally {
+      setTogglingRouteEnabled('');
+    }
+  };
+
   const onOpenClearRouteHistoryModal = (route: string) => {
     const routeItemCount = Number(routeStatsMap.get(route)?.itemCount || 0);
     if (routeItemCount <= 1) {
@@ -377,8 +406,10 @@ function SettingConfigRsshubApp() {
               subscriptions={subscriptions}
               routeStatsMap={routeStatsMap}
               clearingRouteHistory={clearingRouteHistory}
+              togglingRouteEnabled={togglingRouteEnabled}
               onDeleteRoute={onDeleteRoute}
               onOpenClearRouteHistoryModal={onOpenClearRouteHistoryModal}
+              onToggleRouteEnabled={onToggleRouteEnabled}
               formatBytes={formatBytes}
               formatTime={formatTime}
             />

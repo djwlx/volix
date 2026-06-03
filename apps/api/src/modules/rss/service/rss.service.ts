@@ -1,6 +1,6 @@
 import request from '../../../utils/request';
 import { log } from '../../../utils/logger';
-import { badRequest, unauthorized } from '../../shared/http-handler';
+import { badRequest } from '../../shared/http-handler';
 import {
   getCachedResourceByKey,
   parseResourceCacheSizeMb,
@@ -9,10 +9,11 @@ import {
 import { queryUser, updateUser } from '../../user/service/user.service';
 import { parseRssFeedItemsFromXml } from './rss-feed-item-parser.service';
 import {
+  isUserRssSubscriptionEnabled,
   listUserRssSubscriptionStates,
   removeUserRssSubscriptionState,
+  updateUserRssSubscriptionEnabled,
   upsertUserRssSubscriptionState,
-  type UserRssSubscriptionStateRow,
 } from './rss-feed-db.service';
 import {
   clearRssStorage,
@@ -31,12 +32,14 @@ import type {
   RssStorageStatusPayload,
   RssFeedPayload,
   UpdateUserRssSettingPayload,
+  UpdateUserRssSubscriptionEnabledPayload,
   UserRssSettingPayload,
   UserRssSubscriptionItem,
 } from '../types/rss.types';
 import type { AxiosError, AxiosResponse } from 'axios';
 import { parseUserRssConfig } from './rss-user-config.service';
 import { t } from '../../../utils/i18n';
+import { getCurrentUserId, mapSubscriptionItem, normalizeSubscriptionName } from './rss-subscription-utils.service';
 const DEFAULT_RSS_HUB = 'https://rsshub.app';
 const DEFAULT_RESOURCE_PROXY_BASE_URL = '';
 const DEFAULT_RESOURCE_CACHE_SIZE_MB = 0;
@@ -112,36 +115,10 @@ const parseForceRefreshFlag = (value: unknown): boolean => {
     .toLowerCase();
   return text === '1' || text === 'true' || text === 'yes';
 };
-const normalizeSubscriptionName = (name: string): string => {
-  const normalized = String(name || '').trim();
-  if (!normalized) {
-    return '';
-  }
-  return normalized.slice(0, 255);
-};
-const getCurrentUserId = (rawUserId: string | number | undefined): string => {
-  const userId = String(rawUserId || '').trim();
-  if (!userId) {
-    unauthorized(t('auth.unauthorized'));
-  }
-  return userId;
-};
-const mapSubscriptionItem = (row: UserRssSubscriptionStateRow): UserRssSubscriptionItem => {
-  const route = String(row.route || '');
-  const name = normalizeSubscriptionName(String(row.name || ''));
-  return {
-    id: Number(row.id || 0),
-    route,
-    name: name || route,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
-};
+
 export async function getUserRssSetting(userId: string | number | undefined): Promise<UserRssSettingPayload> {
   const normalizedUserId = getCurrentUserId(userId);
-  const setting = await queryUser({
-    id: normalizedUserId,
-  });
+  const setting = await queryUser({ id: normalizedUserId });
   const rssConfig = parseUserRssConfig(setting?.dataValues.rss_config);
   return {
     host: normalizeHost(String(rssConfig.host || DEFAULT_RSS_HUB)),
@@ -169,12 +146,7 @@ export async function updateUserRssSetting(
       refreshIntervalMinutes,
     }),
   });
-  return {
-    host,
-    resourceProxyBaseUrl,
-    resourceCacheMaxSizeMb,
-    refreshIntervalMinutes,
-  };
+  return { host, resourceProxyBaseUrl, resourceCacheMaxSizeMb, refreshIntervalMinutes };
 }
 export async function listUserRssSubscriptions(
   userId: string | number | undefined
@@ -252,9 +224,25 @@ export async function removeUserRssSubscription(userId: string | number | undefi
   const route = normalizeRoute(routeValue);
   await clearRssSubscriptionStorage(normalizedUserId, route);
   await removeUserRssSubscriptionState(normalizedUserId, route);
-  return {
-    route,
-  };
+  return { route };
+}
+export async function setUserRssSubscriptionEnabled(
+  userId: string | number | undefined,
+  payload: UpdateUserRssSubscriptionEnabledPayload
+): Promise<UserRssSubscriptionItem> {
+  const normalizedUserId = getCurrentUserId(userId);
+  const route = normalizeRoute(payload?.route || '');
+  const enabled = payload?.enabled !== false;
+  const updated = await updateUserRssSubscriptionEnabled(normalizedUserId, route, enabled);
+  if (!updated) {
+    badRequest(t('rssApi.subscriptionNotFound'));
+  }
+  const rows = await listUserRssSubscriptionStates(normalizedUserId);
+  const current = rows.find(item => item.route === route);
+  if (!current) {
+    badRequest(t('rssApi.subscriptionNotFound'));
+  }
+  return mapSubscriptionItem(current!);
 }
 const resolveFeedUrl = async (
   params: GetRssFeedParams,
@@ -369,6 +357,10 @@ const refreshRssFeedInBackground = (params: {
   }
   const job = (async () => {
     try {
+      const autoRefreshEnabled = await isUserRssSubscriptionEnabled(params.userId, params.route);
+      if (!autoRefreshEnabled) {
+        return;
+      }
       const pending = await hasPendingRssFeedTask({
         userId: params.userId,
         route: params.route,
@@ -396,14 +388,12 @@ const refreshRssFeedInBackground = (params: {
   });
   rssFeedRefreshJobMap.set(normalizedFeedUrl, job);
 };
-const buildDefaultRssSetting = (): UserRssSettingPayload => {
-  return {
-    host: DEFAULT_RSS_HUB,
-    resourceProxyBaseUrl: DEFAULT_RESOURCE_PROXY_BASE_URL,
-    resourceCacheMaxSizeMb: DEFAULT_RESOURCE_CACHE_SIZE_MB,
-    refreshIntervalMinutes: DEFAULT_REFRESH_INTERVAL_MINUTES,
-  };
-};
+const buildDefaultRssSetting = (): UserRssSettingPayload => ({
+  host: DEFAULT_RSS_HUB,
+  resourceProxyBaseUrl: DEFAULT_RESOURCE_PROXY_BASE_URL,
+  resourceCacheMaxSizeMb: DEFAULT_RESOURCE_CACHE_SIZE_MB,
+  refreshIntervalMinutes: DEFAULT_REFRESH_INTERVAL_MINUTES,
+});
 export async function fetchRssFeed(params: GetRssFeedParams, userId?: string | number): Promise<RssFeedPayload> {
   if (userId === undefined || userId === null) {
     return fetchRssFeedFromUpstream({
@@ -411,7 +401,6 @@ export async function fetchRssFeed(params: GetRssFeedParams, userId?: string | n
       setting: buildDefaultRssSetting(),
     });
   }
-
   const normalizedUserId = getCurrentUserId(userId);
   const normalizedRoute = normalizeRoute(String(params.route || ''));
   const forceRefresh = parseForceRefreshFlag(params.force);
@@ -419,6 +408,7 @@ export async function fetchRssFeed(params: GetRssFeedParams, userId?: string | n
   const feedUrl = await resolveFeedUrl(params, normalizedUserId, currentSetting.host);
   const staleMs = normalizeRefreshIntervalMinutes(currentSetting.refreshIntervalMinutes) * 60 * 1000;
   const pending = await hasPendingRssFeedTask({ userId: normalizedUserId, route: normalizedRoute, feedUrl });
+  const autoRefreshEnabled = await isUserRssSubscriptionEnabled(normalizedUserId, normalizedRoute);
   if (forceRefresh) {
     if (pending) {
       void startRssPendingQueue();
@@ -437,7 +427,7 @@ export async function fetchRssFeed(params: GetRssFeedParams, userId?: string | n
   if (processedPayload) {
     const fetchedAtMs = Date.parse(String(processedPayload.fetchedAt || ''));
     const processedAgeMs = Number.isNaN(fetchedAtMs) ? Number.POSITIVE_INFINITY : Math.max(0, Date.now() - fetchedAtMs);
-    if (processedAgeMs > staleMs) {
+    if (autoRefreshEnabled && processedAgeMs > staleMs) {
       if (pending) {
         void startRssPendingQueue();
       } else {
@@ -456,6 +446,17 @@ export async function fetchRssFeed(params: GetRssFeedParams, userId?: string | n
     void startRssPendingQueue();
     return getRssPendingFeedPlaceholder(feedUrl);
   }
+  if (!autoRefreshEnabled) {
+    return (
+      processedPayload || {
+        feedUrl,
+        contentType: 'application/rss+xml',
+        fetchedAt: new Date(0).toISOString(),
+        xml: '<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel></channel></rss>',
+        items: [],
+      }
+    );
+  }
   return fetchAndCacheRssFeed({
     userId: normalizedUserId,
     route: normalizedRoute,
@@ -464,11 +465,9 @@ export async function fetchRssFeed(params: GetRssFeedParams, userId?: string | n
     setting: currentSetting,
   });
 }
-
 export async function getRssStorageData(userId: string | number | undefined): Promise<RssStorageStatusPayload> {
   return getRssStorageStatus(getCurrentUserId(userId));
 }
-
 export async function clearRssStorageData(
   userId: string | number | undefined,
   payload?: ClearRssStoragePayload

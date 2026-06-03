@@ -7,6 +7,7 @@ import {
   getUserRssSetting,
   listUserRssSubscriptions,
   removeUserRssSubscription,
+  setUserRssSubscriptionEnabled,
   updateUserRssSetting,
 } from '../service/rss.service';
 import fs from 'fs';
@@ -19,6 +20,7 @@ import type {
   CreateUserRssSubscriptionPayload,
   GetRssFeedParams,
   UpdateUserRssSettingPayload,
+  UpdateUserRssSubscriptionEnabledPayload,
 } from '../types/rss.types';
 
 export const getRssFeed: MyMiddleware = async ctx => {
@@ -47,6 +49,11 @@ export const addCurrentUserRssSubscription: MyMiddleware = async ctx => {
 export const removeCurrentUserRssSubscription: MyMiddleware = async ctx => {
   const route = String(ctx.query.route || '');
   return removeUserRssSubscription(ctx.state.userInfo?.id, route);
+};
+
+export const updateCurrentUserRssSubscriptionEnabled: MyMiddleware = async ctx => {
+  const body = (ctx.request.body || {}) as UpdateUserRssSubscriptionEnabledPayload;
+  return setUserRssSubscriptionEnabled(ctx.state.userInfo?.id, body);
 };
 
 export const getRssStorage: MyMiddleware = async ctx => {

@@ -91,6 +91,7 @@ export interface UserRssSubscriptionItem {
   id: number;
   route: string;
   name?: string;
+  enabled: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -98,4 +99,9 @@ export interface UserRssSubscriptionItem {
 export interface CreateUserRssSubscriptionPayload {
   route: string;
   name?: string;
+}
+
+export interface UpdateUserRssSubscriptionEnabledPayload {
+  route: string;
+  enabled: boolean;
 }

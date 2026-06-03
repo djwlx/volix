@@ -35,6 +35,7 @@ export interface UserRssSubscriptionStateRow {
   route: string;
   name: string;
   feedUrl: string;
+  enabled: boolean;
   lastFetchedAt?: string;
   lastProcessedAt?: string;
   createdAt?: string;
@@ -156,6 +157,7 @@ export const upsertUserRssFeedState = async (params: UpsertUserRssFeedStateParam
       last_processed_at: new Date().toISOString(),
       last_source_hash: sourceHash,
       is_subscribed: false,
+      enabled: true,
     });
     return;
   }
@@ -199,6 +201,7 @@ export const listUserRssSubscriptionStates = async (userId: string): Promise<Use
     route: String(row.dataValues.route || ''),
     name: String(row.dataValues.name || ''),
     feedUrl: String(row.dataValues.feed_url || ''),
+    enabled: row.dataValues.enabled !== false,
     lastFetchedAt: String(row.dataValues.last_fetched_at || ''),
     lastProcessedAt: String(row.dataValues.last_processed_at || ''),
     createdAt: row.dataValues.created_at,
@@ -211,6 +214,7 @@ export const listAllRssSubscriptionStates = async (): Promise<Array<{ userId: st
     attributes: ['user_id', 'route'],
     where: {
       is_subscribed: true,
+      enabled: true,
     },
   });
   return rows
@@ -253,6 +257,7 @@ export const upsertUserRssSubscriptionState = async (params: {
       last_processed_at: '',
       last_source_hash: '',
       is_subscribed: true,
+      enabled: true,
     });
     return created;
   }
@@ -260,9 +265,52 @@ export const upsertUserRssSubscriptionState = async (params: {
     name: name || current.dataValues.name || route,
     feed_url: String(current.dataValues.feed_url || '').trim() || feedUrl,
     is_subscribed: true,
+    enabled: current.dataValues.enabled !== false,
   });
   await current.save();
   return current;
+};
+
+export const updateUserRssSubscriptionEnabled = async (userId: string, route: string, enabled: boolean) => {
+  const normalizedUserId = String(userId || '').trim();
+  const normalizedRoute = String(route || '').trim();
+  if (!normalizedUserId || !normalizedRoute) {
+    return null;
+  }
+  const current = await UserRssFeedStateModel.findOne({
+    where: {
+      user_id: normalizedUserId,
+      route: normalizedRoute,
+      is_subscribed: true,
+    },
+  });
+  if (!current) {
+    return null;
+  }
+  await current.update({
+    enabled,
+  });
+  await current.save();
+  return current;
+};
+
+export const isUserRssSubscriptionEnabled = async (userId: string, route: string) => {
+  const normalizedUserId = String(userId || '').trim();
+  const normalizedRoute = String(route || '').trim();
+  if (!normalizedUserId || !normalizedRoute) {
+    return true;
+  }
+  const current = await UserRssFeedStateModel.findOne({
+    attributes: ['id', 'enabled', 'is_subscribed'],
+    where: {
+      user_id: normalizedUserId,
+      route: normalizedRoute,
+    },
+  });
+  if (!current || current.dataValues.is_subscribed !== true) {
+    return true;
+  }
+  return current.dataValues.enabled !== false;
 };
 
 export const removeUserRssSubscriptionState = async (userId: string, route: string) => {

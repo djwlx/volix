@@ -1,7 +1,7 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import sequelize from '../../apps/api/src/utils/sequelize';
 import {
   listAllRssSubscriptionStates,
@@ -13,6 +13,17 @@ import { prunePendingTasksBySubscriptions } from '../../apps/api/src/modules/rss
 const makeUserId = () => `rss-pause-user-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const makeRoute = () => `/rss-pause/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
+const ensureEnabledColumn = async () => {
+  const [rows] = await sequelize.query('PRAGMA table_info("volix_user_rss_feed_subscribe")');
+  const hasEnabledColumn = Array.isArray(rows)
+    ? rows.some(row => String((row as Record<string, unknown>).name || '') === 'enabled')
+    : false;
+  if (hasEnabledColumn) {
+    return;
+  }
+  await sequelize.query('ALTER TABLE "volix_user_rss_feed_subscribe" ADD COLUMN "enabled" INTEGER NOT NULL DEFAULT 1');
+};
+
 const cleanupSubscription = async (userId: string, route: string) => {
   await sequelize.query('DELETE FROM "volix_user_rss_feed_subscribe" WHERE "user_id" = :userId AND "route" = :route', {
     replacements: { userId, route },
@@ -22,6 +33,10 @@ const cleanupSubscription = async (userId: string, route: string) => {
 describe('rss subscription pause state', () => {
   const createdSubscriptions: Array<{ userId: string; route: string }> = [];
   const tempDirs: string[] = [];
+
+  beforeEach(async () => {
+    await ensureEnabledColumn();
+  });
 
   afterEach(async () => {
     await Promise.all(createdSubscriptions.splice(0).map(item => cleanupSubscription(item.userId, item.route)));

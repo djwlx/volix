@@ -5,6 +5,7 @@ import type {
   RssStorageStatus,
   RssReaderFetchParams,
   RssReaderRawFeed,
+  UpdateUserRssSubscriptionEnabledPayload,
   UpdateUserRssSettingPayload,
   UserRssSetting,
   UserRssSubscriptionItem,
@@ -38,6 +39,10 @@ export function removeUserRssSubscription(route: string) {
       route,
     },
   });
+}
+
+export function updateUserRssSubscriptionEnabled(data: UpdateUserRssSubscriptionEnabledPayload) {
+  return http.put<UserRssSubscriptionItem>('/rss/subscriptions/enabled', data);
 }
 
 export function getRssStorageStatus() {

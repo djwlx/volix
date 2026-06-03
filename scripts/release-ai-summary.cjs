@@ -243,9 +243,8 @@ function parseJsonPayload(content) {
     .replace(/\s*```$/, '');
 
   const parsed = JSON.parse(normalized);
-  const summaryZh = normalizeSummary(parsed?.summary_zh, '中文');
-  const summaryEn = normalizeSummary(parsed?.summary_en, '英文');
-
+  const summaryZh = normalizeSummary(parsed?.summary_zh || parsed?.summary, '中文');
+  const summaryEn = normalizeSummary(parsed?.summary_en || parsed?.summary, '英文');
   return { summaryZh, summaryEn };
 }
 
@@ -258,7 +257,6 @@ function buildFallbackSummary(context, version, releaseDate) {
     `Summarized this release against ${context.previousTag || 'the initial project version'}.`,
     ...context.commits.slice(0, 6).map(item => item.subject),
   ].slice(0, 7);
-
   return {
     summaryZh: {
       releaseTitle: `Volix ${version} 发布说明`,
@@ -283,18 +281,10 @@ function normalizeSummary(summary, languageLabel) {
   const changed = toStringArray(summary?.changed);
   const fixed = toStringArray(summary?.fixed);
   const releaseHighlights = toStringArray(summary?.release_highlights);
-
   if (!releaseTitle || !releaseHighlights.length) {
     throw new Error(`AI 返回的${languageLabel}摘要不完整`);
   }
-
-  return {
-    releaseTitle,
-    added,
-    changed,
-    fixed,
-    releaseHighlights,
-  };
+  return { releaseTitle, added, changed, fixed, releaseHighlights };
 }
 
 function toStringArray(value) {
@@ -322,7 +312,6 @@ function renderChangelogSection(version, releaseDate, summaryZh, summaryEn) {
     renderCategory('Changed', summaryEn.changed),
     renderCategory('Fixed', summaryEn.fixed),
   ].filter(Boolean);
-
   return [
     `## [${version}] - ${releaseDate}`,
     '',
@@ -346,24 +335,25 @@ function renderReleaseNotes(version, summaryZh, summaryEn) {
   ].join('\n');
 }
 
+function sanitizeChangelogContent(content) {
+  return content
+    .replace(/\n?All notable changes to this project will be documented in this file\.\n?/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trimEnd();
+}
+
 function updateChangelog(changelogPath, version, sectionMarkdown) {
-  const content = fs.readFileSync(changelogPath, 'utf8');
+  const content = sanitizeChangelogContent(fs.readFileSync(changelogPath, 'utf8'));
   const versionHeader = `## [${version}]`;
   if (content.includes(versionHeader)) {
     return false;
   }
 
-  const unreleasedHeader = '## [Unreleased]';
-  const unreleasedIndex = content.indexOf(unreleasedHeader);
-  if (unreleasedIndex === -1) {
-    throw new Error('CHANGELOG.md 缺少 `## [Unreleased]` 段落');
-  }
-
-  const afterUnreleased = unreleasedIndex + unreleasedHeader.length;
-  const nextSectionMatch = /^## \[(?!Unreleased\]).+$/m.exec(content.slice(afterUnreleased));
-  const insertIndex = nextSectionMatch ? afterUnreleased + nextSectionMatch.index : content.length;
-  const insertion = `\n\n${sectionMarkdown.trim()}\n`;
-  const nextContent = `${content.slice(0, insertIndex)}${insertion}${content.slice(insertIndex).replace(/^\n+/, '\n')}`;
+  const titleMatch = /^# .+\n*/.exec(content);
+  const insertIndex = titleMatch ? titleMatch[0].length : 0;
+  const prefix = content.slice(0, insertIndex).trimEnd();
+  const suffix = content.slice(insertIndex).replace(/^\s+/, '');
+  const nextContent = [prefix, '', sectionMarkdown.trim(), suffix].filter(Boolean).join('\n\n');
   fs.writeFileSync(changelogPath, nextContent.trimEnd() + '\n');
   return true;
 }

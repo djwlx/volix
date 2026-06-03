@@ -22,6 +22,7 @@ import { queryUser } from '../../user/service/user.service';
 import {
   countUserRssFeedItemsByRoutes,
   getUserRssFeedState,
+  isUserRssSubscriptionEnabled,
   listUserRssSubscriptionStates,
   listUserRssFeedItems,
   mergeUserRssFeedItems,
@@ -36,7 +37,6 @@ import {
   parseRefreshIntervalMinutes,
 } from './rss-storage-status-utils.service';
 import { parseUserRssConfig } from './rss-user-config.service';
-
 interface PendingFeedTask {
   userId: string;
   route: string;
@@ -58,14 +58,11 @@ interface PendingFeedTaskEnqueueInput {
   payload: RssFeedPayload;
   setting: Pick<UserRssSettingPayload, 'resourceProxyBaseUrl'>;
 }
-
 const RSS_PENDING_DIR = path.join(RSS_FEED_ROOT_DIR, '.pending');
 const TASK_MAX_RETRY = 10;
 let queueRunning = false;
 let queueJob: Promise<void> | null = null;
-const ensureStorageDirs = async () => {
-  await fs.promises.mkdir(RSS_PENDING_DIR, { recursive: true });
-};
+const ensureStorageDirs = async () => fs.promises.mkdir(RSS_PENDING_DIR, { recursive: true });
 const normalizeText = (value: string) => String(value || '').trim();
 const getFeedTaskKey = (userId: string, route: string, feedUrl: string) => {
   return crypto
@@ -73,9 +70,8 @@ const getFeedTaskKey = (userId: string, route: string, feedUrl: string) => {
     .update(`${normalizeText(userId)}|${normalizeText(route)}|${normalizeText(feedUrl)}`)
     .digest('hex');
 };
-const enqueueTaskFilePath = (task: { userId: string; route: string; feedUrl: string }) => {
-  return path.join(RSS_PENDING_DIR, `${Date.now()}-${getFeedTaskKey(task.userId, task.route, task.feedUrl)}.json`);
-};
+const enqueueTaskFilePath = (task: { userId: string; route: string; feedUrl: string }) =>
+  path.join(RSS_PENDING_DIR, `${Date.now()}-${getFeedTaskKey(task.userId, task.route, task.feedUrl)}.json`);
 const readPendingTask = async (filePath: string): Promise<PendingFeedTask | null> => {
   try {
     const raw = await fs.promises.readFile(filePath, 'utf-8');
@@ -113,7 +109,11 @@ const processSingleTask = async (taskFilePath: string) => {
     await fs.promises.rm(taskFilePath, { force: true }).catch(() => undefined);
     return;
   }
-
+  const autoRefreshEnabled = await isUserRssSubscriptionEnabled(task.userId, task.route);
+  if (!autoRefreshEnabled) {
+    await fs.promises.rm(taskFilePath, { force: true }).catch(() => undefined);
+    return;
+  }
   try {
     const parsed = parseRssFeedItemsFromXml(task.xml);
     const keyedItems = Array.from(
@@ -194,7 +194,6 @@ const processSingleTask = async (taskFilePath: string) => {
     });
   }
 };
-
 const listTaskFileNames = async (targetDir: string) => {
   return (await fs.promises.readdir(targetDir).catch(() => []))
     .filter(name => name.endsWith('.json'))
@@ -212,7 +211,6 @@ const runPendingQueue = async () => {
     await processSingleTask(path.join(RSS_PENDING_DIR, taskFileName));
   }
 };
-
 export const startRssPendingQueue = () => {
   if (queueJob) {
     return queueJob;
@@ -230,7 +228,6 @@ export const startRssPendingQueue = () => {
     });
   return queueJob;
 };
-
 export const enqueueRssFeedProcessingTask = async (params: PendingFeedTaskEnqueueInput) => {
   const userId = normalizeText(params.userId);
   const route = normalizeText(params.route);
@@ -456,7 +453,7 @@ export const getRssStorageStatus = async (userId: string): Promise<RssStorageSta
         itemCount: Number(itemCountMap.get(route) || 0),
         lastUpdatedAt,
         lastNewCount: Math.max(0, Number(routeMeta?.lastNewCount || 0)),
-        nextUpdateAt: addMinutesToIsoTime(lastUpdatedAt, refreshIntervalMinutes),
+        nextUpdateAt: currentState?.enabled === false ? '' : addMinutesToIsoTime(lastUpdatedAt, refreshIntervalMinutes),
         storageSizeBytes: Math.max(0, Number(storageUsage.sizeBytes || 0)),
         storageFileCount: Math.max(0, Number(storageUsage.fileCount || 0)),
       };

@@ -14,6 +14,7 @@ export interface UserRssFeedStateEntity {
   last_processed_at?: string;
   last_source_hash?: string;
   is_subscribed?: boolean;
+  enabled?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -65,5 +66,10 @@ export const UserRssFeedStateModel = sequelize.define<UserRssFeedStateModelType>
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: false,
+  },
+  enabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
   },
 });

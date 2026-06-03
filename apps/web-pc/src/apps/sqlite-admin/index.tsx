@@ -15,9 +15,10 @@ import {
   type SqliteAdminTableSummary,
 } from '@volix/types';
 import { useI18n } from '@/i18n';
-import { IconDelete, IconEdit, IconPlus, IconRefresh } from '@douyinfe/semi-icons';
-import { Button, Card, Empty, Input, Modal, Space, Table, Tag, TextArea, Toast } from '@douyinfe/semi-ui';
+import { IconDelete, IconEdit, IconRefresh } from '@douyinfe/semi-icons';
+import { Button, Card, Empty, Input, Modal, Space, Tag, TextArea, Toast } from '@douyinfe/semi-ui';
 import styles from './index.module.scss';
+import { SqliteAdminTableCard } from './table-card';
 
 type EditorMode = 'create' | 'edit';
 
@@ -91,7 +92,7 @@ const renderCellValue = (value: unknown) => {
 };
 
 function SqliteAdminApp() {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const { user, loading } = useUser();
   const [tables, setTables] = useState<SqliteAdminTableSummary[]>([]);
   const [tablesLoading, setTablesLoading] = useState(false);
@@ -402,53 +403,19 @@ function SqliteAdminApp() {
             </div>
           </Card>
 
-          <Card className={styles.mainCard} bodyStyle={{ padding: 20, height: '100%' }}>
-            {tableDetail ? (
-              <div className={styles.mainBody}>
-                <div className={styles.mainHeader}>
-                  <div>
-                    <div className={styles.mainTitle}>{tableDetail.table}</div>
-                  </div>
-                  <div className={styles.toolbar}>
-                    <Button
-                      icon={<IconRefresh />}
-                      onClick={() => loadTableDetail(selectedTable).catch(() => undefined)}
-                    >
-                      {t('sqliteAdmin.action.refresh')}
-                    </Button>
-                    <Button type="primary" icon={<IconPlus />} onClick={openCreateModal}>
-                      {t('sqliteAdmin.action.createRow')}
-                    </Button>
-                  </div>
-                </div>
-
-                <div className={styles.tableWrap}>
-                  <Table<Record<string, unknown>>
-                    rowKey={record => JSON.stringify(buildIdentity(record || {}, identityColumns).values)}
-                    dataSource={tableDetail.rows}
-                    columns={tableColumns}
-                    loading={detailLoading}
-                    pagination={{
-                      currentPage: page,
-                      pageSize: DEFAULT_PAGE_SIZE,
-                      total: tableDetail.total,
-                      onPageChange: current => setPage(current),
-                    }}
-                    scroll={{ x: 'max-content' }}
-                  />
-                </div>
-
-                <div className={styles.identityNote}>
-                  {t('sqliteAdmin.identityColumns', { columns: identityColumns.join(', ') })}
-                </div>
-              </div>
-            ) : (
-              <Empty
-                title={t('sqliteAdmin.empty.selectTable.title')}
-                description={t('sqliteAdmin.empty.selectTable.description')}
-              />
-            )}
-          </Card>
+          <SqliteAdminTableCard
+            detailLoading={detailLoading}
+            identityColumns={identityColumns}
+            locale={locale}
+            onCreateRow={openCreateModal}
+            onPageChange={setPage}
+            onRefresh={() => loadTableDetail(selectedTable).catch(() => undefined)}
+            page={page}
+            pageSize={DEFAULT_PAGE_SIZE}
+            tableColumns={tableColumns}
+            tableDetail={tableDetail}
+            t={t}
+          />
         </div>
       </div>
 

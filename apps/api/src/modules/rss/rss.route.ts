@@ -11,6 +11,7 @@ import {
   getRssFeed,
   getRssStorage,
   removeCurrentUserRssSubscription,
+  updateCurrentUserRssSubscriptionEnabled,
   updateCurrentUserRssSetting,
 } from './index';
 
@@ -29,6 +30,7 @@ router
   .post('/storage/clear', http(clearCurrentUserRssStorage))
   .get('/subscriptions', http(getCurrentUserRssSubscriptions))
   .post('/subscriptions', http(addCurrentUserRssSubscription))
+  .put('/subscriptions/enabled', http(updateCurrentUserRssSubscriptionEnabled))
   .delete('/subscriptions', http(removeCurrentUserRssSubscription));
 
 export default router;
