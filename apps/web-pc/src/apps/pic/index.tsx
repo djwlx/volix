@@ -40,6 +40,7 @@ function PicApp() {
         pc: data.pc,
         fileName: data.fileName || '',
         liked: Boolean(data.liked),
+        remoteSource: Boolean(data.remoteSource),
       });
       setPicPath(data.path || '');
       if (typeof data.autoPlayIntervalSeconds === 'number' && Number.isFinite(data.autoPlayIntervalSeconds)) {
