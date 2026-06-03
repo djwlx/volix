@@ -27,6 +27,7 @@ import {
   setCacheQueueRunner,
   withFolderConfigLock,
 } from './picture-cache-fs-folder';
+import { resolve115CloudImageUrl } from './picture-cloud-proxy';
 
 export const mergeNotice = (...items: Array<string | undefined>) => {
   const list = items.map(item => String(item || '').trim()).filter(Boolean);
@@ -100,7 +101,7 @@ export const buildRandomPicMetaFromFile = async (
   const { url, fileName } = parse115FileMeta(result);
 
   return {
-    url,
+    url: await resolve115CloudImageUrl(url, userAgent),
     fileName,
     cid: file.cid,
     pc: file.pc,

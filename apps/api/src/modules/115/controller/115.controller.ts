@@ -14,20 +14,7 @@ import request from '../../../utils/request';
 import { resSuccess } from '../../../utils/response';
 import { badRequest } from '../../shared/http-handler';
 import { get115FileData, get115FileListData } from '../service/file.service';
-import { getFile115ByPc } from '../service/file-db.service';
-import { getLocalRandomPicCacheByPc, getPicCachePublicUrl } from '../service/picture/picture-cache-random-core';
-import { ensureRandomLocalPicCacheByFileAsync } from '../service/picture/picture-cache-fs-folder';
-import {
-  buildRemoteEndpointUrl,
-  buildRemoteParentRandomEndpoint,
-  buildRemotePicPathEndpoint,
-  getConfiguredRandomPicOptions,
-  getRemoteRandomPicMeta,
-  isEnabledQueryFlag,
-  isSelfReferencingRandomPicEndpoint,
-  parseRemotePicPathPayload,
-  toRandomPicResponseUrl,
-} from './115-random-proxy';
+import { getRandomCacheConfig } from '../service/picture/picture-cache-random-core';
 import {
   clear115PicData,
   getLiked115PicListData,
@@ -47,99 +34,15 @@ import { exit115AndClearCookie, login115WithAppAndSaveCookie } from '../service/
 import { get115UserInfoData } from '../service/user.service';
 import { t } from '../../../utils/i18n';
 
-const ensureLocalProxyUrlByPc = async (pc: string, userAgent: string) => {
-  const normalizedPc = String(pc || '').trim();
-  if (!normalizedPc) {
-    badRequest(t('pic115Api.proxyMissingPc'));
-  }
-  const file = await getFile115ByPc(normalizedPc);
-  if (!file) {
-    badRequest(t('pic115Api.proxyCacheRecordNotFound'));
-  }
-  const safeFile = file as NonNullable<typeof file>;
-  const cached = await getLocalRandomPicCacheByPc(normalizedPc);
-  if (cached) {
-    const safeCached = cached as NonNullable<typeof cached>;
-    return safeCached.url;
-  }
-  void ensureRandomLocalPicCacheByFileAsync(safeFile, userAgent);
-  return getPicCachePublicUrl(normalizedPc);
-};
-
 export const getRandom115Pic: MyMiddleware = async ctx => {
   const ua = ctx.request.headers['user-agent'];
-  const { mode, proxy } = ctx.query || {};
+  const { mode } = ctx.query || {};
   const isDirect = mode === 'direct';
   const isJson = mode === 'json';
-  const randomPicOptions = await getConfiguredRandomPicOptions();
-  const preferProxy = randomPicOptions.localProxyEnabled || isEnabledQueryFlag(proxy);
-  const remoteEndpoint = randomPicOptions.endpoint;
-
-  if (remoteEndpoint) {
-    if (isSelfReferencingRandomPicEndpoint(ctx, remoteEndpoint)) {
-      badRequest(t('pic115Api.selfReferencingEndpoint'));
-    }
-
-    if (isDirect) {
-      const remoteDirectUrl = buildRemoteEndpointUrl(remoteEndpoint, {
-        mode: 'direct',
-        proxy: preferProxy || randomPicOptions.localProxyEnabled ? '1' : undefined,
-      });
-      const streamResult = await request.get(remoteDirectUrl, {
-        responseType: 'stream',
-        headers: {
-          'User-Agent': ua,
-        },
-      });
-      const contentType = String(streamResult.headers['content-type'] || '').trim();
-      if (contentType) {
-        ctx.set('Content-Type', contentType);
-      }
-      ctx.body = streamResult.data;
-      return;
-    }
-
-    const remoteJsonUrl = buildRemoteEndpointUrl(remoteEndpoint, {
-      mode: 'json',
-      proxy: preferProxy || randomPicOptions.localProxyEnabled ? '1' : undefined,
-    });
-    const remoteMeta = await getRemoteRandomPicMeta(remoteJsonUrl, String(ua || ''));
-
-    if (isJson) {
-      return {
-        ...remoteMeta,
-        remoteSource: true,
-        autoPlayIntervalSeconds: randomPicOptions.autoPlayIntervalSeconds,
-      };
-    }
-
-    const setuHtml = `${PATH.root}/src/views/setu.ejs`;
-    const html = await ejs.renderFile(setuHtml, {
-      url: remoteMeta.url,
-      fileName: remoteMeta.fileName,
-    });
-
-    ctx.set('Content-Type', 'text/html');
-    ctx.body = html;
-    return;
-  }
+  const randomCacheConfig = await getRandomCacheConfig();
 
   const { url, fileName, cid, pc, path, parentPath, liked, localCacheFilePath, localCacheMimeType, notice } =
     await getRandom115PicMeta(ua as string);
-  const responseUrl =
-    randomPicOptions.localProxyEnabled && pc
-      ? await ensureLocalProxyUrlByPc(pc, String(ua || ''))
-      : toRandomPicResponseUrl(url, pc, preferProxy);
-
-  if (isDirect && randomPicOptions.localProxyEnabled && pc) {
-    const source = await getLocalRandomPicCacheByPc(pc);
-    if (source) {
-      ctx.set('Content-Type', source.mimeType || mime.lookup(source.fileName) || 'image/png');
-      ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
-      ctx.body = fs.createReadStream(source.filePath);
-      return;
-    }
-  }
 
   if (isDirect && localCacheFilePath) {
     ctx.set('Content-Type', localCacheMimeType || mime.lookup(fileName) || 'image/png');
@@ -162,7 +65,7 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
 
   if (isJson) {
     return {
-      url: responseUrl,
+      url,
       fileName,
       cid,
       pc,
@@ -171,13 +74,13 @@ export const getRandom115Pic: MyMiddleware = async ctx => {
       liked,
       notice,
       remoteSource: false,
-      autoPlayIntervalSeconds: randomPicOptions.autoPlayIntervalSeconds,
+      autoPlayIntervalSeconds: randomCacheConfig.autoPlayIntervalSeconds,
     };
   }
 
   const setuHtml = `${PATH.root}/src/views/setu.ejs`;
   const html = await ejs.renderFile(setuHtml, {
-    url: responseUrl,
+    url,
     fileName,
   });
 
@@ -192,67 +95,21 @@ export const get115PicInfo: MyMiddleware = async () => {
 export const getRandom115PicByParent: MyMiddleware = async ctx => {
   const ua = ctx.request.headers['user-agent'];
   const pc = String(ctx.query?.pc || '');
-  const randomPicOptions = await getConfiguredRandomPicOptions();
-  const preferProxy = randomPicOptions.localProxyEnabled || isEnabledQueryFlag(ctx.query?.proxy);
-  const remoteEndpoint = randomPicOptions.endpoint;
-
-  if (remoteEndpoint) {
-    if (isSelfReferencingRandomPicEndpoint(ctx, remoteEndpoint)) {
-      badRequest(t('pic115Api.selfReferencingEndpoint'));
-    }
-    const remoteParentEndpoint = buildRemoteParentRandomEndpoint(remoteEndpoint);
-    const remoteParentUrl = buildRemoteEndpointUrl(remoteParentEndpoint, {
-      mode: 'json',
-      pc,
-      proxy: preferProxy || randomPicOptions.localProxyEnabled ? '1' : undefined,
-    });
-    const remoteMeta = await getRemoteRandomPicMeta(remoteParentUrl, String(ua || ''));
-    return {
-      ...remoteMeta,
-      remoteSource: true,
-      autoPlayIntervalSeconds: randomPicOptions.autoPlayIntervalSeconds,
-    };
-  }
-
+  const randomCacheConfig = await getRandomCacheConfig();
   const result = await getRandom115PicFromParentMeta({
     pc,
     userAgent: ua as string,
   });
-  const responseUrl =
-    randomPicOptions.localProxyEnabled && result.pc
-      ? await ensureLocalProxyUrlByPc(result.pc, String(ua || ''))
-      : toRandomPicResponseUrl(result.url, result.pc, preferProxy);
   return {
     ...result,
-    url: responseUrl,
+    url: result.url,
     remoteSource: false,
-    autoPlayIntervalSeconds: randomPicOptions.autoPlayIntervalSeconds,
+    autoPlayIntervalSeconds: randomCacheConfig.autoPlayIntervalSeconds,
   };
 };
 
 export const get115PicPathByPc: MyMiddleware = async ctx => {
   const pc = String(ctx.query?.pc || '');
-  const randomPicOptions = await getConfiguredRandomPicOptions();
-  const remoteEndpoint = randomPicOptions.endpoint;
-  if (remoteEndpoint) {
-    if (isSelfReferencingRandomPicEndpoint(ctx, remoteEndpoint)) {
-      badRequest(t('pic115Api.selfReferencingEndpoint'));
-    }
-    const remotePathEndpoint = buildRemotePicPathEndpoint(remoteEndpoint);
-    const remotePathUrl = buildRemoteEndpointUrl(remotePathEndpoint, {
-      pc,
-    });
-    const remoteResult = await request.get(remotePathUrl, {
-      headers: {
-        'User-Agent': ctx.request.headers['user-agent'],
-      },
-    });
-    const parsed = parseRemotePicPathPayload(remoteResult.data);
-    if (!parsed) {
-      badRequest(t('pic115Api.invalidPathPayload'));
-    }
-    return parsed as NonNullable<typeof parsed>;
-  }
   return get115PicPathByPcData(pc);
 };
 

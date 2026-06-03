@@ -36,6 +36,7 @@ import {
   type PicCacheFormatOptions,
   resolvePicCacheByFormat,
 } from './picture-cache-format';
+import { resolve115CloudImageUrl } from './picture-cloud-proxy';
 import { t } from '../../../../utils/i18n';
 
 const buildRemotePicSourceFromFile = async (file: Cloud115DbFileItem, userAgent: string, errorMessageKey: string) => {
@@ -47,7 +48,7 @@ const buildRemotePicSourceFromFile = async (file: Cloud115DbFileItem, userAgent:
   return {
     kind: 'remote' as const,
     pc: file.pc,
-    url: meta.url,
+    url: await resolve115CloudImageUrl(meta.url, userAgent || DEFAULT_115_DOWNLOAD_UA),
     fileName: meta.fileName || (file.fullPath ? path.posix.basename(file.fullPath) : DEFAULT_FILE_NAME),
     mimeType: mime.lookup(meta.fileName || '') || DEFAULT_MIME_TYPE,
   };

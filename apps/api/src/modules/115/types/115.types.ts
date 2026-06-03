@@ -35,8 +35,7 @@ export interface PicRandomCacheConfig {
   localMaxSizeMb: number;
   randomNoRepeatWindowMinutes: number;
   randomNoRepeatMaxCount: number;
-  randomPicEndpoint: string;
-  localProxyEnabled: boolean;
+  cloudProxyUrl: string;
   autoPlayIntervalSeconds: number;
 }
 

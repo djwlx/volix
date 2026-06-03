@@ -94,7 +94,6 @@ export const getOriginFileNameFromLocalCacheFileName = (fileName: string) => {
 export const toFixedMb = (bytes: number) => {
   return Number((bytes / (1024 * 1024)).toFixed(2));
 };
-
 export const getRandomPicCacheFilePath = (fileName: string) => {
   return path.join(getRandomPicCacheDir(), sanitizeCacheFileName(fileName));
 };

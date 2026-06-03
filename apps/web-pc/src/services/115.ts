@@ -82,22 +82,18 @@ export function like115Pic(data: Like115PicParams) {
   return http.post<Like115PicResponse>('/115/pic/like', data);
 }
 
-export function get115Pic(mode: 'json' | 'direct' = 'json', proxy = false) {
+export function get115Pic(mode: 'json' | 'direct' = 'json') {
   const query = new URLSearchParams({
     mode,
   });
-  if (proxy) {
-    query.set('proxy', '1');
-  }
   const url = `/115/pic?${query.toString()}`;
   return http.get<Random115PicResponse>(url, { responseType: mode === 'json' ? 'json' : 'blob' });
 }
 
-export function get115PicFromParent(pc: string, proxy = false) {
+export function get115PicFromParent(pc: string) {
   return http.get<Random115PicResponse>('/115/pic/parent-random', {
     params: {
       pc,
-      proxy: proxy ? '1' : undefined,
     },
   });
 }

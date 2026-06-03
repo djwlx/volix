@@ -18,15 +18,8 @@ interface RandomCacheFormValues {
   localMaxSizeMb: number;
   randomNoRepeatWindowMinutes: number;
   randomNoRepeatMaxCount: number;
-  randomPicEndpoint: string;
-  localProxyEnabled: boolean;
+  cloudProxyUrl: string;
   autoPlayIntervalSeconds: number;
-}
-
-interface RandomPicEndpointItem {
-  key: string;
-  label: string;
-  url: string;
 }
 
 const RANDOM_CACHE_FIELDS: Array<keyof RandomCacheFormValues> = [
@@ -35,8 +28,7 @@ const RANDOM_CACHE_FIELDS: Array<keyof RandomCacheFormValues> = [
   'localMaxSizeMb',
   'randomNoRepeatWindowMinutes',
   'randomNoRepeatMaxCount',
-  'randomPicEndpoint',
-  'localProxyEnabled',
+  'cloudProxyUrl',
   'autoPlayIntervalSeconds',
 ];
 
@@ -46,12 +38,14 @@ const DEFAULT_RANDOM_CACHE_FORM_VALUES: RandomCacheFormValues = {
   localMaxSizeMb: 2048,
   randomNoRepeatWindowMinutes: 5,
   randomNoRepeatMaxCount: 50,
-  randomPicEndpoint: '',
-  localProxyEnabled: false,
+  cloudProxyUrl: '',
   autoPlayIntervalSeconds: 10,
 };
 
-const RANDOM_CACHE_FIELD_WIDTH = 430;
+const RANDOM_CACHE_FIELD_STYLE = {
+  width: '100%',
+  maxWidth: 'none',
+} as const;
 
 export function PicSetting() {
   const { t } = useI18n();
@@ -68,28 +62,6 @@ export function PicSetting() {
     return RANDOM_CACHE_FIELDS.some(field => Boolean(randomCacheFormApiRef.current?.getTouched(field)));
   };
 
-  const randomPicEndpointList = useMemo<RandomPicEndpointItem[]>(() => {
-    const origin = typeof window === 'undefined' ? '' : window.location.origin;
-    const withOrigin = (path: string) => `${origin}${path}`;
-    return [
-      {
-        key: 'json',
-        label: t('pic115.endpoint.json'),
-        url: withOrigin('/api/115/pic?mode=json'),
-      },
-      {
-        key: 'json-proxy',
-        label: t('pic115.endpoint.jsonProxy'),
-        url: withOrigin('/api/115/pic?mode=json&proxy=1'),
-      },
-      {
-        key: 'direct',
-        label: t('pic115.endpoint.direct'),
-        url: withOrigin('/api/115/pic?mode=direct'),
-      },
-    ];
-  }, [t]);
-
   const syncRandomCacheFormValues = (
     randomCacheConfig:
       | {
@@ -100,8 +72,7 @@ export function PicSetting() {
           localMaxSizeMb?: number;
           randomNoRepeatWindowMinutes?: number;
           randomNoRepeatMaxCount?: number;
-          randomPicEndpoint?: string;
-          localProxyEnabled?: boolean;
+          cloudProxyUrl?: string;
           autoPlayIntervalSeconds?: number;
         }
       | null
@@ -118,12 +89,7 @@ export function PicSetting() {
       randomNoRepeatMaxCount: Number(
         randomCacheConfig?.randomNoRepeatMaxCount ?? DEFAULT_RANDOM_CACHE_FORM_VALUES.randomNoRepeatMaxCount
       ),
-      randomPicEndpoint: String(
-        randomCacheConfig?.randomPicEndpoint ?? DEFAULT_RANDOM_CACHE_FORM_VALUES.randomPicEndpoint
-      ).trim(),
-      localProxyEnabled: Boolean(
-        randomCacheConfig?.localProxyEnabled ?? DEFAULT_RANDOM_CACHE_FORM_VALUES.localProxyEnabled
-      ),
+      cloudProxyUrl: String(randomCacheConfig?.cloudProxyUrl ?? DEFAULT_RANDOM_CACHE_FORM_VALUES.cloudProxyUrl),
       autoPlayIntervalSeconds: Number(
         randomCacheConfig?.autoPlayIntervalSeconds ?? DEFAULT_RANDOM_CACHE_FORM_VALUES.autoPlayIntervalSeconds
       ),
@@ -207,8 +173,7 @@ export function PicSetting() {
       localMaxSizeMb: Number(values.localMaxSizeMb || 100),
       randomNoRepeatWindowMinutes: Number(values.randomNoRepeatWindowMinutes || 0),
       randomNoRepeatMaxCount: Number(values.randomNoRepeatMaxCount || 50),
-      randomPicEndpoint: String(values.randomPicEndpoint || '').trim(),
-      localProxyEnabled: Boolean(values.localProxyEnabled),
+      cloudProxyUrl: String(values.cloudProxyUrl || '').trim(),
       autoPlayIntervalSeconds: Number(values.autoPlayIntervalSeconds || 10),
     };
     const sum = payload.localWeight + payload.cloudWeight;
@@ -227,8 +192,7 @@ export function PicSetting() {
         localMaxSizeMb: payload.localMaxSizeMb,
         randomNoRepeatWindowMinutes: payload.randomNoRepeatWindowMinutes,
         randomNoRepeatMaxCount: payload.randomNoRepeatMaxCount,
-        randomPicEndpoint: payload.randomPicEndpoint,
-        localProxyEnabled: payload.localProxyEnabled,
+        cloudProxyUrl: payload.cloudProxyUrl,
         autoPlayIntervalSeconds: payload.autoPlayIntervalSeconds,
       });
       await fetch(true);
@@ -237,15 +201,6 @@ export function PicSetting() {
       Toast.error(getHttpErrorMessage(error, t('pic115.form.saveFailed')));
     } finally {
       setSavingRandomCacheConfig(false);
-    }
-  };
-
-  const onCopyEndpoint = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      Toast.success(t('pic115.endpoint.copySuccess'));
-    } catch {
-      Toast.error(t('common.action.copyFailed'));
     }
   };
 
@@ -298,99 +253,78 @@ export function PicSetting() {
         </Popconfirm>
       </div>
       <Descriptions data={data} />
-      <Text strong>{t('pic115.endpoint.sectionTitle')}</Text>
-      <Space vertical spacing={8} style={{ width: '100%' }}>
-        {randomPicEndpointList.map(item => (
-          <Space key={item.key} align="center" style={{ width: '100%' }}>
-            <Text style={{ minWidth: 170 }}>{item.label}</Text>
-            <Text ellipsis style={{ flex: 1, minWidth: 0 }}>
-              {item.url}
-            </Text>
-            <Button size="small" theme="borderless" type="primary" onClick={() => onCopyEndpoint(item.url)}>
-              {t('common.action.copy')}
-            </Button>
-          </Space>
-        ))}
-      </Space>
       <Text strong>{t('pic115.cache.sectionTitle')}</Text>
       <Form<RandomCacheFormValues>
         labelPosition="top"
         initValues={DEFAULT_RANDOM_CACHE_FORM_VALUES}
+        style={{ width: '100%' }}
         getFormApi={formApi => {
           randomCacheFormApiRef.current = formApi;
         }}
         onSubmit={onSaveRandomCacheConfig}
       >
-        {({ values }) => {
-          const totalWeight = Number(values.localWeight || 0) + Number(values.cloudWeight || 0);
-
+        {() => {
           return (
-            <Space vertical spacing={12} style={{ width: '100%' }}>
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
               <Form.InputNumber
                 field="localWeight"
                 label={t('pic115.form.localWeight')}
                 min={0}
                 max={100}
-                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+                style={RANDOM_CACHE_FIELD_STYLE}
               />
               <Form.InputNumber
                 field="cloudWeight"
                 label={t('pic115.form.cloudWeight')}
                 min={0}
                 max={100}
-                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+                style={RANDOM_CACHE_FIELD_STYLE}
               />
-              <Text type={totalWeight === 100 ? 'secondary' : 'danger'}>
-                {t('pic115.form.weightSummary', { totalWeight })}
-              </Text>
               <Form.InputNumber
                 field="localMaxSizeMb"
                 label={t('pic115.form.localMaxSizeMb')}
                 min={100}
                 max={102400}
-                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+                style={RANDOM_CACHE_FIELD_STYLE}
               />
               <Form.Input
-                field="randomPicEndpoint"
-                label={t('pic115.form.randomEndpoint')}
-                placeholder="https://your-domain/api/115/pic?mode=json&proxy=1"
-                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+                field="cloudProxyUrl"
+                label={t('pic115.form.cloudProxyUrl')}
+                placeholder={t('pic115.form.cloudProxyUrlPlaceholder')}
+                showClear
+                style={RANDOM_CACHE_FIELD_STYLE}
               />
-              <div style={{ width: RANDOM_CACHE_FIELD_WIDTH }}>
-                <Form.Switch field="localProxyEnabled" label={t('pic115.form.localProxyEnabled')} />
-              </div>
               <Form.InputNumber
                 field="randomNoRepeatWindowMinutes"
                 label={t('pic115.form.noRepeatWindow')}
                 min={0}
                 max={1440}
-                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+                style={RANDOM_CACHE_FIELD_STYLE}
               />
-              <Text type="tertiary" size="small">
-                {t('pic115.form.noRepeatWindowHint')}
-              </Text>
               <Form.InputNumber
                 field="randomNoRepeatMaxCount"
                 label={t('pic115.form.noRepeatMaxCount')}
                 min={1}
                 max={10000}
-                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+                style={RANDOM_CACHE_FIELD_STYLE}
               />
               <Form.InputNumber
                 field="autoPlayIntervalSeconds"
                 label={t('pic115.form.autoPlayIntervalSeconds')}
                 min={1}
                 max={3600}
-                style={{ width: RANDOM_CACHE_FIELD_WIDTH }}
+                style={RANDOM_CACHE_FIELD_STYLE}
               />
-              <Button
-                type="primary"
-                loading={savingRandomCacheConfig}
-                onClick={() => randomCacheFormApiRef.current?.submitForm()}
-              >
-                {t('pic115.form.save')}
-              </Button>
-            </Space>
+              <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-start' }}>
+                <Button
+                  type="primary"
+                  loading={savingRandomCacheConfig}
+                  onClick={() => randomCacheFormApiRef.current?.submitForm()}
+                >
+                  {t('pic115.form.save')}
+                </Button>
+              </div>
+            </div>
           );
         }}
       </Form>

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import path from 'path';
 
 const getConfigMock = vi.fn();
 const clearConfigMock = vi.fn();
@@ -30,6 +31,8 @@ const get115FileListDataMock = vi.fn();
 const generateRandomNumberMock = vi.fn();
 const getUnifiedPicCacheUsageMock = vi.fn();
 const ensureUnifiedPicCacheWithinLimitMock = vi.fn();
+const ensureRandomLocalPicCacheByFileAsyncMock = vi.fn();
+const ensureLocalPicCacheByFileAsyncMock = vi.fn();
 
 vi.mock('../../apps/api/src/modules/config/service/config.service', () => ({
   getConfig: getConfigMock,
@@ -71,6 +74,67 @@ vi.mock('../../apps/api/src/utils/number', () => ({
   generateRandomNumber: generateRandomNumberMock,
 }));
 
+vi.mock('../../apps/api/src/modules/115/service/picture/picture-cache-fs-folder', () => ({
+  getLocalPicCacheByPcFromFs: vi.fn().mockResolvedValue(undefined),
+  getLocalPicCacheByFile: vi.fn().mockResolvedValue(undefined),
+  getLocalPicCacheByPc: vi.fn().mockResolvedValue(undefined),
+  clearLocalPicCacheByPcFromFs: vi.fn().mockResolvedValue(false),
+  ensureRandomLocalPicCacheByFileAsync: ensureRandomLocalPicCacheByFileAsyncMock,
+  ensureLocalPicCacheByFileAsync: ensureLocalPicCacheByFileAsyncMock,
+  parse115FileMeta: (result: unknown) => {
+    const metaInfo = Object.values((result || {}) as Record<string, unknown>)[0] as
+      | {
+          url?: {
+            url?: string;
+          };
+          file_name?: string;
+        }
+      | undefined;
+
+    return {
+      url: metaInfo?.url?.url || '',
+      fileName: metaInfo?.file_name || 'unknown.jpg',
+    };
+  },
+  getPicCacheFolders: async () => {
+    const config = await getConfigMock();
+    const raw = config?.picture_115_folders;
+    if (!raw) {
+      return [];
+    }
+    return JSON.parse(raw);
+  },
+  savePicCacheFolders: async (folders: unknown[]) => {
+    await setConfigMock(
+      expect.any(String),
+      JSON.stringify(
+        folders.map((item: Record<string, unknown>) => ({
+          cid: String(item.cid || ''),
+          status: item.status,
+          errorMessage: item.errorMessage,
+          updatedAt: item.updatedAt,
+        }))
+      )
+    );
+  },
+  nowIso: () => '2026-06-03T00:00:00.000Z',
+  withFolderConfigLock: async <T>(task: () => Promise<T>) => task(),
+  getCacheQueueRunner: () => null,
+  setCacheQueueRunner: vi.fn(),
+  saveFile115List: vi.fn(),
+  normalizePaths: (paths?: string[]) => (paths || []).map(item => item.trim()).filter(Boolean),
+  normalizeFolderPaths: (paths?: string[]) =>
+    Array.from(
+      new Set(
+        (paths || [])
+          .map(item => item.trim())
+          .filter(Boolean)
+          .map(item => path.posix.normalize(`/${item.replace(/^\/+/, '')}`).replace(/\/+$/, ''))
+          .filter(item => item && item !== '/' && item !== '.')
+      )
+    ),
+}));
+
 vi.mock('../../apps/api/src/modules/115/service/picture/picture-cache-unified', () => ({
   getUnifiedPicCacheUsage: getUnifiedPicCacheUsageMock,
   ensureUnifiedPicCacheWithinLimit: ensureUnifiedPicCacheWithinLimitMock,
@@ -109,6 +173,8 @@ describe('115 picture service random meta', () => {
       totalSizeBytes: 0,
     });
     ensureUnifiedPicCacheWithinLimitMock.mockResolvedValue(undefined);
+    ensureRandomLocalPicCacheByFileAsyncMock.mockResolvedValue(undefined);
+    ensureLocalPicCacheByFileAsyncMock.mockResolvedValue(undefined);
   });
 
   test('getRandom115PicMeta returns path and parentPath for the selected image', async () => {
@@ -139,6 +205,41 @@ describe('115 picture service random meta', () => {
 
     expect(result.path).toBe('/Root/Album A/01.jpg');
     expect(result.parentPath).toBe('/Root/Album A');
+  });
+
+  test('getRandom115PicMeta wraps 115 cloud urls with the configured proxy', async () => {
+    getConfigMock.mockResolvedValue({
+      picture_115_folders: JSON.stringify([{ cid: 'root', status: 'cached' }]),
+      picture_115_random_weights: JSON.stringify({
+        sourceWeights: {
+          local: 0,
+          cloud: 100,
+        },
+        localMaxSizeMb: 2048,
+        randomNoRepeatWindowMinutes: 5,
+        randomNoRepeatMaxCount: 50,
+        cloudProxyUrl: 'https://proxy.example.com/proxy',
+      }),
+    });
+    getFile115RandomByCidListExcludePcMock.mockResolvedValue({
+      cid: 'root',
+      parentCid: 'folder-a',
+      pc: 'pc-1',
+      fullPath: '/Root/Album A/01.jpg',
+      isLiked: false,
+      localCacheFileName: '',
+    });
+    get115FileDataMock.mockResolvedValue({
+      info: {
+        url: { url: 'https://img.115.com/01.jpg' },
+        file_name: '01.jpg',
+      },
+    });
+
+    const { getRandom115PicMeta } = await import('../../apps/api/src/modules/115/service/picture.service');
+    const result = await getRandom115PicMeta('test-agent');
+
+    expect(result.url).toBe('https://proxy.example.com/proxy?url=https%3A%2F%2Fimg.115.com%2F01.jpg&ua=test-agent');
   });
 
   test('getRandom115PicFromParentMeta picks another image in the same parent folder when available', async () => {
@@ -206,6 +307,74 @@ describe('115 picture service random meta', () => {
 
     expect(result.pc).toBe('pc-1');
     expect(result.notice).toBe('当前目录没有其他图片可切换');
+  });
+
+  test('get115RandomPicCacheFileData wraps remote fallback urls with the configured proxy', async () => {
+    getConfigMock.mockResolvedValue({
+      picture_115_random_weights: JSON.stringify({
+        cloudProxyUrl: 'https://proxy.example.com/proxy',
+      }),
+    });
+    getFile115ByPcMock.mockResolvedValue({
+      cid: 'root',
+      parentCid: 'folder-a',
+      pc: 'pc-1',
+      fullPath: '/Root/Album A/01.jpg',
+      isLiked: false,
+      localCacheFileName: '',
+    });
+    get115FileDataMock.mockResolvedValue({
+      info: {
+        url: { url: 'https://img.115.com/01.jpg' },
+        file_name: '01.jpg',
+      },
+    });
+
+    const { get115RandomPicCacheFileData } = await import('../../apps/api/src/modules/115/service/picture.service');
+    const result = await get115RandomPicCacheFileData('pc-1.01.jpg', 'test-agent');
+
+    expect(result.kind).toBe('remote');
+    expect(result.url).toBe('https://proxy.example.com/proxy?url=https%3A%2F%2Fimg.115.com%2F01.jpg&ua=test-agent');
+    expect(ensureRandomLocalPicCacheByFileAsyncMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pc: 'pc-1',
+      }),
+      'test-agent'
+    );
+  });
+
+  test('get115PicCacheFileByPcData wraps remote fallback urls with the configured proxy', async () => {
+    getConfigMock.mockResolvedValue({
+      picture_115_random_weights: JSON.stringify({
+        cloudProxyUrl: 'https://proxy.example.com/proxy',
+      }),
+    });
+    getFile115ByPcMock.mockResolvedValue({
+      cid: 'root',
+      parentCid: 'folder-a',
+      pc: 'pc-1',
+      fullPath: '/Root/Album A/01.jpg',
+      isLiked: true,
+      localCacheFileName: '',
+    });
+    get115FileDataMock.mockResolvedValue({
+      info: {
+        url: { url: 'https://img.115.com/01.jpg' },
+        file_name: '01.jpg',
+      },
+    });
+
+    const { get115PicCacheFileByPcData } = await import('../../apps/api/src/modules/115/service/picture.service');
+    const result = await get115PicCacheFileByPcData('pc-1', 'test-agent');
+
+    expect(result.kind).toBe('remote');
+    expect(result.url).toBe('https://proxy.example.com/proxy?url=https%3A%2F%2Fimg.115.com%2F01.jpg&ua=test-agent');
+    expect(ensureLocalPicCacheByFileAsyncMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pc: 'pc-1',
+      }),
+      'test-agent'
+    );
   });
 
   test('clear115PicData supports removing by cid and folder path in one request', async () => {

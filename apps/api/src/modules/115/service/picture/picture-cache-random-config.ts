@@ -1,6 +1,8 @@
 import type { SetPicRandomCacheConfigParams } from '@volix/types';
 import { AppConfigEnum } from '../../../config/model/config.model';
 import { getConfig, setConfig } from '../../../config/service/config.service';
+import { badRequest } from '../../../shared/http-handler';
+import { t } from '../../../../utils/i18n';
 import { PicRandomCacheConfig } from '../../types/115.types';
 
 export const DEFAULT_RANDOM_CACHE_CONFIG: PicRandomCacheConfig = {
@@ -13,8 +15,7 @@ export const DEFAULT_RANDOM_CACHE_CONFIG: PicRandomCacheConfig = {
   localMaxSizeMb: 2048,
   randomNoRepeatWindowMinutes: 5,
   randomNoRepeatMaxCount: 50,
-  randomPicEndpoint: '',
-  localProxyEnabled: false,
+  cloudProxyUrl: '',
   autoPlayIntervalSeconds: 10,
 };
 
@@ -48,11 +49,7 @@ export const normalizeRandomCacheConfig = (input?: Partial<PicRandomCacheConfig>
     typeof safeInput?.randomNoRepeatMaxCount === 'number' && Number.isFinite(safeInput.randomNoRepeatMaxCount)
       ? safeInput.randomNoRepeatMaxCount
       : DEFAULT_RANDOM_CACHE_CONFIG.randomNoRepeatMaxCount;
-  const randomPicEndpoint =
-    typeof safeInput?.randomPicEndpoint === 'string'
-      ? safeInput.randomPicEndpoint.trim()
-      : DEFAULT_RANDOM_CACHE_CONFIG.randomPicEndpoint;
-  const localProxyEnabled = Boolean(safeInput?.localProxyEnabled);
+  const cloudProxyUrlRaw = typeof safeInput?.cloudProxyUrl === 'string' ? safeInput.cloudProxyUrl.trim() : '';
   const autoPlayIntervalSecondsRaw =
     typeof safeInput?.autoPlayIntervalSeconds === 'number' && Number.isFinite(safeInput.autoPlayIntervalSeconds)
       ? safeInput.autoPlayIntervalSeconds
@@ -95,13 +92,25 @@ export const normalizeRandomCacheConfig = (input?: Partial<PicRandomCacheConfig>
       MAX_RANDOM_NO_REPEAT_MAX_COUNT,
       Math.max(MIN_RANDOM_NO_REPEAT_MAX_COUNT, Math.round(randomNoRepeatMaxCountRaw))
     ),
-    randomPicEndpoint,
-    localProxyEnabled,
+    cloudProxyUrl: cloudProxyUrlRaw,
     autoPlayIntervalSeconds: Math.min(
       MAX_AUTO_PLAY_INTERVAL_SECONDS,
       Math.max(MIN_AUTO_PLAY_INTERVAL_SECONDS, Math.round(autoPlayIntervalSecondsRaw))
     ),
   };
+};
+
+const isValidCloudProxyUrl = (value: string) => {
+  if (!value) {
+    return true;
+  }
+
+  try {
+    const target = new URL(value);
+    return target.protocol === 'http:' || target.protocol === 'https:';
+  } catch {
+    return false;
+  }
 };
 
 export const parseRandomCacheConfig = (raw?: string | null) => {
@@ -142,15 +151,16 @@ export const setRandomCacheConfig = async (params: SetPicRandomCacheConfigParams
       typeof params.randomNoRepeatMaxCount === 'number'
         ? params.randomNoRepeatMaxCount
         : current.randomNoRepeatMaxCount,
-    randomPicEndpoint:
-      typeof params.randomPicEndpoint === 'string' ? params.randomPicEndpoint : current.randomPicEndpoint,
-    localProxyEnabled:
-      typeof params.localProxyEnabled === 'boolean' ? params.localProxyEnabled : current.localProxyEnabled,
+    cloudProxyUrl: typeof params.cloudProxyUrl === 'string' ? params.cloudProxyUrl : current.cloudProxyUrl,
     autoPlayIntervalSeconds:
       typeof params.autoPlayIntervalSeconds === 'number'
         ? params.autoPlayIntervalSeconds
         : current.autoPlayIntervalSeconds,
   });
+
+  if (!isValidCloudProxyUrl(next.cloudProxyUrl)) {
+    badRequest(t('pic115Api.invalidCloudProxyUrl'));
+  }
 
   await setConfig(AppConfigEnum.picture_115_random_weights, JSON.stringify(next));
   return next;

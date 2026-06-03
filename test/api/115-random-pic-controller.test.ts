@@ -1,24 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-const getConfiguredRandomPicOptionsMock = vi.fn();
-const isEnabledQueryFlagMock = vi.fn();
-const isSelfReferencingRandomPicEndpointMock = vi.fn();
-const buildRemoteEndpointUrlMock = vi.fn();
-const getRemoteRandomPicMetaMock = vi.fn();
-const toRandomPicResponseUrlMock = vi.fn();
 const getRandom115PicMetaMock = vi.fn();
-
-vi.mock('../../apps/api/src/modules/115/controller/115-random-proxy', () => ({
-  buildRemoteEndpointUrl: buildRemoteEndpointUrlMock,
-  buildRemoteParentRandomEndpoint: vi.fn(),
-  buildRemotePicPathEndpoint: vi.fn(),
-  getConfiguredRandomPicOptions: getConfiguredRandomPicOptionsMock,
-  getRemoteRandomPicMeta: getRemoteRandomPicMetaMock,
-  isEnabledQueryFlag: isEnabledQueryFlagMock,
-  isSelfReferencingRandomPicEndpoint: isSelfReferencingRandomPicEndpointMock,
-  parseRemotePicPathPayload: vi.fn(),
-  toRandomPicResponseUrl: toRandomPicResponseUrlMock,
-}));
+const getRandomCacheConfigMock = vi.fn();
 
 vi.mock('../../apps/api/src/modules/115/service/picture.service', () => ({
   clear115PicData: vi.fn(),
@@ -35,22 +18,19 @@ vi.mock('../../apps/api/src/modules/115/service/picture.service', () => ({
   set115PicRandomCacheConfigData: vi.fn(),
 }));
 
-vi.mock('../../apps/api/src/modules/115/service/picture/picture-cache-random-core', () => ({
-  getLocalRandomPicCacheByPc: vi.fn(),
-  getPicCachePublicUrl: vi.fn(),
-}));
+vi.mock('../../apps/api/src/modules/115/service/picture/picture-cache-random-core', async importOriginal => {
+  const actual = await importOriginal<
+    typeof import('../../apps/api/src/modules/115/service/picture/picture-cache-random-core')
+  >();
+  return {
+    ...actual,
+    getRandomCacheConfig: getRandomCacheConfigMock,
+  };
+});
 
 vi.mock('../../apps/api/src/modules/115/service/file.service', () => ({
   get115FileData: vi.fn(),
   get115FileListData: vi.fn(),
-}));
-
-vi.mock('../../apps/api/src/modules/115/service/file-db.service', () => ({
-  getFile115ByPc: vi.fn(),
-}));
-
-vi.mock('../../apps/api/src/modules/115/service/picture/picture-cache-fs-folder', () => ({
-  ensureRandomLocalPicCacheByFileAsync: vi.fn(),
 }));
 
 vi.mock('../../apps/api/src/modules/115/service/qrcode.service', () => ({
@@ -71,9 +51,17 @@ describe('115 random pic controller', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    getConfiguredRandomPicOptionsMock.mockResolvedValue({
-      endpoint: '',
-      localProxyEnabled: false,
+    getRandomCacheConfigMock.mockResolvedValue({
+      sourceWeights: {
+        memory: 0,
+        local: 50,
+        cloud: 50,
+      },
+      memoryMaxSizeMb: 100,
+      localMaxSizeMb: 2048,
+      randomNoRepeatWindowMinutes: 5,
+      randomNoRepeatMaxCount: 50,
+      cloudProxyUrl: '',
       autoPlayIntervalSeconds: 12,
     });
     getRandom115PicMetaMock.mockResolvedValue({
@@ -86,9 +74,6 @@ describe('115 random pic controller', () => {
       liked: false,
       notice: undefined,
     });
-    isEnabledQueryFlagMock.mockReturnValue(false);
-    isSelfReferencingRandomPicEndpointMock.mockReturnValue(false);
-    toRandomPicResponseUrlMock.mockImplementation((url: string) => url);
   });
 
   test('returns auto-play interval in random pic json response', async () => {
