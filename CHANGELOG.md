@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.1.8] - 2026-06-11
+
+### 中文
+#### Added
+- 新增上传进度弹窗组件，实时显示文件上传进度
+- 新增页面关闭前未完成上传的提示功能
+- 新增数据库迁移记录转换请求的 User-Agent
+- 新增上传进度弹窗相关单元测试
+#### Changed
+- 优化转换任务卡片组件，支持上传进度展示
+- 更新国际化文案，新增上传进度相关翻译
+- 更新多个依赖包版本
+#### Fixed
+- 修复转换任务状态更新逻辑中的潜在问题
+
+### English
+#### Added
+- Added upload progress modal component to display real-time file upload progress
+- Added prompt for incomplete uploads before page unload
+- Added database migration to record User-Agent for conversion requests
+- Added unit tests for upload progress modal
+#### Changed
+- Optimized convert task card component to support upload progress display
+- Updated i18n translations with upload progress related strings
+- Updated multiple dependency package versions
+#### Fixed
+- Fixed potential issue in convert task status update logic
+
 ## [1.1.7] - 2026-06-11
 
 ### 中文
