@@ -16,6 +16,17 @@ const parseJson = <T>(value: string, fallback: T) => {
   }
 };
 
+const parseOptionalJson = <T>(value?: string) => {
+  if (!String(value || '').trim()) {
+    return undefined;
+  }
+  const parsed = parseJson(value || '', {} as T);
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Object.keys(parsed as object).length === 0) {
+    return undefined;
+  }
+  return parsed;
+};
+
 const toIsoText = (value?: Date | string) => {
   if (!value) {
     return undefined;
@@ -31,6 +42,9 @@ export const mapFormatConvertTaskRow = (row: FormatConvertTaskEntity): FormatCon
     source: parseJson(row.source_json, {} as FormatConvertTaskSnapshot['source']),
     target: parseJson(row.target_json, {} as FormatConvertTaskSnapshot['target']),
     option: parseJson(row.option_json, {} as FormatConvertTaskSnapshot['option']),
+    sourceMediaInfo: parseOptionalJson(row.source_media_info_json),
+    convertSummary: parseOptionalJson(row.convert_summary_json),
+    resultMediaInfo: parseOptionalJson(row.result_media_info_json),
   };
 
   return {
@@ -42,6 +56,9 @@ export const mapFormatConvertTaskRow = (row: FormatConvertTaskEntity): FormatCon
     source: snapshot.source,
     target: snapshot.target,
     option: snapshot.option,
+    sourceMediaInfo: snapshot.sourceMediaInfo,
+    convertSummary: snapshot.convertSummary,
+    resultMediaInfo: snapshot.resultMediaInfo,
     presetId: row.preset_id || undefined,
     attemptCount: Number(row.attempt_count || 0),
     requestUserAgent: row.request_user_agent || undefined,
@@ -76,6 +93,9 @@ export const createFormatConvertTask = async (payload: CreateFormatConvertTaskDb
     source_json: JSON.stringify(payload.source || {}),
     target_json: JSON.stringify(payload.target || {}),
     option_json: JSON.stringify(payload.option || {}),
+    source_media_info_json: JSON.stringify(payload.sourceMediaInfo || {}),
+    convert_summary_json: JSON.stringify(payload.convertSummary || {}),
+    result_media_info_json: JSON.stringify(payload.resultMediaInfo || {}),
     preset_id: payload.presetId || undefined,
     attempt_count: payload.attemptCount || 0,
     request_user_agent: payload.requestUserAgent || undefined,

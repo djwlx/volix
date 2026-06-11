@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
-import type { FormatConvertOption } from '@volix/types';
+import type { FormatConvertMediaInfo, FormatConvertOption } from '@volix/types';
 
 const execFileAsync = promisify(execFile);
 const MAX_FFMPEG_STDERR_TAIL_LENGTH = 16 * 1024;
@@ -17,24 +17,19 @@ export interface ProbePayload {
     codec_name?: string;
     width?: number;
     height?: number;
+    avg_frame_rate?: string;
+    r_frame_rate?: string;
+    sample_rate?: string;
+    channels?: number;
+    channel_layout?: string;
+    bit_rate?: string;
   }>;
   format?: {
     duration?: string;
     size?: string;
     format_name?: string;
+    bit_rate?: string;
   };
-}
-
-export interface FormatConvertProbeSummary {
-  hasVideo: boolean;
-  hasAudio: boolean;
-  width: number;
-  height: number;
-  videoCodec: string;
-  audioCodec: string;
-  durationSeconds: number;
-  sizeBytes: number;
-  formatName: string;
 }
 
 export const resolveFfmpegBinary = () => String(process.env.FFMPEG_BIN || 'ffmpeg').trim() || 'ffmpeg';
@@ -48,19 +43,59 @@ const toBinaryError = (error: unknown, binary: string, envName: string) => {
   return error;
 };
 
-export const parseProbeResult = (payload: ProbePayload): FormatConvertProbeSummary => {
+const parseFfprobeRate = (value?: string) => {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return 0;
+  }
+  if (!raw.includes('/')) {
+    return Number(raw || 0);
+  }
+  const [numeratorText, denominatorText] = raw.split('/');
+  const numerator = Number(numeratorText || 0);
+  const denominator = Number(denominatorText || 0);
+  if (!numerator || !denominator) {
+    return 0;
+  }
+  return Number((numerator / denominator).toFixed(3));
+};
+
+const toKbps = (value?: string) => {
+  const bitsPerSecond = Number(value || 0);
+  if (!bitsPerSecond) {
+    return 0;
+  }
+  return Number((bitsPerSecond / 1000).toFixed(3));
+};
+
+export const parseProbeResult = (payload: ProbePayload): FormatConvertMediaInfo => {
   const video = payload.streams.find(item => item.codec_type === 'video');
   const audio = payload.streams.find(item => item.codec_type === 'audio');
   return {
-    hasVideo: Boolean(video),
-    hasAudio: Boolean(audio),
-    width: Number(video?.width || 0),
-    height: Number(video?.height || 0),
-    videoCodec: String(video?.codec_name || ''),
-    audioCodec: String(audio?.codec_name || ''),
+    formatName: String(payload.format?.format_name || ''),
     durationSeconds: Number(payload.format?.duration || 0),
     sizeBytes: Number(payload.format?.size || 0),
-    formatName: String(payload.format?.format_name || ''),
+    bitRateKbps: toKbps(payload.format?.bit_rate),
+    hasVideo: Boolean(video),
+    hasAudio: Boolean(audio),
+    video: video
+      ? {
+          codecName: String(video.codec_name || ''),
+          width: Number(video.width || 0),
+          height: Number(video.height || 0),
+          frameRate: parseFfprobeRate(video.avg_frame_rate || video.r_frame_rate),
+          bitRateKbps: toKbps(video.bit_rate),
+        }
+      : undefined,
+    audio: audio
+      ? {
+          codecName: String(audio.codec_name || ''),
+          sampleRateHz: Number(audio.sample_rate || 0),
+          channels: Number(audio.channels || 0),
+          channelLayout: String(audio.channel_layout || ''),
+          bitRateKbps: toKbps(audio.bit_rate),
+        }
+      : undefined,
   };
 };
 

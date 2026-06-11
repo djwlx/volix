@@ -19,7 +19,7 @@ import {
   cleanupFormatConvertTaskLocalArtifacts,
   hasFormatConvertLocalArtifacts,
 } from '../service/format-convert-artifact.service';
-import { normalizeFormatConvertOption } from '../service/format-convert-option.service';
+import { buildFormatConvertSummary, normalizeFormatConvertOption } from '../service/format-convert-option.service';
 import {
   createFormatConvertTask,
   getFormatConvertTaskByIdAndUserId,
@@ -109,7 +109,7 @@ export const createLocalFormatConvertTask: MyMiddleware = async ctx => {
   const storedUploadPath = buildStoredUploadPath(file?.originalFilename || 'upload.bin');
   await fs.promises.mkdir(path.dirname(storedUploadPath), { recursive: true });
   await moveUploadedFile(String(file?.filepath || ''), storedUploadPath);
-  await probeMediaFile(storedUploadPath);
+  const sourceMediaInfo = await probeMediaFile(storedUploadPath);
 
   const option = normalizeFormatConvertOption({
     commandMode: payload.commandMode,
@@ -137,6 +137,12 @@ export const createLocalFormatConvertTask: MyMiddleware = async ctx => {
       uploadPath: storedUploadPath,
     },
     option,
+    sourceMediaInfo,
+    convertSummary: buildFormatConvertSummary({
+      commandMode: payload.commandMode,
+      presetId: payload.presetId,
+      option,
+    }),
   });
 
   void ensureFormatConvertQueueRunning();
@@ -178,6 +184,11 @@ export const createCloudFormatConvertTask: MyMiddleware = async ctx => {
     userId,
     mode: FormatConvertMode.CLOUD,
     option,
+    convertSummary: buildFormatConvertSummary({
+      commandMode: payload.commandMode,
+      presetId: payload.presetId,
+      option,
+    }),
     requestUserAgent,
   });
 

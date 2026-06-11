@@ -49,6 +49,7 @@ describe('format convert option service', () => {
       'video-webm-vp9-720p',
       'audio-mp3-aac-copy',
       'audio-aac-aac-copy',
+      'audio-flac-lossless',
     ]);
     expect(FORMAT_CONVERT_PRESETS.every(item => item.commandMode === FormatConvertCommandMode.PRESET)).toBe(true);
     expect(FORMAT_CONVERT_PRESETS.every(item => Boolean(item.labelKey))).toBe(true);
@@ -148,5 +149,26 @@ describe('format convert option service', () => {
         option: normalized,
       })
     ).toEqual(normalized);
+  });
+
+  it('treats flac as an audio-only preset output', () => {
+    const normalized = normalizeFormatConvertOption({
+      commandMode: FormatConvertCommandMode.PRESET,
+      presetId: 'audio-flac-lossless',
+      option: {
+        outputFormat: 'flac',
+        audioCodec: 'flac',
+        videoCodec: 'h264',
+        resolution: '720p',
+      },
+    });
+
+    expect(normalized).toEqual({
+      outputFormat: 'flac',
+      audioCodec: 'flac',
+      resolution: 'source',
+      encodingPreset: 'medium',
+      keepAudio: true,
+    });
   });
 });

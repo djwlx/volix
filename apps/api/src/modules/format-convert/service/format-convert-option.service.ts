@@ -2,11 +2,13 @@ import {
   FORMAT_CONVERT_PRESET_DEFINITIONS,
   FormatConvertCommandMode,
   type FormatConvertOption,
+  type FormatConvertSummary,
   type FormatConvertTaskItem,
 } from '@volix/types';
 
 const CUSTOM_ARGS_BLOCKLIST = new Set(['-i', '-y', '-n', '-filter_complex_script']);
-const PATH_LIKE_REGEXP = /(^\/)|(\.\.?\/)|\.(mp4|mkv|mov|webm|mp3|aac|wav|txt|json)$/i;
+const PATH_LIKE_REGEXP = /(^\/)|(\.\.?\/)|\.(mp4|mkv|mov|webm|mp3|aac|wav|flac|txt|json)$/i;
+const AUDIO_ONLY_OUTPUT_FORMATS = new Set(['mp3', 'aac', 'wav', 'flac']);
 
 const DEFAULT_OPTION: Pick<FormatConvertOption, 'resolution' | 'encodingPreset' | 'keepAudio'> = {
   resolution: 'source',
@@ -52,7 +54,7 @@ const sanitizePresetOption = (option: FormatConvertOption): FormatConvertOption 
     customArgsText: undefined,
   };
 
-  if (nextOption.outputFormat === 'mp3' || nextOption.outputFormat === 'aac' || nextOption.outputFormat === 'wav') {
+  if (AUDIO_ONLY_OUTPUT_FORMATS.has(nextOption.outputFormat)) {
     nextOption.videoCodec = undefined;
     nextOption.resolution = 'source';
   }
@@ -101,4 +103,25 @@ export const normalizeFormatConvertTaskOption = (
     presetId: task.presetId,
     option: task.option,
   });
+};
+
+export const buildFormatConvertSummary = (payload: {
+  commandMode: FormatConvertCommandMode;
+  presetId?: string;
+  option: FormatConvertOption;
+}): FormatConvertSummary => {
+  return {
+    commandMode: payload.commandMode,
+    presetId: payload.presetId,
+    outputFormat: payload.option.outputFormat,
+    videoCodec: payload.option.videoCodec,
+    audioCodec: payload.option.audioCodec,
+    resolution: payload.option.resolution,
+    videoBitrateKbps: payload.option.videoBitrateKbps,
+    audioBitrateKbps: payload.option.audioBitrateKbps,
+    crf: payload.option.crf,
+    encodingPreset: payload.option.encodingPreset,
+    keepAudio: payload.option.keepAudio,
+    customArgsText: payload.option.customArgsText,
+  };
 };

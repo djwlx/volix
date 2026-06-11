@@ -1,6 +1,7 @@
 import { PATH } from './path';
 import fs from 'fs';
 import { log } from './logger';
+import { ensureFormatConvertTaskSchema } from '../modules/format-convert/model/format-convert-task.model';
 
 const initApp = async () => {
   // 创建必要的目录
@@ -20,6 +21,8 @@ const initApp = async () => {
       fs.mkdirSync(filePath, { recursive: true });
     }
   }
+
+  await ensureFormatConvertTaskSchema();
 };
 
 export default initApp;

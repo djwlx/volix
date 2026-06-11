@@ -4,13 +4,14 @@ import {
   FormatConvertTargetType,
   FormatConvertTaskStage,
   FormatConvertTaskStatus,
+  type FormatConvertMediaInfo,
 } from '@volix/types';
-import { buildFormatConvertArgs, runFfmpegCommand } from './format-convert-ffmpeg.service';
+import { buildFormatConvertArgs, probeMediaFile, runFfmpegCommand } from './format-convert-ffmpeg.service';
 import {
   downloadFormatConvertOpenlistSource,
   uploadFormatConvertResultToOpenlist,
 } from './format-convert-openlist.service';
-import { normalizeFormatConvertTaskOption } from './format-convert-option.service';
+import { buildFormatConvertSummary, normalizeFormatConvertTaskOption } from './format-convert-option.service';
 import { updateFormatConvertTaskStatus } from './format-convert-task-db.service';
 import {
   ensureFormatConvertWorkspace,
@@ -54,6 +55,13 @@ const resolveStatusByStage = (stage: 'download' | 'convert' | 'upload') => {
 
 export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: FormatConvertRunnerHooks) => {
   const normalizedOption = normalizeFormatConvertTaskOption(task);
+  const convertSummary =
+    task.convertSummary ||
+    buildFormatConvertSummary({
+      commandMode: task.commandMode,
+      presetId: task.presetId,
+      option: normalizedOption,
+    });
   const outputFilename = buildOutputFilename(task, normalizedOption.outputFormat);
   const sourceWorkspaceName = `source${path.extname(task.source.fileName || '') || '.bin'}`;
   const outputWorkspaceName = `output.${normalizedOption.outputFormat}`;
@@ -66,6 +74,7 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
 
   try {
     let inputPath = '';
+    let sourceMediaInfo: FormatConvertMediaInfo | undefined = task.sourceMediaInfo;
 
     if (task.source.type === FormatConvertSourceType.OPENLIST) {
       currentStage = 'download';
@@ -81,6 +90,10 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
       inputPath = resolveLocalSourcePath(task);
     }
 
+    if (!sourceMediaInfo) {
+      sourceMediaInfo = await probeMediaFile(inputPath);
+    }
+
     currentStage = 'convert';
     hooks?.onStatusChange?.(FormatConvertTaskStatus.CONVERTING);
     await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.CONVERTING, {
@@ -89,6 +102,8 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
       source_local_path: inputPath,
       output_local_path: outputWorkspacePath,
       log_local_path: logWorkspacePath,
+      source_media_info_json: JSON.stringify(sourceMediaInfo || {}),
+      convert_summary_json: JSON.stringify(convertSummary || {}),
       started_at: new Date(),
     });
 
@@ -107,6 +122,7 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
     await runFfmpegCommand(commandArgs, {
       logPath: logWorkspacePath,
     });
+    const resultMediaInfo = await probeMediaFile(outputWorkspacePath);
 
     if (task.target.type === FormatConvertTargetType.OPENLIST) {
       currentStage = 'upload';
@@ -121,6 +137,7 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
       );
       await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.COMPLETED, {
         result_openlist_path: resultOpenlistPath,
+        result_media_info_json: JSON.stringify(resultMediaInfo || {}),
         finished_at: new Date(),
         error_message: '',
       });
@@ -134,6 +151,7 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
       const resultLocalPath = await persistFormatConvertResult(task.id, outputWorkspacePath, outputFilename);
       await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.COMPLETED, {
         result_local_path: resultLocalPath,
+        result_media_info_json: JSON.stringify(resultMediaInfo || {}),
         finished_at: new Date(),
         error_message: '',
       });

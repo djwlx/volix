@@ -19,6 +19,7 @@ export interface FormatConvertFormDraft {
   targetFileName: string;
 }
 
+const AUDIO_ONLY_OUTPUT_FORMATS = new Set(['mp3', 'aac', 'wav', 'flac']);
 const getDefaultPreset = () => FORMAT_CONVERT_PRESET_DEFINITIONS[0];
 export const getPresetDefinition = (presetId?: string) =>
   FORMAT_CONVERT_PRESET_DEFINITIONS.find(item => item.id === presetId) || getDefaultPreset();
@@ -48,7 +49,7 @@ export const buildFormatOptions = () => {
 };
 
 export const buildVideoCodecOptions = (targetFormat: string) => {
-  if (targetFormat === 'mp3' || targetFormat === 'aac' || targetFormat === 'wav') {
+  if (AUDIO_ONLY_OUTPUT_FORMATS.has(targetFormat)) {
     return [];
   }
   return [...FORMAT_CONVERT_VIDEO_CODECS].map(value => ({ label: value, value }));

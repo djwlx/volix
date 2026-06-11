@@ -106,9 +106,9 @@ export const FORMAT_CONVERT_MODE_STATUS_FLOW = Object.freeze({
   ],
 } as const);
 
-export const FORMAT_CONVERT_OUTPUT_FORMATS = Object.freeze(['mp4', 'mkv', 'mov', 'webm', 'mp3', 'aac', 'wav']);
+export const FORMAT_CONVERT_OUTPUT_FORMATS = Object.freeze(['mp4', 'mkv', 'mov', 'webm', 'mp3', 'aac', 'wav', 'flac']);
 export const FORMAT_CONVERT_VIDEO_CODECS = Object.freeze(['copy', 'h264', 'h265', 'vp9', 'av1']);
-export const FORMAT_CONVERT_AUDIO_CODECS = Object.freeze(['copy', 'aac', 'mp3', 'opus', 'pcm_s16le']);
+export const FORMAT_CONVERT_AUDIO_CODECS = Object.freeze(['copy', 'aac', 'mp3', 'opus', 'pcm_s16le', 'flac']);
 export const FORMAT_CONVERT_RESOLUTIONS = Object.freeze(['source', '1080p', '720p', '480p']);
 export const FORMAT_CONVERT_ENCODING_PRESETS = Object.freeze(['ultrafast', 'fast', 'medium', 'slow', 'veryslow']);
 
@@ -129,6 +129,48 @@ export interface FormatConvertOption {
   encodingPreset?: FormatConvertEncodingPreset;
   keepAudio?: boolean;
   extraArgs?: string[];
+  customArgsText?: string;
+}
+
+export interface FormatConvertMediaVideoInfo {
+  codecName: string;
+  width: number;
+  height: number;
+  frameRate: number;
+  bitRateKbps: number;
+}
+
+export interface FormatConvertMediaAudioInfo {
+  codecName: string;
+  sampleRateHz: number;
+  channels: number;
+  channelLayout: string;
+  bitRateKbps: number;
+}
+
+export interface FormatConvertMediaInfo {
+  formatName: string;
+  durationSeconds: number;
+  sizeBytes: number;
+  bitRateKbps: number;
+  hasVideo: boolean;
+  hasAudio: boolean;
+  video?: FormatConvertMediaVideoInfo;
+  audio?: FormatConvertMediaAudioInfo;
+}
+
+export interface FormatConvertSummary {
+  commandMode: FormatConvertCommandMode;
+  presetId?: string;
+  outputFormat: FormatConvertOutputFormat;
+  videoCodec?: FormatConvertVideoCodec;
+  audioCodec?: FormatConvertAudioCodec;
+  resolution?: FormatConvertResolution;
+  videoBitrateKbps?: number;
+  audioBitrateKbps?: number;
+  crf?: number;
+  encodingPreset?: FormatConvertEncodingPreset;
+  keepAudio?: boolean;
   customArgsText?: string;
 }
 
@@ -183,6 +225,14 @@ export const FORMAT_CONVERT_PRESET_DEFINITIONS: FormatConvertPreset[] = [
     option: { audioCodec: 'aac', keepAudio: true },
     labelKey: 'formatConvert.preset.audioAacAacCopy',
   },
+  {
+    id: 'audio-flac-lossless',
+    mode: FormatConvertMode.LOCAL,
+    commandMode: FormatConvertCommandMode.PRESET,
+    outputFormat: 'flac',
+    option: { audioCodec: 'flac', keepAudio: true },
+    labelKey: 'formatConvert.preset.audioFlacLossless',
+  },
 ];
 
 export interface FormatConvertUploadSource {
@@ -236,6 +286,9 @@ export interface FormatConvertTaskItem {
   source: FormatConvertSource;
   target: FormatConvertTarget;
   option: FormatConvertOption;
+  sourceMediaInfo?: FormatConvertMediaInfo;
+  convertSummary?: FormatConvertSummary;
+  resultMediaInfo?: FormatConvertMediaInfo;
   presetId?: string;
   attemptCount: number;
   lastStage?: FormatConvertTaskStage;

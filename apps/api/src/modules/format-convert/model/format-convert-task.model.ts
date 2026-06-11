@@ -38,6 +38,21 @@ export const FormatConvertTaskModel = sequelize.define<FormatConvertTaskModelTyp
     allowNull: false,
     defaultValue: '{}',
   },
+  source_media_info_json: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+    defaultValue: '{}',
+  },
+  convert_summary_json: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+    defaultValue: '{}',
+  },
+  result_media_info_json: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+    defaultValue: '{}',
+  },
   preset_id: {
     type: DataTypes.STRING,
     allowNull: true,
@@ -92,3 +107,26 @@ export const FormatConvertTaskModel = sequelize.define<FormatConvertTaskModelTyp
     allowNull: true,
   },
 });
+
+const FORMAT_CONVERT_TASK_JSON_COLUMNS = [
+  'source_media_info_json',
+  'convert_summary_json',
+  'result_media_info_json',
+] as const;
+
+export const ensureFormatConvertTaskSchema = async () => {
+  await FormatConvertTaskModel.sync();
+  const queryInterface = sequelize.getQueryInterface();
+  const columns = await queryInterface.describeTable('volix_format_convert_task');
+
+  for (const columnName of FORMAT_CONVERT_TASK_JSON_COLUMNS) {
+    if (columns[columnName]) {
+      continue;
+    }
+    await queryInterface.addColumn('volix_format_convert_task', columnName, {
+      type: DataTypes.TEXT,
+      allowNull: false,
+      defaultValue: '{}',
+    });
+  }
+};

@@ -8,6 +8,7 @@ import {
 
 const mocked = vi.hoisted(() => ({
   option: {
+    buildFormatConvertSummary: vi.fn(),
     normalizeFormatConvertTaskOption: vi.fn(),
   },
   workspace: {
@@ -20,6 +21,7 @@ const mocked = vi.hoisted(() => ({
   },
   ffmpeg: {
     buildFormatConvertArgs: vi.fn(),
+    probeMediaFile: vi.fn(),
     runFfmpegCommand: vi.fn(),
   },
   openlist: {
@@ -49,6 +51,15 @@ describe('format convert runner', () => {
       encodingPreset: 'medium',
       keepAudio: true,
     });
+    mocked.option.buildFormatConvertSummary.mockReturnValue({
+      commandMode: 'preset',
+      outputFormat: 'mp4',
+      videoCodec: 'h264',
+      audioCodec: 'aac',
+      resolution: 'source',
+      encodingPreset: 'medium',
+      keepAudio: true,
+    });
     mocked.workspace.ensureFormatConvertWorkspace.mockResolvedValue('/tmp/task-1');
     mocked.workspace.getFormatConvertLogPath.mockImplementation((id: number) => `/tmp/task-${id}/ffmpeg.log`);
     mocked.workspace.getFormatConvertWorkspaceDir.mockImplementation((id: number) => `/tmp/task-${id}`);
@@ -57,6 +68,28 @@ describe('format convert runner', () => {
     );
     mocked.workspace.persistFormatConvertResult.mockResolvedValue('/tmp/result/done.mp4');
     mocked.ffmpeg.buildFormatConvertArgs.mockReturnValue(['-y']);
+    mocked.ffmpeg.probeMediaFile.mockResolvedValue({
+      formatName: 'mov,mp4,m4a,3gp,3g2,mj2',
+      durationSeconds: 12,
+      sizeBytes: 1024,
+      bitRateKbps: 256,
+      hasVideo: true,
+      hasAudio: true,
+      video: {
+        codecName: 'h264',
+        width: 1280,
+        height: 720,
+        frameRate: 30,
+        bitRateKbps: 1800,
+      },
+      audio: {
+        codecName: 'aac',
+        sampleRateHz: 48000,
+        channels: 2,
+        channelLayout: 'stereo',
+        bitRateKbps: 192,
+      },
+    });
     mocked.ffmpeg.runFfmpegCommand.mockResolvedValue(undefined);
     mocked.openlist.downloadFormatConvertOpenlistSource.mockResolvedValue(undefined);
     mocked.openlist.uploadFormatConvertResultToOpenlist.mockResolvedValue('/alist/done.mp4');
@@ -91,7 +124,16 @@ describe('format convert runner', () => {
     expect(mocked.ffmpeg.runFfmpegCommand).toHaveBeenCalledWith(['-y'], {
       logPath: '/tmp/task-1/ffmpeg.log',
     });
+    expect(mocked.ffmpeg.probeMediaFile).toHaveBeenCalledWith('/tmp/task-1/output.mp4');
     expect(mocked.workspace.persistFormatConvertResult).toHaveBeenCalledWith(1, '/tmp/task-1/output.mp4', 'done.mp4');
+    expect(mocked.taskDb.updateFormatConvertTaskStatus).toHaveBeenCalledWith(
+      1,
+      'completed',
+      expect.objectContaining({
+        result_media_info_json: expect.any(String),
+        finished_at: expect.any(Date),
+      })
+    );
   });
 
   it('runs a cloud task through downloading converting uploading and preserves local artifacts', async () => {
@@ -125,11 +167,34 @@ describe('format convert runner', () => {
       '/tmp/task-1/source.mkv',
       'Mozilla/5.0 Task UA'
     );
+    expect(mocked.ffmpeg.probeMediaFile).toHaveBeenNthCalledWith(1, '/tmp/task-1/source.mkv');
+    expect(mocked.ffmpeg.probeMediaFile).toHaveBeenNthCalledWith(2, '/tmp/task-1/output.mp4');
     expect(mocked.openlist.uploadFormatConvertResultToOpenlist).toHaveBeenCalledWith(
       'u2',
       expect.anything(),
       '/tmp/task-1/output.mp4'
     );
     expect(mocked.workspace.cleanupFormatConvertWorkspace).not.toHaveBeenCalled();
+    expect(mocked.taskDb.updateFormatConvertTaskStatus).toHaveBeenCalledWith(
+      2,
+      'downloading',
+      expect.objectContaining({
+        source_local_path: '/tmp/task-1/source.mkv',
+      })
+    );
+    expect(mocked.taskDb.updateFormatConvertTaskStatus).toHaveBeenCalledWith(
+      2,
+      'converting',
+      expect.objectContaining({
+        source_media_info_json: expect.any(String),
+      })
+    );
+    expect(mocked.taskDb.updateFormatConvertTaskStatus).toHaveBeenCalledWith(
+      2,
+      'completed',
+      expect.objectContaining({
+        result_media_info_json: expect.any(String),
+      })
+    );
   });
 });
