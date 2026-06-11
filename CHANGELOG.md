@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.1.9] - 2026-06-11
+
+### 中文
+#### Added
+- 新增图片缓存任务队列，支持异步处理缓存刷新
+- 新增作用域运行时映射，用于管理不同作用域下的运行时实例
+- 新增 FFmpeg 格式转换服务测试
+- 新增国际化翻译条目
+#### Changed
+- 优化图片缓存文件系统文件夹逻辑
+- 优化 SDK 服务中缓存相关逻辑
+- 优化格式转换控制器和 FFmpeg 服务
+- 优化 OpenList 格式转换服务
+- 更新前端格式转换组件（云转换卡片、任务卡片、OpenList 浏览器）
+- 更新依赖版本
+#### Fixed
+- 修复图片随机 API 中的缓存问题
+
+### English
+#### Added
+- Added picture cache job queue for async cache refresh
+- Added scoped runtime map to manage runtime instances per scope
+- Added tests for FFmpeg format conversion service
+- Added new i18n translation entries
+#### Changed
+- Optimized picture cache file system folder logic
+- Optimized cache-related logic in SDK service
+- Optimized format conversion controller and FFmpeg service
+- Optimized OpenList format conversion service
+- Updated frontend format conversion components (cloud convert card, task card, OpenList browser)
+- Updated dependency versions
+#### Fixed
+- Fixed cache issue in picture random API
+
 ## [1.1.8] - 2026-06-11
 
 ### 中文
