@@ -24,6 +24,12 @@ export const PATH = {
   get cache() {
     return path.join(ROOT, DATA, 'cache');
   },
+  get cacheMedia() {
+    return path.join(ROOT, DATA, 'cache', 'media');
+  },
+  get cacheMediaFormatConvert() {
+    return path.join(ROOT, DATA, 'cache', 'media', 'format-convert');
+  },
   get log() {
     return path.join(ROOT, DATA, 'log');
   },
@@ -32,6 +38,9 @@ export const PATH = {
   },
   get upload() {
     return path.join(ROOT, DATA, 'upload');
+  },
+  get uploadFormatConvert() {
+    return path.join(ROOT, DATA, 'upload', 'format-convert');
   },
   get public() {
     return path.join(ROOT, 'public');

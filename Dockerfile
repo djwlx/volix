@@ -2,6 +2,10 @@ FROM node:20-slim
 
 WORKDIR /app
 
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ffmpeg \
+  && rm -rf /var/lib/apt/lists/*
+
 # 复制 dist 文件夹的内容直接到 /app
 COPY dist/ .
 

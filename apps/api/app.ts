@@ -12,6 +12,7 @@ import { log } from './src/utils/logger';
 import { formatTime } from '@volix/utils';
 import { startRssFeedAutoRefreshTask } from './src/modules/rss/service/rss-auto-refresh.service';
 import { sync115FileCacheDbWithFsOnStartup } from './src/modules/115/service/picture/picture-cache-startup-sync';
+import { recoverAndStartFormatConvertQueue } from './src/modules/format-convert/service/format-convert-queue.service';
 
 async function startApp() {
   log.info('应用启动时间：', formatTime());
@@ -19,6 +20,7 @@ async function startApp() {
   await initApp();
   void sync115FileCacheDbWithFsOnStartup();
   startRssFeedAutoRefreshTask();
+  void recoverAndStartFormatConvertQueue();
 
   const app = new Koa();
   app.on('error', error => {

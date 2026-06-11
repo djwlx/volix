@@ -7,6 +7,7 @@
 ## 概览
 
 你可以直接使用已经发布到镜像仓库的容器镜像，也可以从本地源码构建镜像后运行。
+镜像内已经安装 `ffmpeg` 和 `ffprobe`，这是内置“格式转换”工具的运行前提。
 
 ## 已发布镜像
 
@@ -84,6 +85,13 @@ docker run -d \
 ## 数据持久化
 
 将 `$(pwd)/data` 挂载到 `/app/data`，可以在替换容器后保留数据库和上传文件。
+格式转换会使用 `/app/data/cache/media/format-convert` 作为临时工作目录，任务完成或应用重启恢复后会自动清理缓存文件。
+
+## 媒体转换运行时
+
+- 从本仓库构建出的 Docker 镜像默认已包含 `ffmpeg` 和 `ffprobe`。
+- 如果你不是通过 Docker 运行，而是直接以源码方式部署，需要自行保证 `ffmpeg` 和 `ffprobe` 在 `PATH` 中，或通过 `FFMPEG_BIN`、`FFPROBE_BIN` 指定路径。
+- OpenList 云转换默认同一时间只执行 1 个任务；程序重启后会把失败或中断任务清理临时缓存并重新排队。
 
 ## 升级容器
 
@@ -105,4 +113,5 @@ docker run -d \
 
 - 容器中运行的是构建后的应用，不是 Vite 开发服务。
 - 如果缺少 `dist/`，请先执行 `pnpm release` 和 `pnpm build`，再运行 `docker build`。
+- 可以通过 `docker run --rm volix:latest ffmpeg -version` 和 `docker run --rm volix:latest ffprobe -version` 验证镜像内媒体依赖是否可用。
 - 已确认发布的 `latest` 和 `v1.0.29` 为多架构镜像，包含 `linux/amd64` 和 `linux/arm64`。

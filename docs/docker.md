@@ -7,6 +7,7 @@ This guide covers the Docker workflow for running Volix from the packaged `dist/
 ## Overview
 
 You can run Volix either from prebuilt images published to registries or by building the image locally from source.
+The container image installs `ffmpeg` and `ffprobe`, which are required for the built-in Format Convert tool.
 
 ## Published Images
 
@@ -84,6 +85,13 @@ After the container starts, open `http://localhost:3000`.
 ## Persistent Data
 
 Mount `$(pwd)/data` to `/app/data` so the application database and uploaded files survive container replacement.
+Format Convert uses `/app/data/cache/media/format-convert` as its temporary workspace and clears task cache files automatically after completion or restart recovery.
+
+## Media Conversion Runtime
+
+- Docker images built from this repository already include `ffmpeg` and `ffprobe`.
+- Source-based non-Docker deployments must provide `ffmpeg` and `ffprobe` on `PATH`, or set `FFMPEG_BIN` and `FFPROBE_BIN`.
+- OpenList cloud convert runs one task at a time by default and retries failed or interrupted jobs after the next app startup.
 
 ## Upgrade Container
 
@@ -105,4 +113,5 @@ docker run -d \
 
 - The container serves the built application, not the Vite development server.
 - If `dist/` is missing, rebuild with `pnpm release` and `pnpm build` before running `docker build`.
+- You can verify the media runtime inside the image with `docker run --rm volix:latest ffmpeg -version` and `docker run --rm volix:latest ffprobe -version`.
 - The published `latest` and `v1.0.29` manifests are multi-arch images with `linux/amd64` and `linux/arm64` variants.

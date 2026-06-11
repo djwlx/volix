@@ -10,6 +10,7 @@ Volix is built for people who want a lightweight personal toolbox they can run o
 
 - Random image workflows are the centerpiece: pull images from a 115 library, jump to the next image, browse random siblings, autoplay, and save favorites
 - Developer tools are built in: formatter, color picker, and SQLite Admin help with debugging payloads, inspecting data, and fixing content quickly
+- Media tooling is built in: format convert handles local uploads and OpenList cloud files through preset or custom `ffmpeg` jobs
 - RSS reading is self-hosted: manage RSSHub subscriptions, read aggregated feeds, pause routes, and inspect local cache/history
 - Self-hosted accounts and permissions are included: sign in, sign up, optional email verification, profile management, and role-based access
 - Configuration is centralized: manage random image cache strategy, RSS settings, SMTP, registration rules, and per-user service accounts
@@ -31,6 +32,7 @@ Volix is built for people who want a lightweight personal toolbox they can run o
 - Formatter: auto-detect, recursively decode, and inspect JSON, XML, and Base64 content
 - Color Picker: sample colors from web pages or uploaded images, generate HEX/RGB/HSL values, and copy them quickly
 - SQLite Admin: browse tables, page through records, create/edit/delete rows, and work with JSON, booleans, numbers, and `null` values directly
+- Format Convert: upload local media or pick OpenList files, choose preset output targets, optionally pass custom `ffmpeg` args, and track task status end to end
 
 ### RSS Reading and Subscription Management
 
@@ -86,6 +88,7 @@ Requirements:
 - `nvm` with `.nvmrc` support
 - pnpm `8.15.9`
 - Docker
+- `ffmpeg` and `ffprobe` available to the runtime that executes media conversion
 
 Build the app and image:
 
@@ -110,6 +113,7 @@ docker run -d \
 ### Data and Upgrades
 
 - Mount `./data` to `/app/data` to keep the database and uploaded files across container replacement
+- Format convert uses `data/cache/media/format-convert` for temporary workspaces and clears them automatically after tasks finish or are recovered on restart
 - Rebuild the image and recreate the container when upgrading a source-based deployment
 - Use version tags instead of `latest` if you want a pinned release
 
@@ -122,6 +126,8 @@ For the full Docker workflow, see [Docker Guide](./docs/docker.md).
 - Node.js `>=20 <25`
 - `nvm`
 - pnpm `8.15.9`
+- `ffmpeg`
+- `ffprobe`
 
 ### Local Setup
 

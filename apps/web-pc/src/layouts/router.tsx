@@ -16,6 +16,7 @@ import PicLikedApp from '@/apps/pic-liked';
 import RssApp from '@/apps/rss';
 import AuthApp from '@/apps/auth';
 import SettingApp from '@/apps/setting';
+import FormatConvertApp from '@/apps/format-convert';
 import SettingInfoApp from '@/apps/setting/pages/info';
 import SettingUserApp from '@/apps/setting/pages/user';
 import SettingUserAddApp from '@/apps/setting/pages/user/add';
@@ -140,6 +141,22 @@ export const router = createBrowserRouter([
             logo: (
               <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%)' }}>
                 RSS
+              </div>
+            ),
+          },
+        }),
+      },
+      {
+        path: 'format-convert',
+        Component: FormatConvertApp,
+        handle: routeHandle({
+          requiresAuth: true,
+          appHeader: {
+            title: msg('route.formatConvert.title', '格式转换'),
+            description: msg('route.formatConvert.description', '本地文件与 OpenList 云文件的统一格式转换工具'),
+            logo: (
+              <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #0f766e 0%, #0ea5e9 100%)' }}>
+                FM
               </div>
             ),
           },

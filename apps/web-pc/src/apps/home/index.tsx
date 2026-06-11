@@ -73,6 +73,18 @@ function HomeApp() {
                 </div>
               }
             />
+            {authed ? (
+              <AppCard
+                title={t('home.card.formatConvert.title')}
+                description={t('home.card.formatConvert.description')}
+                link="/format-convert"
+                icon={
+                  <div style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #0f766e 0%, #0ea5e9 100%)' }}>
+                    FM
+                  </div>
+                }
+              />
+            ) : null}
           </div>
         </div>
 

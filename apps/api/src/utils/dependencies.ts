@@ -8,7 +8,10 @@ const initApp = async () => {
     { filePath: PATH.log, type: 'dir' },
     { filePath: PATH.data, type: 'dir' },
     { filePath: PATH.cache, type: 'dir' },
+    { filePath: PATH.cacheMedia, type: 'dir' },
+    { filePath: PATH.cacheMediaFormatConvert, type: 'dir' },
     { filePath: PATH.upload, type: 'dir' },
+    { filePath: PATH.uploadFormatConvert, type: 'dir' },
   ];
 
   for (const { filePath, type } of pathList) {

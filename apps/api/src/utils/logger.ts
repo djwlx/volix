@@ -5,12 +5,18 @@ import { LOG_MAX_SIZE_BYTES, startLogMaintenance } from './log-maintenance';
 const { NODE_ENV } = process.env;
 
 const isProd = NODE_ENV === 'production';
-const getNormalAppenders = () => (isProd ? ['normal', 'console'] : ['console']);
+const getNormalAppenders = () => (isProd ? ['normal', 'consoleError'] : ['console']);
+const getDatabaseAppenders = () => ['database'];
 
 log4js.configure({
   appenders: {
     console: {
       type: 'console',
+    },
+    consoleError: {
+      type: 'logLevelFilter',
+      appender: 'console',
+      level: 'error',
     },
     normal: {
       type: 'dateFile',
@@ -35,7 +41,7 @@ log4js.configure({
       level: 'all',
     },
     dataBase: {
-      appenders: ['database'],
+      appenders: getDatabaseAppenders(),
       level: 'all',
     },
     default: {

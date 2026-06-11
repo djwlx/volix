@@ -1,0 +1,64 @@
+import type {
+  CreateFormatConvertTaskRequest,
+  CreateFormatConvertTaskResult,
+  FormatConvertCommandMode,
+  FormatConvertMode,
+  FormatConvertOption,
+  FormatConvertPreset,
+  FormatConvertSource,
+  FormatConvertTarget,
+  FormatConvertTaskItem,
+  FormatConvertTaskStage,
+  FormatConvertTaskStatus,
+  GetFormatConvertPresetsResult,
+  GetFormatConvertTaskListResult,
+} from '@volix/types';
+
+export type {
+  CreateFormatConvertTaskRequest,
+  CreateFormatConvertTaskResult,
+  FormatConvertOption,
+  FormatConvertPreset,
+  FormatConvertSource,
+  FormatConvertTarget,
+  FormatConvertTaskItem,
+  GetFormatConvertPresetsResult,
+  GetFormatConvertTaskListResult,
+};
+
+export interface FormatConvertTaskEntity {
+  id?: number;
+  user_id: string;
+  mode: FormatConvertMode;
+  command_mode: FormatConvertCommandMode;
+  status: FormatConvertTaskStatus;
+  source_json: string;
+  target_json: string;
+  option_json: string;
+  preset_id?: string;
+  attempt_count?: number;
+  last_stage?: FormatConvertTaskStage;
+  workspace_dir?: string;
+  source_local_path?: string;
+  output_local_path?: string;
+  log_local_path?: string;
+  result_local_path?: string;
+  result_openlist_path?: string;
+  error_message?: string;
+  started_at?: Date | string;
+  finished_at?: Date | string;
+  created_at?: Date | string;
+  updated_at?: Date | string;
+}
+
+export interface FormatConvertTaskSnapshot {
+  source: FormatConvertSource;
+  target: FormatConvertTarget;
+  option: FormatConvertOption;
+}
+
+export interface CreateFormatConvertTaskDbPayload extends CreateFormatConvertTaskRequest {
+  userId: string;
+  status?: FormatConvertTaskStatus;
+  attemptCount?: number;
+}

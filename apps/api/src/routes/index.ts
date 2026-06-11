@@ -5,6 +5,7 @@ import routerFile from '../modules/file/file.route';
 import cloud115Router from '../modules/115/115.route';
 import sqliteAdminRouter from '../modules/sqlite-admin/sqlite-admin.route';
 import rssRouter from '../modules/rss/rss.route';
+import formatConvertRouter from '../modules/format-convert/format-convert.route';
 
 const router = new Router({
   prefix: '/api',
@@ -16,5 +17,6 @@ router.use(routerFile.routes());
 router.use(routerUser.routes());
 router.use(sqliteAdminRouter.routes());
 router.use(rssRouter.routes());
+router.use(formatConvertRouter.routes());
 
 export default router;
