@@ -107,6 +107,7 @@ describe('format convert runner', () => {
         mode: FormatConvertMode.CLOUD,
         commandMode: FormatConvertCommandMode.PRESET,
         status: 'pending',
+        requestUserAgent: 'Mozilla/5.0 Task UA',
         source: { type: FormatConvertSourceType.OPENLIST, fileName: 'demo.mkv', path: '/movie/demo.mkv' },
         target: { type: FormatConvertTargetType.OPENLIST, dirPath: '/target', fileName: 'done.mp4' },
         option: { outputFormat: 'mp4' },
@@ -118,7 +119,12 @@ describe('format convert runner', () => {
     );
 
     expect(updates).toEqual(['downloading', 'converting', 'uploading', 'completed']);
-    expect(mocked.openlist.downloadFormatConvertOpenlistSource).toHaveBeenCalled();
+    expect(mocked.openlist.downloadFormatConvertOpenlistSource).toHaveBeenCalledWith(
+      'u2',
+      expect.anything(),
+      '/tmp/task-1/source.mkv',
+      'Mozilla/5.0 Task UA'
+    );
     expect(mocked.openlist.uploadFormatConvertResultToOpenlist).toHaveBeenCalledWith(
       'u2',
       expect.anything(),

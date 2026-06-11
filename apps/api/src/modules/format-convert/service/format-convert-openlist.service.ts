@@ -11,7 +11,7 @@ import type {
 
 const normalizeUserId = (userId: string | number) => String(userId || '').trim();
 
-const createUserOpenlistSdk = async (userId: string | number) => {
+const createUserOpenlistSdk = async (userId: string | number, userAgent?: string) => {
   const accountConfigs = await getUserAccountConfigs(normalizeUserId(userId));
   const config = accountConfigs.openlist;
   if (!config) {
@@ -20,6 +20,7 @@ const createUserOpenlistSdk = async (userId: string | number) => {
 
   const sdk = createOpenlistSdk({
     apiHost: config.baseUrl,
+    userAgent,
   });
 
   await sdk.loginWithHashedPassword(config.username, config.password);
@@ -51,8 +52,8 @@ export const listFormatConvertOpenlistFs = async (
   };
 };
 
-export const getFormatConvertOpenlistSource = async (userId: string | number, filePath: string) => {
-  const sdk = await createUserOpenlistSdk(userId);
+export const getFormatConvertOpenlistSource = async (userId: string | number, filePath: string, userAgent?: string) => {
+  const sdk = await createUserOpenlistSdk(userId, userAgent);
   return sdk.getFs({
     path: filePath,
   });
@@ -61,9 +62,10 @@ export const getFormatConvertOpenlistSource = async (userId: string | number, fi
 export const downloadFormatConvertOpenlistSource = async (
   userId: string | number,
   source: FormatConvertOpenlistSource,
-  targetPath: string
+  targetPath: string,
+  userAgent?: string
 ) => {
-  const sourceInfo = await getFormatConvertOpenlistSource(userId, source.path);
+  const sourceInfo = await getFormatConvertOpenlistSource(userId, source.path, userAgent);
   const rawUrl = String(sourceInfo.raw_url || '').trim();
   if (!rawUrl) {
     throw new Error('openlist source raw url missing');
@@ -74,6 +76,11 @@ export const downloadFormatConvertOpenlistSource = async (
     url: rawUrl,
     method: 'GET',
     responseType: 'stream',
+    headers: userAgent
+      ? {
+          'User-Agent': userAgent,
+        }
+      : undefined,
   });
 
   await new Promise<void>((resolve, reject) => {

@@ -5,10 +5,10 @@ import {
   FormatConvertSourceType,
   FormatConvertTargetType,
 } from '@volix/types';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/i18n';
-import { getHttpErrorMessage } from '@/utils/error';
 import { createCloudFormatConvertTask, createLocalFormatConvertTask } from '@/services/format-convert';
+import { getHttpErrorMessage } from '@/utils/error';
 import {
   applyCommandModeToDraft,
   applyPresetToDraft,
@@ -25,7 +25,9 @@ import {
   syncDraftOutputFormatFromFilename,
   type FormatConvertSourceMode,
 } from '../preset-options';
+import { attachLocalUploadBeforeUnloadGuard } from './local-upload-before-unload';
 import { OpenlistBrowser } from './openlist-browser';
+import { UploadProgressModal } from './upload-progress-modal';
 
 interface ConvertTaskCardProps {
   onCreated: () => void;
@@ -42,7 +44,9 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
   const [cloudSource, setCloudSource] = useState<{ path: string; name: string } | null>(null);
   const [cloudTargetDir, setCloudTargetDir] = useState<{ path: string; name: string } | null>(null);
   const [browserMode, setBrowserMode] = useState<'source' | 'target' | ''>('');
-  const [submitting, setSubmitting] = useState(false);
+  const [cloudSubmitting, setCloudSubmitting] = useState(false);
+  const [localUploading, setLocalUploading] = useState(false);
+  const [localUploadProgress, setLocalUploadProgress] = useState(0);
 
   const presetOptions = buildPresetOptions(FormatConvertMode.LOCAL);
   const formatOptions = buildFormatOptions();
@@ -63,6 +67,14 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
     () => buildFormatConvertCommandPreview(draft, previewSourcePath, previewOutputPath),
     [draft, previewOutputPath, previewSourcePath]
   );
+  const disableActions = cloudSubmitting || localUploading;
+
+  useEffect(() => {
+    if (!localUploading) {
+      return;
+    }
+    return attachLocalUploadBeforeUnloadGuard();
+  }, [localUploading]);
 
   const handleSourceModeChange = (nextMode: FormatConvertSourceMode) => {
     setSourceMode(nextMode);
@@ -74,23 +86,18 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
     setLocalFile(null);
   };
 
-  const handleSubmit = async () => {
-    if (sourceMode === 'local') {
-      if (!localFile) {
-        Toast.warning(t('formatConvert.local.fileRequired'));
-        return;
-      }
+  const handleLocalSubmit = async () => {
+    if (!localFile) {
+      Toast.warning(t('formatConvert.local.fileRequired'));
+      return;
     }
 
     try {
-      setSubmitting(true);
-
-      if (sourceMode === 'local') {
-        if (!localFile) {
-          throw new Error(t('formatConvert.local.fileRequired'));
-        }
-
-        await createLocalFormatConvertTask(localFile, {
+      setLocalUploading(true);
+      setLocalUploadProgress(0);
+      await createLocalFormatConvertTask(
+        localFile,
+        {
           commandMode: draft.commandMode,
           presetId: draft.commandMode === FormatConvertCommandMode.PRESET ? draft.presetId : undefined,
           target: {
@@ -98,21 +105,37 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
             fileName: resolvedTargetFileName,
           },
           option: draft.option,
-        });
-        Toast.success(t('formatConvert.local.createSuccess'));
-        onCreated();
-        return;
-      }
+        },
+        {
+          onUploadProgress: percent => {
+            setLocalUploadProgress(current => (percent > current ? percent : current));
+          },
+        }
+      );
+      setLocalUploadProgress(100);
+      Toast.success(t('formatConvert.local.createSuccess'));
+      onCreated();
+    } catch (error) {
+      const fallback = t('formatConvert.error.createLocalFailed');
+      const message = error instanceof Error ? error.message || fallback : getHttpErrorMessage(error, fallback);
+      Toast.error(message);
+    } finally {
+      setLocalUploading(false);
+    }
+  };
 
-      if (!cloudSource) {
-        Toast.warning(t('formatConvert.cloud.sourceRequired'));
-        return;
-      }
-      if (!cloudTargetDir) {
-        Toast.warning(t('formatConvert.cloud.targetRequired'));
-        return;
-      }
+  const handleCloudSubmit = async () => {
+    if (!cloudSource) {
+      Toast.warning(t('formatConvert.cloud.sourceRequired'));
+      return;
+    }
+    if (!cloudTargetDir) {
+      Toast.warning(t('formatConvert.cloud.targetRequired'));
+      return;
+    }
 
+    try {
+      setCloudSubmitting(true);
       await createCloudFormatConvertTask({
         ...createCloudTaskPayload(cloudSource.path, cloudSource.name, cloudTargetDir.path, {
           ...draft,
@@ -132,15 +155,20 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
       Toast.success(t('formatConvert.cloud.createSuccess'));
       onCreated();
     } catch (error) {
-      const fallback =
-        sourceMode === 'local'
-          ? t('formatConvert.error.createLocalFailed')
-          : t('formatConvert.error.createCloudFailed');
+      const fallback = t('formatConvert.error.createCloudFailed');
       const message = error instanceof Error ? error.message || fallback : getHttpErrorMessage(error, fallback);
       Toast.error(message);
     } finally {
-      setSubmitting(false);
+      setCloudSubmitting(false);
     }
+  };
+
+  const handleSubmit = async () => {
+    if (sourceMode === 'local') {
+      await handleLocalSubmit();
+      return;
+    }
+    await handleCloudSubmit();
   };
 
   return (
@@ -151,6 +179,7 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
           <SelectAny
             value={sourceMode}
             style={{ width: '100%', marginTop: 8 }}
+            disabled={disableActions}
             optionList={
               [
                 { label: t('formatConvert.form.sourceModeLocal'), value: 'local' },
@@ -168,6 +197,7 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
             <input
               type="file"
               accept="video/*,audio/*"
+              disabled={disableActions}
               onChange={event => {
                 const nextFile = event.target.files?.[0] || null;
                 setLocalFile(nextFile);
@@ -187,14 +217,18 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
               <Typography.Text strong>{t('formatConvert.cloud.sourceFile')}</Typography.Text>
               <Space style={{ width: '100%', justifyContent: 'space-between', marginTop: 8 }}>
                 <span>{cloudSource?.path || t('formatConvert.cloud.noSource')}</span>
-                <Button onClick={() => setBrowserMode('source')}>{t('formatConvert.cloud.pickSource')}</Button>
+                <Button disabled={disableActions} onClick={() => setBrowserMode('source')}>
+                  {t('formatConvert.cloud.pickSource')}
+                </Button>
               </Space>
             </div>
             <div style={{ width: '100%' }}>
               <Typography.Text strong>{t('formatConvert.cloud.targetDir')}</Typography.Text>
               <Space style={{ width: '100%', justifyContent: 'space-between', marginTop: 8 }}>
                 <span>{cloudTargetDir?.path || t('formatConvert.cloud.noTarget')}</span>
-                <Button onClick={() => setBrowserMode('target')}>{t('formatConvert.cloud.pickTarget')}</Button>
+                <Button disabled={disableActions} onClick={() => setBrowserMode('target')}>
+                  {t('formatConvert.cloud.pickTarget')}
+                </Button>
               </Space>
             </div>
           </>
@@ -205,6 +239,7 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
           <SelectAny
             value={draft.commandMode}
             style={{ width: '100%', marginTop: 8 }}
+            disabled={disableActions}
             optionList={
               [
                 { label: t('formatConvert.form.commandModePreset'), value: FormatConvertCommandMode.PRESET },
@@ -223,6 +258,7 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
             <SelectAny
               value={draft.presetId}
               style={{ width: '100%', marginTop: 8 }}
+              disabled={disableActions}
               optionList={
                 presetOptions.map(item => ({
                   label: t(item.labelKey),
@@ -247,6 +283,7 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
                 <SelectAny
                   value={draft.option.outputFormat}
                   style={{ width: '100%', marginTop: 8 }}
+                  disabled={disableActions}
                   optionList={formatOptions as any}
                   onChange={(value: unknown) =>
                     setDraft(current => {
@@ -280,6 +317,7 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
                   <SelectAny
                     value={draft.option.videoCodec}
                     style={{ width: '100%', marginTop: 8 }}
+                    disabled={disableActions}
                     optionList={videoCodecOptions as any}
                     onChange={(value: unknown) =>
                       setDraft(current => ({
@@ -299,6 +337,7 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
                 <SelectAny
                   value={draft.option.audioCodec}
                   style={{ width: '100%', marginTop: 8 }}
+                  disabled={disableActions}
                   optionList={audioCodecOptions as any}
                   onChange={(value: unknown) =>
                     setDraft(current => ({
@@ -318,6 +357,7 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
                   <SelectAny
                     value={draft.option.resolution}
                     style={{ width: '100%', marginTop: 8 }}
+                    disabled={disableActions}
                     optionList={resolutionOptions as any}
                     onChange={(value: unknown) =>
                       setDraft(current => ({
@@ -353,6 +393,7 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
               <Input
                 value={draft.option.customArgsText}
                 style={{ marginTop: 8 }}
+                disabled={disableActions}
                 placeholder={t('formatConvert.form.customArgsPlaceholder')}
                 onChange={value =>
                   setDraft(current => ({
@@ -373,6 +414,7 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
           <Input
             value={draft.targetFileName}
             style={{ marginTop: 8 }}
+            disabled={disableActions}
             placeholder={t('formatConvert.form.targetFileNamePlaceholder')}
             onChange={value =>
               setDraft(current =>
@@ -389,7 +431,12 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
           <Input readonly value={commandPreview} style={{ marginTop: 8 }} />
         </div>
 
-        <Button theme="solid" loading={submitting} onClick={() => void handleSubmit()}>
+        <Button
+          theme="solid"
+          disabled={disableActions}
+          loading={sourceMode === 'cloud' ? cloudSubmitting : false}
+          onClick={() => void handleSubmit()}
+        >
           {sourceMode === 'local' ? t('formatConvert.local.submit') : t('formatConvert.cloud.submit')}
         </Button>
       </Space>
@@ -419,6 +466,7 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
           setBrowserMode('');
         }}
       />
+      <UploadProgressModal visible={localUploading} percent={localUploadProgress} fileName={localFile?.name || ''} />
     </Card>
   );
 }

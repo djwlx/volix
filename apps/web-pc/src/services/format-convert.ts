@@ -11,7 +11,10 @@ import type {
 
 export function createLocalFormatConvertTask(
   file: File,
-  payload: Omit<CreateFormatConvertTaskRequest, 'mode' | 'source'>
+  payload: Omit<CreateFormatConvertTaskRequest, 'mode' | 'source'>,
+  options?: {
+    onUploadProgress?: (percent: number) => void;
+  }
 ) {
   const formData = new FormData();
   formData.append('file', file);
@@ -19,6 +22,12 @@ export function createLocalFormatConvertTask(
   return http.post<CreateFormatConvertTaskResult>('/format-convert/local-task', formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
+    },
+    onUploadProgress: event => {
+      const total = Number(event.total || 0);
+      const loaded = Number(event.loaded || 0);
+      const percent = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+      options?.onUploadProgress?.(percent);
     },
   });
 }

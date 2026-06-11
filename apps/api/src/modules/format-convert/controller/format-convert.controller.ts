@@ -30,6 +30,7 @@ import {
 import { ensureFormatConvertQueueRunning } from '../service/format-convert-queue.service';
 import { listFormatConvertOpenlistFs } from '../service/format-convert-openlist.service';
 import { probeMediaFile } from '../service/format-convert-ffmpeg.service';
+import type { FormatConvertTaskItem } from '../types/format-convert.types';
 
 const ensureLoginUserId = (ctx: any) => {
   const userId = ctx.state.userInfo?.id;
@@ -58,6 +59,14 @@ const parseJsonField = <T>(value: unknown): T => {
     return JSON.parse(value) as T;
   }
   return value as T;
+};
+
+const toPublicFormatConvertTask = (task: FormatConvertTaskItem | null | undefined) => {
+  if (!task) {
+    return task;
+  }
+  const { requestUserAgent: _requestUserAgent, ...publicTask } = task;
+  return publicTask;
 };
 
 const buildStoredUploadPath = (originalFilename: string) => {
@@ -131,7 +140,7 @@ export const createLocalFormatConvertTask: MyMiddleware = async ctx => {
   });
 
   void ensureFormatConvertQueueRunning();
-  return { task };
+  return { task: toPublicFormatConvertTask(task) };
 };
 
 export const createCloudFormatConvertTask: MyMiddleware = async ctx => {
@@ -150,22 +159,24 @@ export const createCloudFormatConvertTask: MyMiddleware = async ctx => {
     presetId: payload.presetId,
     option: payload.option,
   });
+  const requestUserAgent = String(ctx.request.headers['user-agent'] || '').trim() || undefined;
 
   const task = await createFormatConvertTask({
     ...payload,
     userId,
     mode: FormatConvertMode.CLOUD,
     option,
+    requestUserAgent,
   });
 
   void ensureFormatConvertQueueRunning();
-  return { task };
+  return { task: toPublicFormatConvertTask(task) };
 };
 
 export const getFormatConvertTasks: MyMiddleware = async ctx => {
   const userId = ensureLoginUserId(ctx);
   return {
-    items: await listFormatConvertTasksByUserId(userId),
+    items: (await listFormatConvertTasksByUserId(userId)).map(item => toPublicFormatConvertTask(item)),
   };
 };
 
@@ -233,7 +244,7 @@ export const cleanupFormatConvertTaskFiles: MyMiddleware = async ctx => {
   const nextTask = await updateFormatConvertTask(task.id, buildFormatConvertCleanupPayload(task));
   return {
     success: true,
-    task: nextTask,
+    task: toPublicFormatConvertTask(nextTask),
   };
 };
 

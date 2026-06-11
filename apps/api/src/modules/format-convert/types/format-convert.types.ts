@@ -7,7 +7,7 @@ import type {
   FormatConvertPreset,
   FormatConvertSource,
   FormatConvertTarget,
-  FormatConvertTaskItem,
+  FormatConvertTaskItem as SharedFormatConvertTaskItem,
   FormatConvertTaskStage,
   FormatConvertTaskStatus,
   GetFormatConvertPresetsResult,
@@ -21,10 +21,13 @@ export type {
   FormatConvertPreset,
   FormatConvertSource,
   FormatConvertTarget,
-  FormatConvertTaskItem,
   GetFormatConvertPresetsResult,
   GetFormatConvertTaskListResult,
 };
+
+export interface FormatConvertTaskItem extends SharedFormatConvertTaskItem {
+  requestUserAgent?: string;
+}
 
 export interface FormatConvertTaskEntity {
   id?: number;
@@ -37,6 +40,7 @@ export interface FormatConvertTaskEntity {
   option_json: string;
   preset_id?: string;
   attempt_count?: number;
+  request_user_agent?: string;
   last_stage?: FormatConvertTaskStage;
   workspace_dir?: string;
   source_local_path?: string;
@@ -61,4 +65,5 @@ export interface CreateFormatConvertTaskDbPayload extends CreateFormatConvertTas
   userId: string;
   status?: FormatConvertTaskStatus;
   attemptCount?: number;
+  requestUserAgent?: string;
 }

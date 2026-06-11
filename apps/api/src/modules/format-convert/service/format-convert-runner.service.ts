@@ -75,7 +75,7 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
         workspace_dir: getFormatConvertWorkspaceDir(task.id),
         source_local_path: sourceWorkspacePath,
       });
-      await downloadFormatConvertOpenlistSource(task.userId, task.source, sourceWorkspacePath);
+      await downloadFormatConvertOpenlistSource(task.userId, task.source, sourceWorkspacePath, task.requestUserAgent);
       inputPath = sourceWorkspacePath;
     } else {
       inputPath = resolveLocalSourcePath(task);

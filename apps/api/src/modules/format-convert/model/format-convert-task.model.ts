@@ -47,6 +47,10 @@ export const FormatConvertTaskModel = sequelize.define<FormatConvertTaskModelTyp
     allowNull: false,
     defaultValue: 0,
   },
+  request_user_agent: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   last_stage: {
     type: DataTypes.STRING,
     allowNull: true,

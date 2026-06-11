@@ -44,6 +44,7 @@ export const mapFormatConvertTaskRow = (row: FormatConvertTaskEntity): FormatCon
     option: snapshot.option,
     presetId: row.preset_id || undefined,
     attemptCount: Number(row.attempt_count || 0),
+    requestUserAgent: row.request_user_agent || undefined,
     lastStage: row.last_stage || undefined,
     workspaceDir: row.workspace_dir || undefined,
     sourceLocalPath: row.source_local_path || undefined,
@@ -77,6 +78,7 @@ export const createFormatConvertTask = async (payload: CreateFormatConvertTaskDb
     option_json: JSON.stringify(payload.option || {}),
     preset_id: payload.presetId || undefined,
     attempt_count: payload.attemptCount || 0,
+    request_user_agent: payload.requestUserAgent || undefined,
   });
   return mapFormatConvertTaskRow(row.dataValues as FormatConvertTaskEntity);
 };
