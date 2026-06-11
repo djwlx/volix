@@ -567,6 +567,7 @@
   "formatConvert.error.cleanupFailed": "Failed to clean local files",
   "formatConvert.error.invalidCloudSource": "Cloud convert source must come from OpenList",
   "formatConvert.error.invalidCloudTarget": "Cloud convert target must be an OpenList directory",
+  "formatConvert.error.targetRootNotAllowed": "Do not use the OpenList root directory as the cloud convert target. Open a specific mounted directory first.",
   "formatConvert.error.taskNotFound": "Format convert task not found",
   "formatConvert.error.retryNotAllowed": "This task state cannot be retried",
   "formatConvert.error.cleanupNotAllowed": "This task state cannot clean local files",

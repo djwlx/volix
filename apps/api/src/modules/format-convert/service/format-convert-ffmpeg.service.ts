@@ -5,6 +5,11 @@ import { promisify } from 'util';
 import type { FormatConvertOption } from '@volix/types';
 
 const execFileAsync = promisify(execFile);
+const MAX_FFMPEG_STDERR_TAIL_LENGTH = 16 * 1024;
+
+export const appendFfmpegStderrTail = (current: string, chunk: string, maxLength = MAX_FFMPEG_STDERR_TAIL_LENGTH) => {
+  return `${current}${chunk}`.slice(-maxLength);
+};
 
 export interface ProbePayload {
   streams: Array<{
@@ -132,13 +137,13 @@ export const runFfmpegCommand = async (args: string[], options?: RunFfmpegComman
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     const logStream = logPath ? fs.createWriteStream(logPath, { flags: 'a' }) : null;
-    let stderr = '';
+    let stderrTail = '';
     child.stdout.on('data', chunk => {
       logStream?.write(String(chunk || ''));
     });
     child.stderr.on('data', chunk => {
       const text = String(chunk || '');
-      stderr += text;
+      stderrTail = appendFfmpegStderrTail(stderrTail, text);
       logStream?.write(text);
     });
     child.on('error', error => {
@@ -151,7 +156,7 @@ export const runFfmpegCommand = async (args: string[], options?: RunFfmpegComman
         resolve();
         return;
       }
-      reject(new Error(stderr.trim() || `ffmpeg exited with code ${code}`));
+      reject(new Error(stderrTail.trim() || `ffmpeg exited with code ${code}`));
     });
   });
 };

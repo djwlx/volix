@@ -24,7 +24,7 @@ import type {
 
 const buildOpenlistFilePath = (dirPath: string, filename: string) => {
   const normalizedDir = dirPath.trim() ? dirPath : '/';
-  return path.posix.join(normalizedDir, filename);
+  return encodeURI(path.posix.join(normalizedDir, filename));
 };
 
 export const createOpenlistFsModule = (requestOpenlist: RequestOpenlist) => ({

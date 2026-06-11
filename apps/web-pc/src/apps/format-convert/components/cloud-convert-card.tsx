@@ -30,6 +30,10 @@ export function CloudConvertCard(props: CloudConvertCardProps) {
       Toast.warning(t('formatConvert.cloud.targetRequired'));
       return;
     }
+    if ((targetDir.path || '').trim() === '/') {
+      Toast.warning(t('formatConvert.error.targetRootNotAllowed'));
+      return;
+    }
     try {
       setSubmitting(true);
       await createCloudFormatConvertTask({

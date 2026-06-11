@@ -153,6 +153,18 @@ export const createCloudFormatConvertTask: MyMiddleware = async ctx => {
   if (payload.target?.type !== FormatConvertTargetType.OPENLIST) {
     badRequest(t({ id: 'formatConvert.error.invalidCloudTarget', defaultMessage: '云转换目标必须是 OpenList 目录' }));
   }
+  const openlistTarget = payload.target as Extract<
+    CreateFormatConvertTaskRequest['target'],
+    { type: FormatConvertTargetType.OPENLIST }
+  >;
+  if ((openlistTarget.dirPath || '').trim() === '/') {
+    badRequest(
+      t({
+        id: 'formatConvert.error.targetRootNotAllowed',
+        defaultMessage: '云转换目标不能直接选择 OpenList 根目录，请进入具体挂载目录后再创建任务',
+      })
+    );
+  }
 
   const option = normalizeFormatConvertOption({
     commandMode: payload.commandMode,

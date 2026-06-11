@@ -25,18 +25,18 @@ import {
 } from './picture-cache-random-meta-queue';
 import { getRequestActingUserId } from '../../../../utils/request-context';
 import { t } from '../../../../utils/i18n';
+import { createScopedRuntimeMap } from '../scoped-runtime-map';
 
-const randomPickedHistoryByUser = new Map<string, Array<{ pc: string; pickedAt: number }>>();
+const RANDOM_PICKED_HISTORY_TTL_MS = 30 * 60 * 1000;
+const MAX_RANDOM_PICKED_HISTORY_USERS = 256;
+const randomPickedHistoryByUser = createScopedRuntimeMap<Array<{ pc: string; pickedAt: number }>>({
+  ttlMs: RANDOM_PICKED_HISTORY_TTL_MS,
+  maxEntries: MAX_RANDOM_PICKED_HISTORY_USERS,
+});
 
 const getRandomPickedHistory = () => {
   const key = getRequestActingUserId() || 'public';
-  const existing = randomPickedHistoryByUser.get(key);
-  if (existing) {
-    return existing;
-  }
-  const created: Array<{ pc: string; pickedAt: number }> = [];
-  randomPickedHistoryByUser.set(key, created);
-  return created;
+  return randomPickedHistoryByUser.getOrCreate(key, () => []);
 };
 
 const pickRandomItem = <T>(list: T[]): T | undefined => {

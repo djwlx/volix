@@ -133,6 +133,10 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
       Toast.warning(t('formatConvert.cloud.targetRequired'));
       return;
     }
+    if ((cloudTargetDir.path || '').trim() === '/') {
+      Toast.warning(t('formatConvert.error.targetRootNotAllowed'));
+      return;
+    }
 
     try {
       setCloudSubmitting(true);

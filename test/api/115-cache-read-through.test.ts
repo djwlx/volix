@@ -30,6 +30,9 @@ vi.mock('../../apps/api/src/modules/115/service/picture/picture-cache-random-cor
   DEFAULT_115_DOWNLOAD_UA: 'test-ua',
   DEFAULT_FILE_NAME: 'unknown.jpg',
   DEFAULT_MIME_TYPE: 'application/octet-stream',
+  getRandomCacheConfig: vi.fn().mockResolvedValue({
+    cloudProxyUrl: '',
+  }),
   getLocalRandomPicCacheByPc: getLocalRandomPicCacheByPcMock,
   getLocalRandomPicCacheByFileName: getLocalRandomPicCacheByFileNameMock,
   getPicCachePublicUrl: vi.fn((pc: string) => `/api/115/pic/cache/${pc}`),

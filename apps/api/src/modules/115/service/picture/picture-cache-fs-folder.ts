@@ -39,6 +39,7 @@ import {
 } from './picture-cache-random-core';
 import { downloadPicCacheToTempFile } from './picture-cache-download';
 import { evictUnifiedPicCacheToFit, getUnifiedPicCacheUsage } from './picture-cache-unified';
+import { runScopedPicCacheJob } from './picture-cache-job-queue';
 
 export const getLocalPicCacheFileList = async () => {
   const randomCacheMetaFileName = path.basename(getRandomPicCacheMetaFile());
@@ -220,6 +221,11 @@ export const withFolderConfigLock = async <T>(task: () => Promise<T>) => {
     () => undefined
   );
   folderConfigLockMap.set(scopeUserId, nextLock);
+  void nextLock.finally(() => {
+    if (folderConfigLockMap.get(scopeUserId) === nextLock) {
+      folderConfigLockMap.delete(scopeUserId);
+    }
+  });
   return run;
 };
 
@@ -348,7 +354,7 @@ export const ensureLocalPicCacheByFileAsync = (file: Cloud115DbFileItem, userAge
     return running;
   }
 
-  const job = (async () => {
+  const job = runScopedPicCacheJob(async () => {
     try {
       await ensureLocalPicCacheByFile(file, userAgent);
       log.info('[115-liked-cache] 图片缓存完成', {
@@ -367,7 +373,7 @@ export const ensureLocalPicCacheByFileAsync = (file: Cloud115DbFileItem, userAge
     } finally {
       likeCacheDownloadJobMap.delete(file.pc);
     }
-  })();
+  });
 
   likeCacheDownloadJobMap.set(file.pc, job);
   return job;
@@ -465,7 +471,7 @@ export const ensureRandomLocalPicCacheByFileAsync = (file: Cloud115DbFileItem, u
     return running;
   }
 
-  const job = (async () => {
+  const job = runScopedPicCacheJob(async () => {
     try {
       await ensureRandomLocalPicCacheByFile(file, userAgent);
     } catch (error) {
@@ -481,7 +487,7 @@ export const ensureRandomLocalPicCacheByFileAsync = (file: Cloud115DbFileItem, u
     } finally {
       randomCacheDownloadJobMap.delete(file.pc);
     }
-  })();
+  });
 
   randomCacheDownloadJobMap.set(file.pc, job);
   return job;

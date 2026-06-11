@@ -20,9 +20,9 @@ describe('openlist sdk full surface', () => {
     await sdk.searchFs({ parent: '/movies', keywords: 'demo' });
     await sdk.getDirectoryTree({ path: '/movies' });
     await sdk.uploadFileByStream({
-      path: '/target',
+      path: '/目标 目录',
       stream: {} as NodeJS.ReadableStream,
-      filename: 'a.mp4',
+      filename: '演示 视频.mp4',
     });
     await sdk.listUsers({ page: 1, perPage: 20 });
     await sdk.getOfflineDownloadTools();
@@ -37,6 +37,6 @@ describe('openlist sdk full surface', () => {
       ['GET', '/api/public/offline_download_tools'],
       ['POST', '/api/share/create'],
     ]);
-    expect(requestMock.mock.calls[2][0].headers['File-Path']).toBe('/target/a.mp4');
+    expect(requestMock.mock.calls[2][0].headers['File-Path']).toBe(encodeURI('/目标 目录/演示 视频.mp4'));
   });
 });

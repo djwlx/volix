@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { pipeline } from 'stream/promises';
 import request from '../../../utils/request';
 import { createOpenlistSdk } from '../../../sdk/openlist';
 import { getUserAccountConfigs } from '../../user/service/user-config.service';
@@ -10,6 +11,11 @@ import type {
 } from '@volix/types';
 
 const normalizeUserId = (userId: string | number) => String(userId || '').trim();
+
+const isOpenlistStorageMissingError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error || '');
+  return /failed get storage|storage not found/i.test(message);
+};
 
 const createUserOpenlistSdk = async (userId: string | number, userAgent?: string) => {
   const accountConfigs = await getUserAccountConfigs(normalizeUserId(userId));
@@ -83,13 +89,7 @@ export const downloadFormatConvertOpenlistSource = async (
       : undefined,
   });
 
-  await new Promise<void>((resolve, reject) => {
-    const writer = fs.createWriteStream(targetPath);
-    response.data.pipe(writer);
-    response.data.on('error', reject);
-    writer.on('error', reject);
-    writer.on('finish', resolve);
-  });
+  await pipeline(response.data, fs.createWriteStream(targetPath));
 
   return {
     targetPath,
@@ -104,10 +104,20 @@ export const uploadFormatConvertResultToOpenlist = async (
 ) => {
   const sdk = await createUserOpenlistSdk(userId);
   const filename = String(target.fileName || path.basename(localPath)).trim() || path.basename(localPath);
-  await sdk.uploadFileByStream({
-    path: target.dirPath,
-    filename,
-    stream: fs.createReadStream(localPath),
-  });
+  const stream = fs.createReadStream(localPath);
+  try {
+    await sdk.uploadFileByStream({
+      path: target.dirPath,
+      filename,
+      stream,
+    });
+  } catch (error) {
+    if (isOpenlistStorageMissingError(error)) {
+      throw new Error('OpenList 目标目录未映射到可写存储，请选择具体的挂载目录后重试');
+    }
+    throw error;
+  } finally {
+    stream.destroy();
+  }
   return path.posix.join(target.dirPath, filename);
 };

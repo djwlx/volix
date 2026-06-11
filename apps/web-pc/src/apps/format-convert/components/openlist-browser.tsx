@@ -49,7 +49,11 @@ export function OpenlistBrowser(props: OpenlistBrowserProps) {
       onCancel={onCancel}
       footer={
         selectMode === 'dir' ? (
-          <Button theme="solid" onClick={() => onSelect({ path: currentPath, name: currentPath })}>
+          <Button
+            theme="solid"
+            disabled={currentPath === '/'}
+            onClick={() => onSelect({ path: currentPath, name: currentPath })}
+          >
             {t('formatConvert.browser.selectCurrent')}
           </Button>
         ) : null
