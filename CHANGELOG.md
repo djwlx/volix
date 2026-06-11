@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.1.7] - 2026-06-11
+
+### 中文
+#### Added
+- 新增格式转换功能，支持本地和云端文件格式转换
+- 新增 Openlist SDK 模块，提供文件系统、用户、分享等 API
+- 新增数据库迁移脚本，创建格式转换任务表和日志路径表
+- 新增格式转换相关类型定义和国际化文案
+- 新增格式转换前端页面，包括转换卡片、任务记录列表等组件
+- 新增格式转换后端服务，包括任务队列、FFmpeg 调用、工作空间管理等
+- 新增格式转换 API 路由和控制器
+- 新增格式转换单元测试和集成测试
+#### Changed
+- 更新 Dockerfile 以支持格式转换依赖
+- 更新 README 和文档，添加格式转换相关说明
+- 更新 Openlist SDK 重构，拆分模块并优化类型
+- 更新依赖和包版本
+
+### English
+#### Added
+- Added format conversion feature, supporting local and cloud file format conversion
+- Added Openlist SDK module, providing file system, user, share, and other APIs
+- Added database migration scripts to create format conversion task table and log path table
+- Added type definitions and i18n translations for format conversion
+- Added format conversion frontend pages, including conversion cards, task record list, and other components
+- Added format conversion backend services, including task queue, FFmpeg invocation, workspace management, etc.
+- Added format conversion API routes and controller
+- Added unit and integration tests for format conversion
+#### Changed
+- Updated Dockerfile to support format conversion dependencies
+- Updated README and documentation with format conversion instructions
+- Refactored Openlist SDK, splitting modules and optimizing types
+- Updated dependencies and package versions
+
 ## [1.1.6] - 2026-06-03
 
 ### 中文
