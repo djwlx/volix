@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Empty, Spin, Table, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconArrowLeft, IconRefresh } from '@douyinfe/semi-icons';
 import type { ColumnProps } from '@douyinfe/semi-ui/lib/es/table';
@@ -9,6 +9,7 @@ import { getHttpErrorMessage } from '@/utils/error';
 import styles from './workbench.module.scss';
 
 const OPENLIST_BROWSER_PAGE_SIZE = 20;
+const OPENLIST_DIR_BROWSER_FETCH_SIZE = 500;
 
 type OpenlistSelectedFile = {
   path: string;
@@ -47,15 +48,20 @@ const toSelectedItems = (
   nextSelectedRowKeys: Array<string | number> | undefined
 ) => {
   if (selectionMode === 'single') {
-    const latestSelectedPath = String(nextSelectedRowKeys?.[nextSelectedRowKeys.length - 1] || '');
-    if (!latestSelectedPath) {
+    const nextSelectedPaths = Array.from(
+      new Set((nextSelectedRowKeys || []).map(item => String(item)).filter(Boolean))
+    );
+    if (!nextSelectedPaths.length) {
       return [];
     }
 
-    const latestSelectedItem = pageRows.find(item => !item.isDir && item.path === latestSelectedPath);
-    return latestSelectedItem
-      ? [{ path: latestSelectedItem.path, name: latestSelectedItem.name }]
-      : [{ path: latestSelectedPath, name: getPathName(latestSelectedPath) }];
+    const nextSelectedPath =
+      nextSelectedPaths.find(path => !selectedPaths.includes(path)) || nextSelectedPaths[0] || '';
+    const nextSelectedItem = pageRows.find(item => !item.isDir && item.path === nextSelectedPath);
+
+    return nextSelectedItem
+      ? [{ path: nextSelectedItem.path, name: nextSelectedItem.name }]
+      : [{ path: nextSelectedPath, name: getPathName(nextSelectedPath) }];
   }
 
   const nextSelectedPathSet = new Set((nextSelectedRowKeys || []).map(item => String(item)));
@@ -85,28 +91,83 @@ export function OpenlistTableBrowser(props: OpenlistTableBrowserProps) {
   const [result, setResult] = useState<FormatConvertOpenlistBrowserResult | null>(null);
   const [currentPath, setCurrentPath] = useState('/');
   const [page, setPage] = useState(1);
+  const requestIdRef = useRef(0);
+
+  const loadDirResult = async (nextPath: string, nextPage: number, requestId: number) => {
+    const dirItems: FormatConvertOpenlistBrowserItem[] = [];
+    let fetchPage = 1;
+    let mixedItemCount = 0;
+    let total = 0;
+
+    while (true) {
+      const response = await browseFormatConvertOpenlist({
+        path: nextPath,
+        page: fetchPage,
+        perPage: OPENLIST_DIR_BROWSER_FETCH_SIZE,
+      });
+
+      if (requestId !== requestIdRef.current) {
+        return null;
+      }
+
+      total = response.data.total;
+      mixedItemCount += response.data.content.length;
+      dirItems.push(...(response.data.content || []).filter(item => item.isDir));
+
+      if (!response.data.content.length || mixedItemCount >= total) {
+        break;
+      }
+
+      fetchPage += 1;
+    }
+
+    const start = (nextPage - 1) * OPENLIST_BROWSER_PAGE_SIZE;
+    return {
+      path: nextPath,
+      page: nextPage,
+      perPage: OPENLIST_BROWSER_PAGE_SIZE,
+      total: dirItems.length,
+      content: dirItems.slice(start, start + OPENLIST_BROWSER_PAGE_SIZE),
+    } satisfies FormatConvertOpenlistBrowserResult;
+  };
 
   const load = async (next?: { path?: string; page?: number }) => {
     const nextPath = next?.path ?? currentPath;
     const nextPage = next?.page ?? page;
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
 
     try {
       setLoading(true);
-      const response = await browseFormatConvertOpenlist({
-        path: nextPath,
-        page: nextPage,
-        perPage: OPENLIST_BROWSER_PAGE_SIZE,
-      });
-      setCurrentPath(response.data.path);
-      setPage(response.data.page);
-      setResult(response.data);
+      const nextResult =
+        selectMode === 'dir'
+          ? await loadDirResult(nextPath, nextPage, requestId)
+          : (
+              await browseFormatConvertOpenlist({
+                path: nextPath,
+                page: nextPage,
+                perPage: OPENLIST_BROWSER_PAGE_SIZE,
+              })
+            ).data;
+
+      if (!nextResult || requestId !== requestIdRef.current) {
+        return;
+      }
+
+      setCurrentPath(nextResult.path);
+      setPage(nextResult.page);
+      setResult(nextResult);
       if (selectMode === 'dir') {
-        onDirSelectionChange?.(response.data.path);
+        onDirSelectionChange?.(nextResult.path);
       }
     } catch (error) {
-      Toast.error(getHttpErrorMessage(error, t('formatConvert.browser.loadFailed')));
+      if (requestId === requestIdRef.current) {
+        Toast.error(getHttpErrorMessage(error, t('formatConvert.browser.loadFailed')));
+      }
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -143,22 +204,6 @@ export function OpenlistTableBrowser(props: OpenlistTableBrowserProps) {
       render: (_text, record) => (record.isDir ? t('formatConvert.browser.dir') : t('formatConvert.browser.file')),
     },
   ];
-
-  if (selectMode === 'file') {
-    columns.push({
-      title: t('formatConvert.browser.action'),
-      render: (_text, record) =>
-        record.isDir ? null : (
-          <Button
-            disabled={disabled}
-            size="small"
-            onClick={() => onFileSelectionChange?.([{ path: record.path, name: record.name }])}
-          >
-            {t('formatConvert.browser.select')}
-          </Button>
-        ),
-    });
-  }
 
   return (
     <div className={styles.treePanel} data-testid="openlist-table-browser">

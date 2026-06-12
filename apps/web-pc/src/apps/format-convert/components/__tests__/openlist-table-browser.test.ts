@@ -67,6 +67,9 @@ vi.mock('@douyinfe/semi-ui', () => {
       Text: ({ children }: { children?: ReactNode }) => createElement('span', null, children),
     },
     __getLastTableProps: () => lastTableProps,
+    __resetTableProps: () => {
+      lastTableProps = undefined;
+    },
   };
 });
 
@@ -98,10 +101,12 @@ describe('openlist table browser', () => {
   let container: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
     mocked.browseFormatConvertOpenlist.mockReset();
     mocked.toastError.mockReset();
+    const semi = await import('@douyinfe/semi-ui');
+    (semi as unknown as { __resetTableProps: () => void }).__resetTableProps();
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
@@ -181,6 +186,83 @@ describe('openlist table browser', () => {
     });
   });
 
+  it('keeps the latest navigation result when requests resolve out of order', async () => {
+    let resolvePage2: ((value: unknown) => void) | undefined;
+    let resolvePage1Refresh: ((value: unknown) => void) | undefined;
+
+    mocked.browseFormatConvertOpenlist
+      .mockResolvedValueOnce({
+        data: {
+          path: '/movies',
+          page: 1,
+          perPage: 20,
+          total: 21,
+          content: [{ name: 'page-one.mp4', path: '/movies/page-one.mp4', isDir: false, size: 12 }],
+        },
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            resolvePage2 = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            resolvePage1Refresh = resolve;
+          })
+      );
+
+    const { OpenlistTableBrowser } = await import('../openlist-table-browser');
+    const semi = await import('@douyinfe/semi-ui');
+
+    await act(async () => {
+      root.render(createElement(OpenlistTableBrowser, { selectMode: 'file', selectedPaths: [] }));
+    });
+
+    const tableProps = (
+      semi as unknown as { __getLastTableProps: () => Record<string, unknown> }
+    ).__getLastTableProps();
+    const pagination = tableProps.pagination as { onPageChange?: (page: number) => void };
+
+    await act(async () => {
+      pagination.onPageChange?.(2);
+    });
+
+    await act(async () => {
+      pagination.onPageChange?.(1);
+    });
+
+    await act(async () => {
+      resolvePage1Refresh?.({
+        data: {
+          path: '/movies',
+          page: 1,
+          perPage: 20,
+          total: 21,
+          content: [{ name: 'fresh-page-one.mp4', path: '/movies/fresh-page-one.mp4', isDir: false, size: 12 }],
+        },
+      });
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      resolvePage2?.({
+        data: {
+          path: '/movies',
+          page: 2,
+          perPage: 20,
+          total: 21,
+          content: [{ name: 'page-two.mp4', path: '/movies/page-two.mp4', isDir: false, size: 12 }],
+        },
+      });
+      await Promise.resolve();
+    });
+
+    expect(document.body.textContent).toContain('fresh-page-one.mp4');
+    expect(document.body.textContent).not.toContain('page-two.mp4');
+  });
+
   it('reflects controlled selected paths in row selection', async () => {
     mocked.browseFormatConvertOpenlist.mockResolvedValue({
       data: {
@@ -215,7 +297,7 @@ describe('openlist table browser', () => {
     expect(rowSelection.selectedRowKeys).toEqual(['/movies/demo.mp4']);
   });
 
-  it('reports only the latest selected file in single selection mode', async () => {
+  it('prefers the newly added file in single selection mode', async () => {
     mocked.browseFormatConvertOpenlist.mockResolvedValue({
       data: {
         path: '/movies',
@@ -238,7 +320,7 @@ describe('openlist table browser', () => {
         createElement(OpenlistTableBrowser, {
           selectMode: 'file',
           selectionMode: 'single',
-          selectedPaths: [],
+          selectedPaths: ['/movies/first.mp4'],
           onFileSelectionChange,
         })
       );
@@ -250,25 +332,38 @@ describe('openlist table browser', () => {
     const rowSelection = tableProps.rowSelection as { onChange?: (paths: string[]) => void };
 
     await act(async () => {
-      rowSelection.onChange?.(['/movies/first.mp4', '/movies/second.mp4']);
+      rowSelection.onChange?.(['/movies/second.mp4', '/movies/first.mp4']);
     });
 
     expect(onFileSelectionChange).toHaveBeenCalledWith([{ path: '/movies/second.mp4', name: 'second.mp4' }]);
   });
 
-  it('filters file rows out in dir mode', async () => {
-    mocked.browseFormatConvertOpenlist.mockResolvedValue({
-      data: {
-        path: '/movies',
-        page: 1,
-        perPage: 20,
-        total: 2,
-        content: [
-          { name: 'series', path: '/movies/series', isDir: true, size: 0 },
-          { name: 'demo.mp4', path: '/movies/demo.mp4', isDir: false, size: 12 },
-        ],
-      },
-    });
+  it('collects directories from later mixed pages in dir mode', async () => {
+    mocked.browseFormatConvertOpenlist
+      .mockResolvedValueOnce({
+        data: {
+          path: '/movies',
+          page: 1,
+          perPage: 20,
+          total: 4,
+          content: [
+            { name: 'series', path: '/movies/series', isDir: true, size: 0 },
+            { name: 'demo.mp4', path: '/movies/demo.mp4', isDir: false, size: 12 },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          path: '/movies',
+          page: 2,
+          perPage: 20,
+          total: 4,
+          content: [
+            { name: 'clip.mp4', path: '/movies/clip.mp4', isDir: false, size: 12 },
+            { name: 'archive', path: '/movies/archive', isDir: true, size: 0 },
+          ],
+        },
+      });
 
     const { OpenlistTableBrowser } = await import('../openlist-table-browser');
     const semi = await import('@douyinfe/semi-ui');
@@ -282,6 +377,9 @@ describe('openlist table browser', () => {
     ).__getLastTableProps();
     const dataSource = tableProps.dataSource as Array<{ path: string }>;
 
-    expect(dataSource).toEqual([{ name: 'series', path: '/movies/series', isDir: true, size: 0 }]);
+    expect(dataSource).toEqual([
+      { name: 'series', path: '/movies/series', isDir: true, size: 0 },
+      { name: 'archive', path: '/movies/archive', isDir: true, size: 0 },
+    ]);
   });
 });
