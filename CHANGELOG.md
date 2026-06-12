@@ -1,5 +1,47 @@
 # Changelog
 
+## [1.1.10] - 2026-06-12
+
+### 中文
+#### Added
+- 新增图片格式转换功能，支持将图片转换为 JPEG、PNG、WebP 等格式
+- 新增批量选择功能，支持在格式转换中批量选择文件
+- 新增本地批量上传功能，支持从本地上传多个文件进行转换
+- 新增云端文件树浏览组件，支持从云端选择文件
+- 新增转换类型切换组件，支持在媒体转换和图片转换之间切换
+- 新增图片转换设置表单，支持配置图片质量、尺寸等选项
+- 新增媒体转换面板和图片转换面板，分离不同转换类型的界面
+- 新增工作台样式文件，优化转换任务卡片布局
+#### Changed
+- 重构格式转换任务卡片组件，拆分出多个子组件
+- 优化格式转换选项表单，支持更多自定义设置
+- 优化任务记录列表，增加删除记录功能
+- 更新国际化翻译，新增图片转换相关文案
+- 移动测试文件到统一的 __tests__ 目录
+#### Fixed
+- 修复格式转换任务数据库服务中的若干问题
+- 修复错误处理工具中的类型定义问题
+
+### English
+#### Added
+- Added image format conversion support, enabling conversion to JPEG, PNG, WebP, etc.
+- Added batch selection feature for selecting multiple files in format conversion
+- Added local batch upload feature for uploading multiple files from local
+- Added cloud file tree browser component for selecting files from cloud
+- Added conversion type switch component for toggling between media and image conversion
+- Added image conversion settings form for configuring image quality, dimensions, etc.
+- Added media conversion panel and image conversion panel, separating UI for different conversion types
+- Added workbench style file, optimizing conversion task card layout
+#### Changed
+- Refactored format conversion task card component, splitting into multiple sub-components
+- Optimized format conversion option form, supporting more custom settings
+- Optimized task record list, adding record deletion functionality
+- Updated internationalization translations, adding image conversion related copy
+- Moved test files to unified __tests__ directory
+#### Fixed
+- Fixed several issues in format conversion task database service
+- Fixed type definition issues in error handling utility
+
 ## [1.1.9] - 2026-06-11
 
 ### 中文
