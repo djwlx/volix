@@ -10,6 +10,8 @@ import type {
   FormatConvertOpenlistTarget,
 } from '@volix/types';
 
+const FORMAT_CONVERT_OPENLIST_MAX_PER_PAGE = 500;
+
 const normalizeUserId = (userId: string | number) => String(userId || '').trim();
 
 const isOpenlistStorageMissingError = (error: unknown) => {
@@ -41,16 +43,17 @@ export const listFormatConvertOpenlistFs = async (
 ): Promise<FormatConvertOpenlistBrowserResult> => {
   const sdk = await createUserOpenlistSdk(userId);
   const currentDir = dirPath.trim() || '/';
+  const currentPerPage = Math.min(Math.max(1, Number(perPage) || 20), FORMAT_CONVERT_OPENLIST_MAX_PER_PAGE);
   const result = await sdk.listFs({
     path: currentDir,
     page,
-    perPage,
+    perPage: currentPerPage,
     refresh: false,
   });
   return {
     path: currentDir,
     page,
-    perPage,
+    perPage: currentPerPage,
     total: Number(result.total || 0),
     content: (result.content || []).map(item => ({
       name: item.name,

@@ -84,4 +84,18 @@ describe('format convert service', () => {
       },
     });
   });
+
+  it('preserves legacy string callers with the previous large page size', async () => {
+    const { browseFormatConvertOpenlist } = await import('../format-convert');
+
+    await browseFormatConvertOpenlist('/library');
+
+    expect(mocked.http.get).toHaveBeenCalledWith('/format-convert/openlist/fs', {
+      params: {
+        path: '/library',
+        page: 1,
+        perPage: 500,
+      },
+    });
+  });
 });

@@ -59,4 +59,23 @@ describe('listFormatConvertOpenlistFs', () => {
       total: 42,
     });
   });
+
+  it('clamps perPage to the server-side maximum', async () => {
+    const { listFormatConvertOpenlistFs } = await import('../format-convert-openlist.service');
+
+    const result = await listFormatConvertOpenlistFs('u1', '/videos', 2, 999);
+
+    expect(mocked.listFs).toHaveBeenCalledWith({
+      path: '/videos',
+      page: 2,
+      perPage: 500,
+      refresh: false,
+    });
+    expect(result).toMatchObject({
+      path: '/videos',
+      page: 2,
+      perPage: 500,
+      total: 42,
+    });
+  });
 });

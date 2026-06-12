@@ -9,6 +9,14 @@ import type {
   GetFormatConvertTaskListResult,
 } from '@volix/types';
 
+const LEGACY_OPENLIST_BROWSER_PER_PAGE = 500;
+
+type FormatConvertOpenlistBrowseParams = {
+  path?: string;
+  page?: number;
+  perPage?: number;
+};
+
 export function createLocalFormatConvertTask(
   file: File,
   payload: Omit<CreateFormatConvertTaskRequest, 'mode' | 'source' | 'option'> & {
@@ -60,13 +68,28 @@ export function deleteFormatConvertTasks(taskIds: number[]) {
   });
 }
 
-export function browseFormatConvertOpenlist(params?: { path?: string; page?: number; perPage?: number }) {
+export function browseFormatConvertOpenlist(
+  path: string
+): ReturnType<typeof http.get<FormatConvertOpenlistBrowserResult>>;
+export function browseFormatConvertOpenlist(
+  params?: FormatConvertOpenlistBrowseParams
+): ReturnType<typeof http.get<FormatConvertOpenlistBrowserResult>>;
+export function browseFormatConvertOpenlist(params?: string | FormatConvertOpenlistBrowseParams) {
+  const normalizedParams =
+    typeof params === 'string'
+      ? {
+          path: params || '/',
+          page: 1,
+          perPage: LEGACY_OPENLIST_BROWSER_PER_PAGE,
+        }
+      : {
+          path: params?.path || '/',
+          page: params?.page || 1,
+          perPage: params?.perPage || 20,
+        };
+
   return http.get<FormatConvertOpenlistBrowserResult>('/format-convert/openlist/fs', {
-    params: {
-      path: params?.path || '/',
-      page: params?.page || 1,
-      perPage: params?.perPage || 20,
-    },
+    params: normalizedParams,
   });
 }
 
