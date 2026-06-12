@@ -60,10 +60,12 @@ export function deleteFormatConvertTasks(taskIds: number[]) {
   });
 }
 
-export function browseFormatConvertOpenlist(path = '/') {
+export function browseFormatConvertOpenlist(params?: { path?: string; page?: number; perPage?: number }) {
   return http.get<FormatConvertOpenlistBrowserResult>('/format-convert/openlist/fs', {
     params: {
-      path,
+      path: params?.path || '/',
+      page: params?.page || 1,
+      perPage: params?.perPage || 20,
     },
   });
 }

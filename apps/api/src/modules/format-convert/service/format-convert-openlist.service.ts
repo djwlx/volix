@@ -35,19 +35,23 @@ const createUserOpenlistSdk = async (userId: string | number, userAgent?: string
 
 export const listFormatConvertOpenlistFs = async (
   userId: string | number,
-  dirPath: string
+  dirPath: string,
+  page = 1,
+  perPage = 20
 ): Promise<FormatConvertOpenlistBrowserResult> => {
   const sdk = await createUserOpenlistSdk(userId);
+  const currentDir = dirPath.trim() || '/';
   const result = await sdk.listFs({
-    path: dirPath,
-    perPage: 500,
-    page: 1,
+    path: currentDir,
+    page,
+    perPage,
     refresh: false,
   });
-  const currentDir = dirPath.trim() || '/';
   return {
     path: currentDir,
-    total: result.total,
+    page,
+    perPage,
+    total: Number(result.total || 0),
     content: (result.content || []).map(item => ({
       name: item.name,
       path: path.posix.join(currentDir, item.name),

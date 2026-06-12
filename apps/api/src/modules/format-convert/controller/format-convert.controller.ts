@@ -72,6 +72,16 @@ const parseJsonField = <T>(value: unknown): T => {
   return value as T;
 };
 
+const parsePositiveIntegerQuery = (value: unknown, fallback: number) => {
+  const normalized = String(value ?? '').trim();
+  if (!/^\d+$/.test(normalized)) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(normalized, 10);
+  return parsed > 0 ? parsed : fallback;
+};
+
 const toPublicFormatConvertTask = (task: FormatConvertTaskItem | null | undefined) => {
   if (!task) {
     return task;
@@ -365,5 +375,7 @@ export const deleteFormatConvertTasks: MyMiddleware = async ctx => {
 export const listOpenlistFsForFormatConvert: MyMiddleware = async ctx => {
   const userId = ensureLoginUserId(ctx);
   const dirPath = String(ctx.query.path || '/').trim() || '/';
-  return listFormatConvertOpenlistFs(userId, dirPath);
+  const page = parsePositiveIntegerQuery(ctx.query.page, 1);
+  const perPage = parsePositiveIntegerQuery(ctx.query.perPage, 20);
+  return listFormatConvertOpenlistFs(userId, dirPath, page, perPage);
 };

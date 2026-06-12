@@ -389,6 +389,8 @@ export interface FormatConvertOpenlistBrowserItem {
 
 export interface FormatConvertOpenlistBrowserResult {
   path: string;
+  page: number;
+  perPage: number;
   content: FormatConvertOpenlistBrowserItem[];
-  total?: number;
+  total: number;
 }

@@ -70,4 +70,18 @@ describe('format convert service', () => {
       taskIds: [3, 5, 8],
     });
   });
+
+  it('passes path and pagination params when browsing openlist files', async () => {
+    const { browseFormatConvertOpenlist } = await import('../format-convert');
+
+    await browseFormatConvertOpenlist({ path: '/shows', page: 2, perPage: 30 });
+
+    expect(mocked.http.get).toHaveBeenCalledWith('/format-convert/openlist/fs', {
+      params: {
+        path: '/shows',
+        page: 2,
+        perPage: 30,
+      },
+    });
+  });
 });
