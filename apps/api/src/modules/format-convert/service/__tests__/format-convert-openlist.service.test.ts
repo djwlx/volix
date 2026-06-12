@@ -42,7 +42,7 @@ describe('listFormatConvertOpenlistFs', () => {
   });
 
   it('passes page params through and returns pagination metadata', async () => {
-    const { listFormatConvertOpenlistFs } = await import('../format-convert-openlist.service');
+    const { listFormatConvertOpenlistFs } = await import('../format-convert-openlist.service.js');
 
     const result = await listFormatConvertOpenlistFs('u1', '/videos', 3, 50);
 
@@ -61,7 +61,7 @@ describe('listFormatConvertOpenlistFs', () => {
   });
 
   it('clamps perPage to the server-side maximum', async () => {
-    const { listFormatConvertOpenlistFs } = await import('../format-convert-openlist.service');
+    const { listFormatConvertOpenlistFs } = await import('../format-convert-openlist.service.js');
 
     const result = await listFormatConvertOpenlistFs('u1', '/videos', 2, 999);
 
