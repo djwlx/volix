@@ -7,5 +7,6 @@ export * from './image-convert-settings-form';
 export * from './local-batch-upload';
 export * from './media-convert-panel';
 export * from './openlist-browser';
+export * from './openlist-table-browser';
 export * from './selected-file-basket';
 export * from './task-record-list';
