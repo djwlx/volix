@@ -33,16 +33,35 @@ vi.mock('@douyinfe/semi-ui', () => {
     columns,
     rowSelection,
     pagination,
+    ...rest
   }: {
     dataSource?: Array<Record<string, unknown>>;
     columns?: Array<{ render?: (_text: unknown, record: Record<string, unknown>) => ReactNode }>;
     rowSelection?: Record<string, unknown>;
-    pagination?: Record<string, unknown>;
+    pagination?: {
+      currentPage?: number;
+      pageSize?: number;
+      total?: number;
+      formatPageText?: boolean | ((args: { currentStart: number; currentEnd: number; total: number }) => ReactNode);
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
   }) => (
-    (lastTableProps = { dataSource, columns, rowSelection, pagination }),
+    (lastTableProps = { dataSource, columns, rowSelection, pagination, ...rest }),
     createElement(
       'div',
       { 'data-table': 'true' },
+      typeof pagination?.formatPageText === 'function'
+        ? createElement(
+            'div',
+            { 'data-pagination-summary': 'true' },
+            pagination.formatPageText({
+              currentStart: ((pagination.currentPage || 1) - 1) * (pagination.pageSize || 10) + 1,
+              currentEnd: Math.min((pagination.currentPage || 1) * (pagination.pageSize || 10), pagination.total || 0),
+              total: pagination.total || 0,
+            })
+          )
+        : null,
       (dataSource || []).map(record =>
         createElement(
           'article',
@@ -64,7 +83,17 @@ vi.mock('@douyinfe/semi-ui', () => {
       error: mocked.toastError,
     },
     Typography: {
-      Text: ({ children }: { children?: ReactNode }) => createElement('span', null, children),
+      Text: ({
+        children,
+        ellipsis: _ellipsis,
+        link: _link,
+        ...props
+      }: {
+        children?: ReactNode;
+        ellipsis?: unknown;
+        link?: unknown;
+        [key: string]: unknown;
+      }) => createElement('span', props, children),
     },
     __getLastTableProps: () => lastTableProps,
     __resetTableProps: () => {
@@ -75,21 +104,28 @@ vi.mock('@douyinfe/semi-ui', () => {
 
 vi.mock('@/i18n', () => ({
   useI18n: () => ({
-    t: (key: string) =>
+    t: (key: string, vars?: Record<string, unknown>) =>
       ((
-        {
-          'formatConvert.browser.currentPath': '当前路径',
-          'formatConvert.browser.refresh': '刷新',
-          'formatConvert.browser.name': '名称',
-          'formatConvert.browser.type': '类型',
-          'formatConvert.browser.action': '操作',
-          'formatConvert.browser.dir': '目录',
-          'formatConvert.browser.file': '文件',
-          'formatConvert.browser.select': '选择',
-          'formatConvert.browser.treeLoading': '正在加载目录列表',
-          'formatConvert.browser.treeEmpty': '当前目录暂无可选目录',
-        } as Record<string, string>
-      )[key] || key),
+        (
+          {
+            'formatConvert.browser.currentPath': '当前路径',
+            'formatConvert.browser.refresh': '刷新',
+            'formatConvert.browser.name': '名称',
+            'formatConvert.browser.size': '大小',
+            'formatConvert.browser.type': '类型',
+            'formatConvert.browser.action': '操作',
+            'formatConvert.browser.dir': '目录',
+            'formatConvert.browser.file': '文件',
+            'formatConvert.browser.select': '选择',
+            'formatConvert.browser.paginationSummary': '{{start}}-{{end}} / {{total}}',
+            'formatConvert.browser.treeLoading': '正在加载目录列表',
+            'formatConvert.browser.treeEmpty': '当前目录暂无可选目录',
+          } as Record<string, string>
+        )[key] || key
+      )
+        .replace('{{start}}', String(vars?.start ?? ''))
+        .replace('{{end}}', String(vars?.end ?? ''))
+        .replace('{{total}}', String(vars?.total ?? ''))),
   }),
 }));
 
@@ -184,6 +220,130 @@ describe('openlist table browser', () => {
       page: 2,
       perPage: 20,
     });
+  });
+
+  it('jumps to an ancestor when a current path segment is clicked', async () => {
+    mocked.browseFormatConvertOpenlist
+      .mockResolvedValueOnce({
+        data: {
+          path: '/超级超级超级长目录/国产',
+          page: 1,
+          perPage: 20,
+          total: 1,
+          content: [
+            {
+              name: 'episode-01.mp4',
+              path: '/超级超级超级长目录/国产/episode-01.mp4',
+              isDir: false,
+              size: 2048,
+            },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          path: '/超级超级超级长目录',
+          page: 1,
+          perPage: 20,
+          total: 1,
+          content: [{ name: '国产', path: '/超级超级超级长目录/国产', isDir: true, size: 0 }],
+        },
+      });
+
+    const { OpenlistTableBrowser } = await import('../openlist-table-browser');
+
+    await act(async () => {
+      root.render(createElement(OpenlistTableBrowser, { selectMode: 'file', selectedPaths: [] }));
+    });
+
+    const pathStrip = document.querySelector<HTMLElement>('[data-path-strip="true"]');
+
+    expect(pathStrip?.textContent).toContain('超...录');
+    expect(pathStrip?.textContent).toContain('国产');
+    expect(pathStrip?.style.overflowX).toBe('auto');
+
+    await act(async () => {
+      document.querySelector<HTMLElement>('[data-path-segment="/超级超级超级长目录"]')?.click();
+    });
+
+    expect(mocked.browseFormatConvertOpenlist).toHaveBeenLastCalledWith({
+      path: '/超级超级超级长目录',
+      page: 1,
+      perPage: 20,
+    });
+  });
+
+  it('renders directory names as clickable links and files with formatted sizes', async () => {
+    mocked.browseFormatConvertOpenlist.mockResolvedValue({
+      data: {
+        path: '/movies',
+        page: 1,
+        perPage: 20,
+        total: 2,
+        content: [
+          { name: 'series', path: '/movies/series', isDir: true, size: 0 },
+          { name: 'demo.mp4', path: '/movies/demo.mp4', isDir: false, size: 1536 },
+        ],
+      },
+    });
+
+    const { OpenlistTableBrowser } = await import('../openlist-table-browser');
+
+    await act(async () => {
+      root.render(createElement(OpenlistTableBrowser, { selectMode: 'file', selectedPaths: [] }));
+    });
+
+    const directoryLink = document.querySelector<HTMLElement>('[data-dir-link="/movies/series"]');
+    const fileSize = document.querySelector<HTMLElement>('[data-size-cell="/movies/demo.mp4"]');
+    const dirSize = document.querySelector<HTMLElement>('[data-size-cell="/movies/series"]');
+    const fileName = document.querySelector<HTMLElement>('[data-name-cell="/movies/demo.mp4"]');
+    const semi = await import('@douyinfe/semi-ui');
+    const tableProps = (
+      semi as unknown as { __getLastTableProps: () => Record<string, unknown> }
+    ).__getLastTableProps();
+    const columns = tableProps.columns as Array<{ width?: number }>;
+
+    expect(directoryLink).not.toBeNull();
+    expect(directoryLink?.getAttribute('title')).toBe('series');
+    expect(fileSize?.textContent).toBe('1.5 KiB');
+    expect(dirSize?.textContent).toBe('-');
+    expect(fileName?.style.maxWidth).toBe('640px');
+    expect(tableProps.tableLayout).toBe('fixed');
+    expect(columns[1]?.width).toBe(96);
+  });
+
+  it('renders a compact pagination summary', async () => {
+    mocked.browseFormatConvertOpenlist.mockResolvedValue({
+      data: {
+        path: '/movies',
+        page: 2,
+        perPage: 20,
+        total: 75,
+        content: [{ name: 'demo.mp4', path: '/movies/demo.mp4', isDir: false, size: 1536 }],
+      },
+    });
+
+    const { OpenlistTableBrowser } = await import('../openlist-table-browser');
+    const semi = await import('@douyinfe/semi-ui');
+
+    await act(async () => {
+      root.render(createElement(OpenlistTableBrowser, { selectMode: 'file', selectedPaths: [] }));
+    });
+
+    const tableProps = (
+      semi as unknown as { __getLastTableProps: () => Record<string, unknown> }
+    ).__getLastTableProps();
+    const pagination = tableProps.pagination as {
+      formatPageText?: (args: { currentStart: number; currentEnd: number; total: number }) => ReactNode;
+      hoverShowPageSelect?: boolean;
+      size?: string;
+    };
+
+    expect(document.querySelectorAll('[data-pagination-summary="true"]')).toHaveLength(1);
+    expect(document.body.textContent).toContain('21-40 / 75');
+    expect(pagination.formatPageText?.({ currentStart: 21, currentEnd: 40, total: 75 })).toBe('21-40 / 75');
+    expect(pagination.size).toBe('small');
+    expect(pagination.hoverShowPageSelect).toBe(true);
   });
 
   it('keeps the latest navigation result when requests resolve out of order', async () => {

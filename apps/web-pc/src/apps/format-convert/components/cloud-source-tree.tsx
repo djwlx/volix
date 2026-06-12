@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { Typography } from '@douyinfe/semi-ui';
 import { useI18n } from '@/i18n';
 import { createCloudSelectionMap, type CloudSelectionEntry } from '../batch-selection';
 import { OpenlistTableBrowser } from './openlist-table-browser';
@@ -18,15 +17,6 @@ export function CloudSourceTree(props: CloudSourceTreeProps) {
 
   return (
     <div>
-      <div className={styles.treeToolbar}>
-        <div>
-          <Typography.Title heading={6} style={{ margin: 0 }}>
-            {t('formatConvert.cloud.sourceTreeTitle')}
-          </Typography.Title>
-          <div className={styles.treeHint}>{t('formatConvert.cloud.sourceTreeHint')}</div>
-        </div>
-      </div>
-
       <OpenlistTableBrowser
         disabled={disabled}
         selectMode="file"

@@ -97,6 +97,8 @@ describe('cloud source tree', () => {
       browserModule as unknown as { __getLastBrowserProps: () => Record<string, unknown> }
     ).__getLastBrowserProps();
 
+    expect(document.body.textContent).not.toContain('OpenList 文件浏览器');
+    expect(document.body.textContent).not.toContain('进入目录后勾选文件');
     expect(browserProps.selectedPaths).toEqual(['/anime/ep1.mkv']);
 
     await act(async () => {

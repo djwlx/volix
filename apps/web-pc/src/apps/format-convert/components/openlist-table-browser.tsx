@@ -10,6 +10,7 @@ import styles from './workbench.module.scss';
 
 const OPENLIST_BROWSER_PAGE_SIZE = 20;
 const OPENLIST_DIR_BROWSER_FETCH_SIZE = 500;
+const OPENLIST_NAME_MAX_WIDTH = 640;
 
 type OpenlistSelectedFile = {
   path: string;
@@ -39,6 +40,53 @@ const getParentPath = (currentPath: string) => {
 const getPathName = (targetPath: string) => {
   const segments = targetPath.split('/').filter(Boolean);
   return segments[segments.length - 1] || targetPath || '/';
+};
+
+const getPathSegments = (targetPath: string) => {
+  const segments = targetPath.split('/').filter(Boolean);
+  return [
+    { label: '/', path: '/' },
+    ...segments.map((segment, index) => ({
+      label: segment,
+      path: `/${segments.slice(0, index + 1).join('/')}`,
+    })),
+  ];
+};
+
+const getCompactPathSegmentLabel = (label: string) => {
+  if (label === '/') {
+    return label;
+  }
+
+  const chars = Array.from(label);
+
+  if (chars.length <= 4) {
+    return label;
+  }
+
+  return `${chars[0]}...${chars[chars.length - 1]}`;
+};
+
+const formatFileSize = (size?: number) => {
+  if (typeof size !== 'number' || Number.isNaN(size) || size < 0) {
+    return '';
+  }
+
+  if (size < 1024) {
+    return `${size} B`;
+  }
+
+  const units = ['KiB', 'MiB', 'GiB', 'TiB'];
+  let value = size;
+  let unitIndex = -1;
+
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+
+  const precision = value >= 10 ? 0 : 1;
+  return `${value.toFixed(precision)} ${units[unitIndex]}`;
 };
 
 const toSelectedItems = (
@@ -177,6 +225,7 @@ export function OpenlistTableBrowser(props: OpenlistTableBrowserProps) {
 
   const rows = (result?.content || []).filter(item => (selectMode === 'dir' ? item.isDir : true));
   const currentBrowsePath = result?.path || currentPath;
+  const displayPath = selectMode === 'dir' ? selectedDirPath || currentBrowsePath : currentBrowsePath;
   const canGoParent = currentBrowsePath !== '/';
 
   const columns: ColumnProps<FormatConvertOpenlistBrowserItem>[] = [
@@ -185,36 +234,82 @@ export function OpenlistTableBrowser(props: OpenlistTableBrowserProps) {
       dataIndex: 'name',
       render: (_text, record) =>
         record.isDir ? (
-          <Button
-            className={styles.browserNameButton}
-            disabled={disabled}
-            theme="borderless"
-            type="tertiary"
-            onClick={() => void load({ path: record.path, page: 1 })}
+          <Typography.Text
+            data-dir-link={record.path}
+            data-name-cell={record.path}
+            link={!disabled}
+            title={record.name}
+            style={{
+              display: 'block',
+              maxWidth: `${OPENLIST_NAME_MAX_WIDTH}px`,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+            onClick={disabled ? undefined : () => void load({ path: record.path, page: 1 })}
           >
             {record.name}
-          </Button>
+          </Typography.Text>
         ) : (
-          <span>{record.name}</span>
+          <Typography.Text
+            data-name-cell={record.path}
+            title={record.name}
+            style={{
+              display: 'block',
+              maxWidth: `${OPENLIST_NAME_MAX_WIDTH}px`,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {record.name}
+          </Typography.Text>
         ),
     },
     {
-      title: t('formatConvert.browser.type'),
-      dataIndex: 'isDir',
-      render: (_text, record) => (record.isDir ? t('formatConvert.browser.dir') : t('formatConvert.browser.file')),
+      title: t('formatConvert.browser.size'),
+      dataIndex: 'size',
+      width: 96,
+      render: (_text, record) => (
+        <span data-size-cell={record.path}>{record.isDir ? '-' : formatFileSize(record.size) || '-'}</span>
+      ),
     },
   ];
 
   return (
     <div className={styles.treePanel} data-testid="openlist-table-browser">
-      <div className={styles.treeToolbar}>
+      <div className={styles.treeToolbar} style={{ display: 'block' }}>
         <div className={styles.browserCurrentPath}>
           <Typography.Text strong>{t('formatConvert.browser.currentPath')}</Typography.Text>
-          <div className={styles.browserPathValue}>
-            {selectMode === 'dir' ? selectedDirPath || currentBrowsePath : currentBrowsePath}
-          </div>
         </div>
-        <div className={styles.browserToolbarActions}>
+        <div
+          className={styles.browserPathValue}
+          data-path-strip="true"
+          title={displayPath}
+          style={{
+            display: 'flex',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            whiteSpace: 'nowrap',
+            wordBreak: 'normal',
+          }}
+        >
+          {getPathSegments(displayPath).map((segment, index) => (
+            <span key={segment.path} style={{ display: 'inline-flex', minWidth: 0, flex: '0 0 auto' }}>
+              {index > 1 ? <span>/</span> : null}
+              <Typography.Text
+                data-path-segment={segment.path}
+                link={!disabled}
+                title={segment.label}
+                style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                onClick={disabled ? undefined : () => void load({ path: segment.path, page: 1 })}
+              >
+                {getCompactPathSegmentLabel(segment.label)}
+              </Typography.Text>
+            </span>
+          ))}
+        </div>
+        <div className={styles.browserToolbarActions} style={{ justifyContent: 'flex-end', marginTop: 8 }}>
           <Button
             disabled={disabled || !canGoParent || loading}
             icon={<IconArrowLeft />}
@@ -244,11 +339,20 @@ export function OpenlistTableBrowser(props: OpenlistTableBrowserProps) {
               dataSource={rows}
               rowKey="path"
               size="small"
+              tableLayout="fixed"
               columns={columns}
               pagination={{
                 currentPage: result?.page || page,
                 pageSize: result?.perPage || OPENLIST_BROWSER_PAGE_SIZE,
                 total: result?.total || 0,
+                size: 'small',
+                hoverShowPageSelect: true,
+                formatPageText: ({ currentStart, currentEnd, total }) =>
+                  t('formatConvert.browser.paginationSummary', {
+                    start: currentStart,
+                    end: currentEnd,
+                    total,
+                  }),
                 onPageChange: nextPage => void load({ path: currentBrowsePath, page: nextPage }),
               }}
               rowSelection={
