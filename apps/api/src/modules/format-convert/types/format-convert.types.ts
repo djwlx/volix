@@ -2,6 +2,10 @@ import type {
   CreateFormatConvertTaskRequest,
   CreateFormatConvertTaskResult,
   FormatConvertCommandMode,
+  FormatConvertEngine,
+  FormatConvertImageInfo,
+  FormatConvertImageOption,
+  FormatConvertImageSummary,
   FormatConvertMediaInfo,
   FormatConvertMode,
   FormatConvertOption,
@@ -19,6 +23,9 @@ import type {
 export type {
   CreateFormatConvertTaskRequest,
   CreateFormatConvertTaskResult,
+  FormatConvertImageInfo,
+  FormatConvertImageOption,
+  FormatConvertImageSummary,
   FormatConvertMediaInfo,
   FormatConvertOption,
   FormatConvertPreset,
@@ -37,6 +44,7 @@ export interface FormatConvertTaskEntity {
   id?: number;
   user_id: string;
   mode: FormatConvertMode;
+  engine?: FormatConvertEngine;
   command_mode: FormatConvertCommandMode;
   status: FormatConvertTaskStatus;
   source_json: string;
@@ -71,12 +79,14 @@ export interface FormatConvertTaskSnapshot {
   resultMediaInfo?: FormatConvertMediaInfo;
 }
 
-export interface CreateFormatConvertTaskDbPayload extends CreateFormatConvertTaskRequest {
+export interface CreateFormatConvertTaskDbPayload extends Omit<CreateFormatConvertTaskRequest, 'option'> {
   userId: string;
+  engine?: FormatConvertEngine;
+  option: FormatConvertOption | FormatConvertImageOption;
   status?: FormatConvertTaskStatus;
   attemptCount?: number;
   requestUserAgent?: string;
-  sourceMediaInfo?: FormatConvertMediaInfo;
-  convertSummary?: FormatConvertSummary;
-  resultMediaInfo?: FormatConvertMediaInfo;
+  sourceMediaInfo?: FormatConvertMediaInfo | FormatConvertImageInfo;
+  convertSummary?: FormatConvertSummary | FormatConvertImageSummary;
+  resultMediaInfo?: FormatConvertMediaInfo | FormatConvertImageInfo;
 }

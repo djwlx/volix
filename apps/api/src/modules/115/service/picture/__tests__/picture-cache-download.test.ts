@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { requestPicCacheDownloadStream } from './picture-cache-download';
+import { requestPicCacheDownloadStream } from '../picture-cache-download';
 
 describe('picture cache download', () => {
   it('retries transient proxy download failures and returns the later stream response', async () => {

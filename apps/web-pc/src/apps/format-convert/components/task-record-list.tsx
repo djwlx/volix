@@ -1,22 +1,27 @@
-import { Button, Card, Empty, Space, Table, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Card, Empty, Popconfirm, Space, Table, Toast, Typography } from '@douyinfe/semi-ui';
 import {
   FORMAT_CONVERT_FAILED_STATUSES,
-  FORMAT_CONVERT_PRESET_DEFINITIONS,
+  FormatConvertEngine,
   FormatConvertTaskStatus,
+  isFormatConvertTaskDeletable,
+  type FormatConvertImageInfo,
+  type FormatConvertImageSummary,
   type FormatConvertMediaInfo,
   type FormatConvertSummary,
   type FormatConvertTaskItem,
 } from '@volix/types';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/i18n';
 import { getHttpErrorMessage } from '@/utils/error';
 import { downloadFormatConvertResult } from '@/services/format-convert';
+import { getPresetLabel, getResolutionDisplay, getVideoCodecDisplay } from '../preset-options';
 import { renderFormatConvertTaskStatus } from '../task-status';
 
 interface TaskRecordListProps {
   loading: boolean;
   tasks: FormatConvertTaskItem[];
-  onCleanup: (task: FormatConvertTaskItem) => void;
+  onBatchDelete: (taskIds: number[]) => void | Promise<void>;
+  onDelete: (task: FormatConvertTaskItem) => void | Promise<void>;
   onRetry: (task: FormatConvertTaskItem) => void;
 }
 
@@ -38,16 +43,12 @@ const detailRowStyle = {
   gap: 12,
   marginTop: 8,
 };
-
-const hasLocalArtifacts = (task: FormatConvertTaskItem) => {
-  return Boolean(
-    task.workspaceDir ||
-      task.sourceLocalPath ||
-      task.outputLocalPath ||
-      task.logLocalPath ||
-      task.resultLocalPath ||
-      (task.source.type === 'upload' && task.source.uploadPath)
-  );
+const errorBannerStyle = {
+  marginBottom: 12,
+  padding: '10px 12px',
+  borderRadius: 12,
+  border: '1px solid var(--semi-color-danger-light-active)',
+  background: 'var(--semi-color-danger-light-default)',
 };
 
 const formatDuration = (value?: number) => {
@@ -84,10 +85,6 @@ const formatBytes = (value?: number) => {
 const formatKbps = (value?: number) => {
   const bitrate = Number(value || 0);
   return bitrate ? `${bitrate} kbps` : '';
-};
-
-const getPresetLabelKey = (presetId?: string) => {
-  return FORMAT_CONVERT_PRESET_DEFINITIONS.find(item => item.id === presetId)?.labelKey;
 };
 
 const renderDetailSection = (title: string, rows: Array<{ label: string; value: string }>, emptyText: string) => {
@@ -143,7 +140,6 @@ const buildMediaInfoRows = (mediaInfo: FormatConvertMediaInfo | undefined, t: (k
 };
 
 const buildConvertSummaryRows = (summary: FormatConvertSummary | undefined, t: (key: string) => string) => {
-  const presetLabelKey = getPresetLabelKey(summary?.presetId);
   return [
     {
       label: t('formatConvert.record.detail.commandMode'),
@@ -151,12 +147,12 @@ const buildConvertSummaryRows = (summary: FormatConvertSummary | undefined, t: (
     },
     {
       label: t('formatConvert.record.detail.preset'),
-      value: presetLabelKey ? t(presetLabelKey) : summary?.presetId || '',
+      value: getPresetLabel(summary?.presetId, t),
     },
     { label: t('formatConvert.form.outputFormat'), value: String(summary?.outputFormat || '').toUpperCase() },
-    { label: t('formatConvert.form.videoCodec'), value: summary?.videoCodec || '' },
+    { label: t('formatConvert.form.videoCodec'), value: getVideoCodecDisplay(summary?.videoCodec) },
     { label: t('formatConvert.form.audioCodec'), value: summary?.audioCodec || '' },
-    { label: t('formatConvert.form.resolution'), value: summary?.resolution || '' },
+    { label: t('formatConvert.form.resolution'), value: getResolutionDisplay(summary?.resolution) },
     { label: t('formatConvert.record.detail.videoBitRate'), value: formatKbps(summary?.videoBitrateKbps) },
     { label: t('formatConvert.record.detail.audioBitRate'), value: formatKbps(summary?.audioBitrateKbps) },
     { label: t('formatConvert.record.detail.crf'), value: summary?.crf ? String(summary.crf) : '' },
@@ -170,10 +166,39 @@ const buildConvertSummaryRows = (summary: FormatConvertSummary | undefined, t: (
   ];
 };
 
+const buildImageInfoRows = (info: FormatConvertImageInfo | undefined, t: (key: string) => string) => {
+  return [
+    { label: t('formatConvert.record.detail.formatName'), value: String(info?.format || '').toUpperCase() },
+    {
+      label: t('formatConvert.record.detail.resolution'),
+      value: info?.width && info?.height ? `${info.width}x${info.height}` : '',
+    },
+    { label: t('formatConvert.record.detail.size'), value: formatBytes(info?.sizeBytes) },
+  ];
+};
+
+const buildImageSummaryRows = (summary: FormatConvertImageSummary | undefined, t: (key: string) => string) => {
+  return [
+    { label: t('formatConvert.form.outputFormat'), value: String(summary?.outputFormat || '').toUpperCase() },
+    { label: t('formatConvert.image.form.quality'), value: summary?.quality ? String(summary.quality) : '' },
+    { label: t('formatConvert.image.form.width'), value: summary?.width ? String(summary.width) : '' },
+  ];
+};
+
 export function TaskRecordList(props: TaskRecordListProps) {
-  const { loading, tasks, onCleanup, onRetry } = props;
+  const { loading, tasks, onBatchDelete, onDelete, onRetry } = props;
   const { t } = useI18n();
   const [expandedRowKeys, setExpandedRowKeys] = useState<Array<string | number>>([]);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<Array<string | number>>([]);
+
+  const deletableTaskIds = useMemo(
+    () => tasks.filter(task => isFormatConvertTaskDeletable(task.status)).map(task => task.id),
+    [tasks]
+  );
+
+  useEffect(() => {
+    setSelectedRowKeys(current => current.filter(item => deletableTaskIds.includes(Number(item))));
+  }, [deletableTaskIds]);
 
   const toggleExpandedRow = (taskId: number) => {
     setExpandedRowKeys(current =>
@@ -181,9 +206,29 @@ export function TaskRecordList(props: TaskRecordListProps) {
     );
   };
 
+  const handleBatchDelete = async () => {
+    const nextIds = selectedRowKeys.map(item => Number(item)).filter(item => Number.isFinite(item));
+    await onBatchDelete(nextIds);
+    setSelectedRowKeys([]);
+  };
+
   return (
     <Card
       title={t('formatConvert.record.title')}
+      headerExtraContent={
+        <Popconfirm
+          title={t('formatConvert.record.batchDeleteConfirmTitle')}
+          content={t('formatConvert.record.batchDeleteConfirmContent')}
+          disabled={!selectedRowKeys.length}
+          onConfirm={() => void handleBatchDelete()}
+        >
+          <Button type="danger" disabled={!selectedRowKeys.length}>
+            {selectedRowKeys.length
+              ? t('formatConvert.record.batchDeleteWithCount', { count: selectedRowKeys.length })
+              : t('formatConvert.record.batchDelete')}
+          </Button>
+        </Popconfirm>
+      }
       shadows="hover"
       style={{ width: '100%' }}
       bodyStyle={{ width: '100%' }}
@@ -195,6 +240,13 @@ export function TaskRecordList(props: TaskRecordListProps) {
           loading={loading}
           dataSource={tasks}
           expandedRowKeys={expandedRowKeys}
+          rowSelection={{
+            selectedRowKeys,
+            onChange: (nextSelectedRowKeys?: Array<string | number>) => setSelectedRowKeys(nextSelectedRowKeys || []),
+            getCheckboxProps: (record: FormatConvertTaskItem) => ({
+              disabled: !isFormatConvertTaskDeletable(record.status),
+            }),
+          }}
           expandIcon={false}
           onExpand={(expanded, record) => {
             const taskId = record && 'id' in record ? record.id : undefined;
@@ -208,21 +260,53 @@ export function TaskRecordList(props: TaskRecordListProps) {
           expandedRowRender={record =>
             record && 'id' in record ? (
               <div style={{ padding: '4px 0 8px' }}>
+                {FORMAT_CONVERT_FAILED_STATUSES.includes(record.status as never) && record.errorMessage ? (
+                  <div style={errorBannerStyle}>
+                    <Typography.Text strong type="danger">
+                      {t('formatConvert.record.detail.errorTitle')}
+                    </Typography.Text>
+                    <Typography.Text type="danger" style={{ display: 'block', marginTop: 4, wordBreak: 'break-all' }}>
+                      {record.errorMessage}
+                    </Typography.Text>
+                  </div>
+                ) : null}
                 <div style={detailsGridStyle}>
-                  {renderDetailSection(
-                    t('formatConvert.record.detail.sourceMediaInfo'),
-                    buildMediaInfoRows(record.sourceMediaInfo, t),
-                    t('common.status.none')
-                  )}
-                  {renderDetailSection(
-                    t('formatConvert.record.detail.convertSummary'),
-                    buildConvertSummaryRows(record.convertSummary, t),
-                    t('common.status.none')
-                  )}
-                  {renderDetailSection(
-                    t('formatConvert.record.detail.resultMediaInfo'),
-                    buildMediaInfoRows(record.resultMediaInfo, t),
-                    t('common.status.none')
+                  {record.engine === FormatConvertEngine.IMAGE ? (
+                    <>
+                      {renderDetailSection(
+                        t('formatConvert.record.detail.sourceMediaInfo'),
+                        buildImageInfoRows(record.sourceImageInfo, t),
+                        t('common.status.none')
+                      )}
+                      {renderDetailSection(
+                        t('formatConvert.record.detail.convertSummary'),
+                        buildImageSummaryRows(record.imageSummary, t),
+                        t('common.status.none')
+                      )}
+                      {renderDetailSection(
+                        t('formatConvert.record.detail.resultMediaInfo'),
+                        buildImageInfoRows(record.resultImageInfo, t),
+                        t('common.status.none')
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {renderDetailSection(
+                        t('formatConvert.record.detail.sourceMediaInfo'),
+                        buildMediaInfoRows(record.sourceMediaInfo, t),
+                        t('common.status.none')
+                      )}
+                      {renderDetailSection(
+                        t('formatConvert.record.detail.convertSummary'),
+                        buildConvertSummaryRows(record.convertSummary, t),
+                        t('common.status.none')
+                      )}
+                      {renderDetailSection(
+                        t('formatConvert.record.detail.resultMediaInfo'),
+                        buildMediaInfoRows(record.resultMediaInfo, t),
+                        t('common.status.none')
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -255,7 +339,21 @@ export function TaskRecordList(props: TaskRecordListProps) {
             {
               title: t('formatConvert.record.status'),
               dataIndex: 'status',
-              render: (_text, record: FormatConvertTaskItem) => renderFormatConvertTaskStatus(record.status),
+              render: (_text, record: FormatConvertTaskItem) => (
+                <div>
+                  {renderFormatConvertTaskStatus(record.status)}
+                  {FORMAT_CONVERT_FAILED_STATUSES.includes(record.status as never) && record.errorMessage ? (
+                    <Typography.Text
+                      type="danger"
+                      size="small"
+                      ellipsis={{ showTooltip: true }}
+                      style={{ display: 'block', marginTop: 4, maxWidth: 220 }}
+                    >
+                      {record.errorMessage}
+                    </Typography.Text>
+                  ) : null}
+                </div>
+              ),
             },
             {
               title: t('formatConvert.record.updatedAt'),
@@ -291,10 +389,16 @@ export function TaskRecordList(props: TaskRecordListProps) {
                       ? t('formatConvert.record.hideDetail')
                       : t('formatConvert.record.detail')}
                   </Button>
-                  {record.status === FormatConvertTaskStatus.COMPLETED && hasLocalArtifacts(record) ? (
-                    <Button size="small" type="danger" onClick={() => onCleanup(record)}>
-                      {t('formatConvert.record.cleanup')}
-                    </Button>
+                  {isFormatConvertTaskDeletable(record.status) ? (
+                    <Popconfirm
+                      title={t('formatConvert.record.deleteConfirmTitle')}
+                      content={t('formatConvert.record.deleteConfirmContent')}
+                      onConfirm={() => void onDelete(record)}
+                    >
+                      <Button size="small" type="danger">
+                        {t('formatConvert.record.delete')}
+                      </Button>
+                    </Popconfirm>
                   ) : null}
                 </Space>
               ),

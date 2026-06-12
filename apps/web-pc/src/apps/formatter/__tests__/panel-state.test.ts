@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFormatterPanelState } from './panel-state';
+import { buildFormatterPanelState } from '../panel-state';
 
 if (!('window' in globalThis)) {
   Object.assign(globalThis, { window: globalThis });

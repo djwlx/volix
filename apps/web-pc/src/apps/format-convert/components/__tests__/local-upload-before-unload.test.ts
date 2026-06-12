@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from 'vitest';
-import { attachLocalUploadBeforeUnloadGuard } from './local-upload-before-unload';
+import { attachLocalUploadBeforeUnloadGuard } from '../local-upload-before-unload';
 
 describe('local upload beforeunload guard', () => {
   it('prevents page exit and sets a truthy returnValue', () => {

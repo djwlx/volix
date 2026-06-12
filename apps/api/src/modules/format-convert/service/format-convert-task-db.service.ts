@@ -1,8 +1,11 @@
 import { Op } from 'sequelize';
-import { FORMAT_CONVERT_RECOVERABLE_STATUSES, FormatConvertTaskStatus } from '@volix/types';
+import { FORMAT_CONVERT_RECOVERABLE_STATUSES, FormatConvertEngine, FormatConvertTaskStatus } from '@volix/types';
 import { FormatConvertTaskModel } from '../model/format-convert-task.model';
 import type {
   CreateFormatConvertTaskDbPayload,
+  FormatConvertImageInfo,
+  FormatConvertImageOption,
+  FormatConvertImageSummary,
   FormatConvertTaskEntity,
   FormatConvertTaskItem,
   FormatConvertTaskSnapshot,
@@ -47,18 +50,26 @@ export const mapFormatConvertTaskRow = (row: FormatConvertTaskEntity): FormatCon
     resultMediaInfo: parseOptionalJson(row.result_media_info_json),
   };
 
+  const engine = (row.engine as FormatConvertEngine) || FormatConvertEngine.MEDIA;
+  const isImage = engine === FormatConvertEngine.IMAGE;
+
   return {
     id: Number(row.id || 0),
     userId: row.user_id,
     mode: row.mode,
+    engine,
     commandMode: row.command_mode,
     status: row.status,
     source: snapshot.source,
     target: snapshot.target,
     option: snapshot.option,
-    sourceMediaInfo: snapshot.sourceMediaInfo,
-    convertSummary: snapshot.convertSummary,
-    resultMediaInfo: snapshot.resultMediaInfo,
+    sourceMediaInfo: isImage ? undefined : snapshot.sourceMediaInfo,
+    convertSummary: isImage ? undefined : snapshot.convertSummary,
+    resultMediaInfo: isImage ? undefined : snapshot.resultMediaInfo,
+    imageOption: isImage ? parseJson(row.option_json, {} as FormatConvertImageOption) : undefined,
+    sourceImageInfo: isImage ? parseOptionalJson<FormatConvertImageInfo>(row.source_media_info_json) : undefined,
+    resultImageInfo: isImage ? parseOptionalJson<FormatConvertImageInfo>(row.result_media_info_json) : undefined,
+    imageSummary: isImage ? parseOptionalJson<FormatConvertImageSummary>(row.convert_summary_json) : undefined,
     presetId: row.preset_id || undefined,
     attemptCount: Number(row.attempt_count || 0),
     requestUserAgent: row.request_user_agent || undefined,
@@ -88,6 +99,7 @@ export const createFormatConvertTask = async (payload: CreateFormatConvertTaskDb
   const row = await FormatConvertTaskModel.create({
     user_id: payload.userId,
     mode: payload.mode,
+    engine: payload.engine || FormatConvertEngine.MEDIA,
     command_mode: payload.commandMode,
     status: payload.status || FormatConvertTaskStatus.PENDING,
     source_json: JSON.stringify(payload.source || {}),
@@ -132,6 +144,25 @@ export const listFormatConvertTasksByUserId = async (userId: string, limit = 50)
       ['id', 'DESC'],
     ],
     limit,
+  });
+  return rows.map(row => mapFormatConvertTaskRow(row.dataValues as FormatConvertTaskEntity));
+};
+
+export const listFormatConvertTasksByIdsAndUserId = async (taskIds: number[], userId: string) => {
+  if (!taskIds.length) {
+    return [];
+  }
+  const rows = await FormatConvertTaskModel.findAll({
+    where: {
+      id: {
+        [Op.in]: taskIds,
+      },
+      user_id: userId,
+    },
+    order: [
+      ['created_at', 'DESC'],
+      ['id', 'DESC'],
+    ],
   });
   return rows.map(row => mapFormatConvertTaskRow(row.dataValues as FormatConvertTaskEntity));
 };
@@ -195,5 +226,28 @@ export const resetFormatConvertTaskToPending = async (taskId: number) => {
     error_message: '',
     started_at: undefined,
     finished_at: undefined,
+  });
+};
+
+export const deleteFormatConvertTaskByIdAndUserId = async (taskId: number, userId: string) => {
+  return FormatConvertTaskModel.destroy({
+    where: {
+      id: taskId,
+      user_id: userId,
+    },
+  });
+};
+
+export const deleteFormatConvertTasksByIdsAndUserId = async (taskIds: number[], userId: string) => {
+  if (!taskIds.length) {
+    return 0;
+  }
+  return FormatConvertTaskModel.destroy({
+    where: {
+      id: {
+        [Op.in]: taskIds,
+      },
+      user_id: userId,
+    },
   });
 };

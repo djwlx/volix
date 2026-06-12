@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LOCALE, resolveLocale } from './locale';
-import { getLocaleDictionary, resources } from './resources';
+import { DEFAULT_LOCALE, resolveLocale } from '../locale';
+import { getLocaleDictionary, resources } from '../resources';
 
 describe('resolveLocale', () => {
   it('falls back to zh-CN for unknown input', () => {

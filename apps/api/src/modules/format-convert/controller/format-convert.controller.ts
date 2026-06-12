@@ -4,12 +4,14 @@ import mime from 'mime-types';
 import { v4 as uuidV4 } from 'uuid';
 import type { CreateFormatConvertTaskRequest } from '@volix/types';
 import {
-  FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS,
+  isFormatConvertTaskDeletable,
   FORMAT_CONVERT_FAILED_STATUSES,
+  FormatConvertEngine,
   FormatConvertTaskStatus,
   FormatConvertMode,
   FormatConvertSourceType,
   FormatConvertTargetType,
+  type FormatConvertImageOption,
 } from '@volix/types';
 import { PATH } from '../../../utils/path';
 import { t } from '../../../utils/i18n';
@@ -22,8 +24,16 @@ import {
 } from '../service/format-convert-artifact.service';
 import { buildFormatConvertSummary, normalizeFormatConvertOption } from '../service/format-convert-option.service';
 import {
+  buildFormatConvertImageSummary,
+  normalizeFormatConvertImageOption,
+} from '../service/format-convert-image-option.service';
+import { probeImageFile } from '../service/format-convert-image.service';
+import {
   createFormatConvertTask,
+  deleteFormatConvertTaskByIdAndUserId,
+  deleteFormatConvertTasksByIdsAndUserId,
   getFormatConvertTaskByIdAndUserId,
+  listFormatConvertTasksByIdsAndUserId,
   listFormatConvertTasksByUserId,
   resetFormatConvertTaskToPending,
   updateFormatConvertTask,
@@ -32,8 +42,6 @@ import { ensureFormatConvertQueueRunning } from '../service/format-convert-queue
 import { listFormatConvertOpenlistFs } from '../service/format-convert-openlist.service';
 import { probeMediaFile } from '../service/format-convert-ffmpeg.service';
 import type { FormatConvertTaskItem } from '../types/format-convert.types';
-
-const AUDIO_ONLY_OUTPUT_FORMATS = new Set(FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS);
 
 const ensureLoginUserId = (ctx: any) => {
   const userId = ctx.state.userInfo?.id;
@@ -112,21 +120,42 @@ export const createLocalFormatConvertTask: MyMiddleware = async ctx => {
   const storedUploadPath = buildStoredUploadPath(file?.originalFilename || 'upload.bin');
   await fs.promises.mkdir(path.dirname(storedUploadPath), { recursive: true });
   await moveUploadedFile(String(file?.filepath || ''), storedUploadPath);
-  const sourceMediaInfo = await probeMediaFile(storedUploadPath);
 
+  const source = {
+    type: FormatConvertSourceType.UPLOAD,
+    fileName: path.basename(file?.originalFilename || 'upload.bin'),
+    mimeType: file?.mimetype,
+    size: file?.size,
+    uploadPath: storedUploadPath,
+  } as const;
+
+  if (payload.engine === FormatConvertEngine.IMAGE) {
+    const imageOption = normalizeFormatConvertImageOption((payload.imageOption || {}) as FormatConvertImageOption);
+    const sourceImageInfo = await probeImageFile(storedUploadPath);
+    const imageTask = await createFormatConvertTask({
+      userId,
+      engine: FormatConvertEngine.IMAGE,
+      mode: FormatConvertMode.LOCAL,
+      commandMode: payload.commandMode,
+      target: {
+        type: FormatConvertTargetType.DOWNLOAD,
+        fileName: payload.target?.fileName,
+      },
+      source,
+      option: imageOption,
+      sourceMediaInfo: sourceImageInfo,
+      convertSummary: buildFormatConvertImageSummary(imageOption),
+    });
+    void ensureFormatConvertQueueRunning();
+    return { task: toPublicFormatConvertTask(imageTask) };
+  }
+
+  const sourceMediaInfo = await probeMediaFile(storedUploadPath);
   const option = normalizeFormatConvertOption({
     commandMode: payload.commandMode,
     presetId: payload.presetId,
     option: payload.option,
   });
-  if (AUDIO_ONLY_OUTPUT_FORMATS.has(option.outputFormat) && !sourceMediaInfo.hasAudio) {
-    badRequest(
-      t({
-        id: 'formatConvert.error.audioOutputRequiresSourceAudio',
-        defaultMessage: '源文件没有音频流，无法转换为音频文件',
-      })
-    );
-  }
 
   const task = await createFormatConvertTask({
     userId,
@@ -140,13 +169,7 @@ export const createLocalFormatConvertTask: MyMiddleware = async ctx => {
             type: FormatConvertTargetType.DOWNLOAD,
             fileName: payload.target?.fileName,
           },
-    source: {
-      type: FormatConvertSourceType.UPLOAD,
-      fileName: path.basename(file?.originalFilename || 'upload.bin'),
-      mimeType: file?.mimetype,
-      size: file?.size,
-      uploadPath: storedUploadPath,
-    },
+    source,
     option,
     sourceMediaInfo,
     convertSummary: buildFormatConvertSummary({
@@ -279,6 +302,63 @@ export const cleanupFormatConvertTaskFiles: MyMiddleware = async ctx => {
   return {
     success: true,
     task: toPublicFormatConvertTask(nextTask),
+  };
+};
+
+export const deleteFormatConvertTask: MyMiddleware = async ctx => {
+  const userId = ensureLoginUserId(ctx);
+  const taskId = Number(ctx.params.id || 0);
+  const task = await getFormatConvertTaskByIdAndUserId(taskId, userId);
+  if (!task) {
+    badRequest(t({ id: 'formatConvert.error.taskNotFound', defaultMessage: '格式转换任务不存在' }));
+    return;
+  }
+  if (!isFormatConvertTaskDeletable(task.status)) {
+    badRequest(t({ id: 'formatConvert.error.deleteNotAllowed', defaultMessage: '当前任务状态不允许删除记录' }));
+    return;
+  }
+
+  await cleanupFormatConvertTaskLocalArtifacts(task);
+  await deleteFormatConvertTaskByIdAndUserId(taskId, userId);
+  return {
+    success: true,
+  };
+};
+
+export const deleteFormatConvertTasks: MyMiddleware = async ctx => {
+  const userId = ensureLoginUserId(ctx);
+  const taskIds: number[] = Array.from(
+    new Set<number>(
+      (Array.isArray(ctx.request.body?.taskIds) ? ctx.request.body.taskIds : [])
+        .map((item: unknown) => Number(item || 0))
+        .filter((item: number) => Number.isFinite(item) && item > 0)
+    )
+  );
+
+  if (!taskIds.length) {
+    return {
+      success: true,
+      deletedCount: 0,
+    };
+  }
+
+  const tasks = await listFormatConvertTasksByIdsAndUserId(taskIds, userId);
+  const deletableTasks = tasks.filter(task => isFormatConvertTaskDeletable(task.status));
+
+  for (const task of deletableTasks) {
+    await cleanupFormatConvertTaskLocalArtifacts(task);
+  }
+
+  const deletedCount = deletableTasks.length
+    ? await deleteFormatConvertTasksByIdsAndUserId(
+        deletableTasks.map(task => task.id),
+        userId
+      )
+    : 0;
+
+  return {
+    success: true,
+    deletedCount,
   };
 };
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getLikedWallCompactThreshold, shouldUseLikedWallCompactLayout } from './layout';
+import { getLikedWallCompactThreshold, shouldUseLikedWallCompactLayout } from '../layout';
 
 describe('liked wall layout', () => {
   it('uses compact horizontal layout when item count is below the desktop column threshold', () => {

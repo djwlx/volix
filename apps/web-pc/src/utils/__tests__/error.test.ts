@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getDisplayErrorMessage } from './error';
+import { getDisplayErrorMessage } from '../error';
 
 describe('error utils', () => {
   it('prefers backend business message over axios status message', () => {

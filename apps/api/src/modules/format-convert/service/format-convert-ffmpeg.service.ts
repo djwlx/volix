@@ -73,11 +73,31 @@ const toKbps = (value?: string) => {
   return Number((bitsPerSecond / 1000).toFixed(3));
 };
 
-export const parseProbeResult = (payload: ProbePayload): FormatConvertMediaInfo => {
+export const normalizeFormatName = (formatName?: string, extensionHint?: string) => {
+  const candidates = String(formatName || '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean);
+  if (candidates.length <= 1) {
+    return candidates[0] || '';
+  }
+  const ext = String(extensionHint || '')
+    .replace(/^\./, '')
+    .toLowerCase();
+  if (ext && candidates.includes(ext)) {
+    return ext;
+  }
+  if (ext === 'm4v' && candidates.includes('mp4')) {
+    return 'mp4';
+  }
+  return candidates[0];
+};
+
+export const parseProbeResult = (payload: ProbePayload, extensionHint?: string): FormatConvertMediaInfo => {
   const video = payload.streams.find(item => item.codec_type === 'video');
   const audio = payload.streams.find(item => item.codec_type === 'audio');
   return {
-    formatName: String(payload.format?.format_name || ''),
+    formatName: normalizeFormatName(payload.format?.format_name, extensionHint),
     durationSeconds: Number(payload.format?.duration || 0),
     sizeBytes: Number(payload.format?.size || 0),
     bitRateKbps: toKbps(payload.format?.bit_rate),
@@ -121,7 +141,7 @@ export const probeMediaFile = async (filePath: string) => {
   } catch (error) {
     throw toBinaryError(error, 'ffprobe', 'FFPROBE_BIN');
   }
-  return parseProbeResult(JSON.parse(stdout || '{}') as ProbePayload);
+  return parseProbeResult(JSON.parse(stdout || '{}') as ProbePayload, path.extname(filePath));
 };
 
 export const buildFormatConvertArgs = (inputPath: string, outputPath: string, option: FormatConvertOption) => {

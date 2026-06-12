@@ -10,6 +10,8 @@ describe('format convert controller', () => {
     expect(stack.some(item => item.includes('GET') && item.endsWith('/format-convert/tasks'))).toBe(true);
     expect(stack).toContain('POST:/format-convert/task/:id/retry');
     expect(stack).toContain('POST:/format-convert/task/:id/cleanup');
+    expect(stack).toContain('POST:/format-convert/task/:id/delete');
+    expect(stack).toContain('POST:/format-convert/tasks/delete');
     expect(stack.some(item => item.includes('GET') && item.endsWith('/format-convert/task/:id/result'))).toBe(true);
     expect(stack.some(item => item.includes('GET') && item.endsWith('/format-convert/task/:id/log'))).toBe(true);
     expect(stack.some(item => item.includes('GET') && item.endsWith('/format-convert/openlist/fs'))).toBe(true);

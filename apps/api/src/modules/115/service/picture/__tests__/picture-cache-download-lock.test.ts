@@ -3,7 +3,7 @@ import {
   likeCacheDownloadJobMap,
   picCacheDownloadJobMap,
   randomCacheDownloadJobMap,
-} from './picture-cache-random-core';
+} from '../picture-cache-random-core';
 
 describe('picture cache download lock', () => {
   it('shares a single download job map across liked and random cache flows', () => {

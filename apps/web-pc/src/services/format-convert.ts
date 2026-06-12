@@ -11,7 +11,9 @@ import type {
 
 export function createLocalFormatConvertTask(
   file: File,
-  payload: Omit<CreateFormatConvertTaskRequest, 'mode' | 'source'>,
+  payload: Omit<CreateFormatConvertTaskRequest, 'mode' | 'source' | 'option'> & {
+    option?: CreateFormatConvertTaskRequest['option'];
+  },
   options?: {
     onUploadProgress?: (percent: number) => void;
   }
@@ -46,6 +48,16 @@ export function retryFormatConvertTask(taskId: number) {
 
 export function cleanupFormatConvertTask(taskId: number) {
   return http.post<{ success: boolean }>(`/format-convert/task/${taskId}/cleanup`);
+}
+
+export function deleteFormatConvertTask(taskId: number) {
+  return http.post<{ success: boolean }>(`/format-convert/task/${taskId}/delete`);
+}
+
+export function deleteFormatConvertTasks(taskIds: number[]) {
+  return http.post<{ success: boolean; deletedCount: number }>('/format-convert/tasks/delete', {
+    taskIds,
+  });
 }
 
 export function browseFormatConvertOpenlist(path = '/') {

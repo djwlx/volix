@@ -3,7 +3,12 @@ import type { FormatConvertTaskItem } from '@volix/types';
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/i18n';
 import { getHttpErrorMessage } from '@/utils/error';
-import { cleanupFormatConvertTask, getFormatConvertTasks, retryFormatConvertTask } from '@/services/format-convert';
+import {
+  deleteFormatConvertTask,
+  deleteFormatConvertTasks,
+  getFormatConvertTasks,
+  retryFormatConvertTask,
+} from '@/services/format-convert';
 import { ConvertTaskCard, TaskRecordList } from './components';
 import styles from './index.module.scss';
 
@@ -38,13 +43,26 @@ function FormatConvertApp() {
       <TaskRecordList
         loading={loading}
         tasks={tasks}
-        onCleanup={async task => {
+        onBatchDelete={async taskIds => {
           try {
-            await cleanupFormatConvertTask(task.id);
-            Toast.success(t('formatConvert.record.cleanupSuccess'));
+            const response = await deleteFormatConvertTasks(taskIds);
+            Toast.success(
+              t('formatConvert.record.batchDeleteSuccess', {
+                count: response.data?.deletedCount ?? taskIds.length,
+              })
+            );
             void loadTasks();
           } catch (error) {
-            Toast.error(getHttpErrorMessage(error, t('formatConvert.error.cleanupFailed')));
+            Toast.error(getHttpErrorMessage(error, t('formatConvert.error.deleteFailed')));
+          }
+        }}
+        onDelete={async task => {
+          try {
+            await deleteFormatConvertTask(task.id);
+            Toast.success(t('formatConvert.record.deleteSuccess'));
+            void loadTasks();
+          } catch (error) {
+            Toast.error(getHttpErrorMessage(error, t('formatConvert.error.deleteFailed')));
           }
         }}
         onRetry={async task => {

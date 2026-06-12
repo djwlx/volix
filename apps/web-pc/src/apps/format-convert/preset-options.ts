@@ -8,10 +8,51 @@ import {
   FormatConvertCommandMode,
   FormatConvertMode,
   type FormatConvertOption,
+  type FormatConvertPreset,
   type FormatConvertTaskItem,
 } from '@volix/types';
 
 export type FormatConvertSourceMode = 'local' | 'cloud';
+
+const VIDEO_CODEC_DISPLAY: Record<string, string> = {
+  h264: 'H.264',
+  h265: 'H.265',
+  vp9: 'VP9',
+  av1: 'AV1',
+};
+
+const RESOLUTION_DISPLAY: Record<string, string> = {
+  '2160p': '4k',
+  '1440p': '2k',
+};
+
+export const getVideoCodecDisplay = (value?: string) => VIDEO_CODEC_DISPLAY[String(value || '')] || String(value || '');
+
+export const getResolutionDisplay = (value?: string) => RESOLUTION_DISPLAY[String(value || '')] || String(value || '');
+
+export const buildPresetLabel = (preset: FormatConvertPreset, t: (key: string) => string) => {
+  const isAudioOnly = AUDIO_ONLY_OUTPUT_FORMATS.has(preset.outputFormat);
+  const typeLabel = t(isAudioOnly ? 'formatConvert.preset.typeAudio' : 'formatConvert.preset.typeVideo');
+  const { videoCodec, resolution, audioCodec } = preset.option;
+  const tokens: string[] = [preset.outputFormat];
+
+  if (!isAudioOnly && videoCodec && videoCodec !== 'copy') {
+    tokens.push(getVideoCodecDisplay(videoCodec));
+  }
+  if (!isAudioOnly && resolution && resolution !== 'source') {
+    tokens.push(getResolutionDisplay(resolution));
+  }
+  if (audioCodec && audioCodec !== 'copy' && audioCodec.toLowerCase() !== preset.outputFormat.toLowerCase()) {
+    tokens.push(audioCodec);
+  }
+
+  return `${typeLabel}_${tokens.join('_')}`;
+};
+
+export const getPresetLabel = (presetId: string | undefined, t: (key: string) => string) => {
+  const preset = FORMAT_CONVERT_PRESET_DEFINITIONS.find(item => item.id === presetId);
+  return preset ? buildPresetLabel(preset, t) : presetId || '';
+};
 
 export interface FormatConvertFormDraft {
   commandMode: FormatConvertCommandMode;
@@ -38,9 +79,9 @@ export const createFormatConvertDraft = (): FormatConvertFormDraft => {
   };
 };
 
-export const buildPresetOptions = (_mode: FormatConvertMode) => {
+export const buildPresetOptions = (_mode: FormatConvertMode, t: (key: string) => string) => {
   return FORMAT_CONVERT_PRESET_DEFINITIONS.map(item => ({
-    labelKey: item.labelKey,
+    label: buildPresetLabel(item, t),
     value: item.id,
   }));
 };
@@ -61,7 +102,7 @@ export const buildAudioCodecOptions = () => {
 };
 
 export const buildResolutionOptions = () => {
-  return [...FORMAT_CONVERT_RESOLUTIONS].map(value => ({ label: value, value }));
+  return [...FORMAT_CONVERT_RESOLUTIONS].map(value => ({ label: getResolutionDisplay(value), value }));
 };
 
 export const applyPresetToDraft = (draft: FormatConvertFormDraft, presetId: string): FormatConvertFormDraft => {
@@ -109,6 +150,45 @@ export const getSuggestedTargetFileName = (sourceName: string, outputFormat: str
   const baseName = String(sourceName || '').replace(/\.[^.]+$/, '') || 'converted';
   return `${baseName}.${outputFormat}`;
 };
+
+const trimBatchToken = (value?: string) =>
+  String(value || '')
+    .trim()
+    .replace(/^_+|_+$/g, '');
+
+const buildBatchTargetTokens = (draft: FormatConvertFormDraft) => {
+  const option = draft.option;
+  const rawTokens = [
+    option.outputFormat,
+    option.resolution && option.resolution !== 'source' ? option.resolution : '',
+    option.audioCodec && option.audioCodec !== 'copy' ? option.audioCodec : '',
+  ];
+
+  return rawTokens.reduce<string[]>((tokens, token) => {
+    const normalized = trimBatchToken(token);
+    if (!normalized || tokens.includes(normalized)) {
+      return tokens;
+    }
+    tokens.push(normalized);
+    return tokens;
+  }, []);
+};
+
+export const buildFormatConvertTargetFileName = (
+  sourceName: string,
+  draft: FormatConvertFormDraft,
+  batchMode = false
+) => {
+  if (!batchMode) {
+    return draft.targetFileName || getSuggestedTargetFileName(sourceName, draft.option.outputFormat);
+  }
+
+  const baseName = String(sourceName || '').replace(/\.[^.]+$/, '') || 'converted';
+  const suffix = buildBatchTargetTokens(draft).join('_');
+  return `${baseName}_${suffix}.${draft.option.outputFormat}`;
+};
+
+export const isBatchTargetFileNameLocked = (selectedFileCount: number) => selectedFileCount > 1;
 
 export const replaceTargetFileExtension = (targetFileName: string, outputFormat: string) => {
   const trimmed = String(targetFileName || '').trim();
@@ -226,7 +306,7 @@ export const createCloudTaskPayload = (
     target: {
       type: 'openlist' as const,
       dirPath: targetDirPath,
-      fileName: draft.targetFileName || getSuggestedTargetFileName(sourceName, draft.option.outputFormat),
+      fileName: buildFormatConvertTargetFileName(sourceName, draft),
     },
     option: draft.option,
   };

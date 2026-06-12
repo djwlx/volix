@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  FORMAT_CONVERT_IMAGE_OUTPUT_FORMATS,
   FORMAT_CONVERT_RECOVERABLE_STATUSES,
   FORMAT_CONVERT_RUNTIME_ACTIVE_STATUSES,
   FORMAT_CONVERT_TASK_STATUSES,
   FormatConvertCommandMode,
+  FormatConvertEngine,
   FormatConvertMode,
 } from '@volix/types';
 import {
@@ -37,6 +39,9 @@ describe('format convert shared types', () => {
       'uploading',
       'upload_failed',
     ]);
+    expect(FormatConvertEngine.MEDIA).toBe('media');
+    expect(FormatConvertEngine.IMAGE).toBe('image');
+    expect(FORMAT_CONVERT_IMAGE_OUTPUT_FORMATS).toEqual(['jpeg', 'png', 'webp', 'avif']);
   });
 });
 
@@ -45,14 +50,18 @@ describe('format convert option service', () => {
     expect(FORMAT_CONVERT_PRESETS.length).toBeGreaterThanOrEqual(4);
     expect(FORMAT_CONVERT_PRESETS.map(item => item.id)).toEqual([
       'video-mp4-h264-1080p',
+      'video-mp4-h264-2160p',
+      'video-mp4-h265-2160p',
+      'video-mp4-h264-1440p',
       'video-mp4-h264-720p',
+      'video-webm-vp9-2160p',
       'video-webm-vp9-720p',
       'audio-mp3-aac-copy',
       'audio-aac-aac-copy',
       'audio-flac-lossless',
     ]);
     expect(FORMAT_CONVERT_PRESETS.every(item => item.commandMode === FormatConvertCommandMode.PRESET)).toBe(true);
-    expect(FORMAT_CONVERT_PRESETS.every(item => Boolean(item.labelKey))).toBe(true);
+    expect(FORMAT_CONVERT_PRESETS.every(item => Boolean(item.outputFormat))).toBe(true);
   });
 
   it('rejects custom args that try to control input, overwrite, or script paths', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPicSettingStatsData } from './pic-setting-stats';
+import { buildPicSettingStatsData } from '../pic-setting-stats';
 
 describe('buildPicSettingStatsData', () => {
   it('rebuilds translated labels for the active locale', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPicCacheDownloadRequestUrl } from './picture-download-url';
+import { buildPicCacheDownloadRequestUrl } from '../picture-download-url';
 
 describe('buildPicCacheDownloadRequestUrl', () => {
   it('prefers the configured cloud proxy url for cache downloads', () => {

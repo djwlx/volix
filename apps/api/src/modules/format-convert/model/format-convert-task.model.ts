@@ -13,6 +13,11 @@ export const FormatConvertTaskModel = sequelize.define<FormatConvertTaskModelTyp
     type: DataTypes.STRING,
     allowNull: false,
   },
+  engine: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'media',
+  },
   command_mode: {
     type: DataTypes.STRING,
     allowNull: false,
@@ -127,6 +132,14 @@ export const ensureFormatConvertTaskSchema = async () => {
       type: DataTypes.TEXT,
       allowNull: false,
       defaultValue: '{}',
+    });
+  }
+
+  if (!columns.engine) {
+    await queryInterface.addColumn('volix_format_convert_task', 'engine', {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: 'media',
     });
   }
 };

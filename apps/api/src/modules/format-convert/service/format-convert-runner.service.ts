@@ -1,13 +1,17 @@
 import path from 'path';
 import {
   FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS,
+  FormatConvertEngine,
   FormatConvertSourceType,
   FormatConvertTargetType,
   FormatConvertTaskStage,
   FormatConvertTaskStatus,
+  type FormatConvertImageOption,
   type FormatConvertMediaInfo,
 } from '@volix/types';
 import { buildFormatConvertArgs, probeMediaFile, runFfmpegCommand } from './format-convert-ffmpeg.service';
+import { convertImageFile, probeImageFile, resolveImageOutputExtension } from './format-convert-image.service';
+import { normalizeFormatConvertImageOption } from './format-convert-image-option.service';
 import {
   downloadFormatConvertOpenlistSource,
   uploadFormatConvertResultToOpenlist,
@@ -23,6 +27,7 @@ import {
 } from './format-convert-workspace.service';
 import type { FormatConvertTaskItem } from '../types/format-convert.types';
 import { log } from '../../../utils/logger';
+import { t } from '../../../utils/i18n';
 
 const AUDIO_ONLY_OUTPUT_FORMATS = new Set(FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS);
 
@@ -57,6 +62,10 @@ const resolveStatusByStage = (stage: 'download' | 'convert' | 'upload') => {
 };
 
 export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: FormatConvertRunnerHooks) => {
+  if (task.engine === FormatConvertEngine.IMAGE) {
+    return runImageConvertTask(task, hooks);
+  }
+
   const normalizedOption = normalizeFormatConvertTaskOption(task);
   const convertSummary =
     task.convertSummary ||
@@ -97,7 +106,12 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
       sourceMediaInfo = await probeMediaFile(inputPath);
     }
     if (AUDIO_ONLY_OUTPUT_FORMATS.has(normalizedOption.outputFormat) && !sourceMediaInfo.hasAudio) {
-      throw new Error('源文件没有音频流，无法转换为音频文件');
+      throw new Error(
+        t({
+          id: 'formatConvert.error.audioOutputRequiresSourceAudio',
+          defaultMessage: '源文件没有音频流，无法转换为音频文件',
+        })
+      );
     }
 
     currentStage = 'convert';
@@ -178,6 +192,57 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
       error,
     });
     await updateFormatConvertTaskStatus(task.id, resolveStatusByStage(currentStage), {
+      error_message: error instanceof Error ? error.message : String(error),
+      finished_at: new Date(),
+    });
+    throw error;
+  }
+};
+
+const buildImageOutputFilename = (task: FormatConvertTaskItem, extension: string) => {
+  const preferred = task.target.fileName || task.source.fileName || `task-${task.id}.${extension}`;
+  const baseName = preferred.replace(/\.[^.]+$/, '');
+  return `${baseName}.${extension}`;
+};
+
+export const runImageConvertTask = async (task: FormatConvertTaskItem, hooks?: FormatConvertRunnerHooks) => {
+  const option = normalizeFormatConvertImageOption((task.imageOption || {}) as FormatConvertImageOption);
+  const extension = resolveImageOutputExtension(option.outputFormat);
+  const outputWorkspaceName = `output.${extension}`;
+  const outputFilename = buildImageOutputFilename(task, extension);
+
+  await ensureFormatConvertWorkspace(task.id);
+  const outputWorkspacePath = getFormatConvertWorkspaceFilePath(task.id, outputWorkspaceName);
+  const inputPath = resolveLocalSourcePath(task);
+
+  try {
+    hooks?.onStatusChange?.(FormatConvertTaskStatus.CONVERTING);
+    await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.CONVERTING, {
+      last_stage: FormatConvertTaskStage.CONVERT,
+      workspace_dir: getFormatConvertWorkspaceDir(task.id),
+      source_local_path: inputPath,
+      output_local_path: outputWorkspacePath,
+      started_at: new Date(),
+    });
+
+    await convertImageFile(inputPath, outputWorkspacePath, option);
+    const resultImageInfo = await probeImageFile(outputWorkspacePath);
+    const resultLocalPath = await persistFormatConvertResult(task.id, outputWorkspacePath, outputFilename);
+
+    await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.COMPLETED, {
+      result_local_path: resultLocalPath,
+      result_media_info_json: JSON.stringify(resultImageInfo || {}),
+      finished_at: new Date(),
+      error_message: '',
+    });
+    log.info('[format-convert] image task completed', {
+      taskId: task.id,
+      resultLocalPath,
+    });
+    hooks?.onStatusChange?.(FormatConvertTaskStatus.COMPLETED);
+  } catch (error) {
+    log.error('[format-convert] image task failed', { taskId: task.id, error });
+    await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.CONVERT_FAILED, {
       error_message: error instanceof Error ? error.message : String(error),
       finished_at: new Date(),
     });

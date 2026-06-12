@@ -3,6 +3,11 @@ export enum FormatConvertMode {
   CLOUD = 'cloud',
 }
 
+export enum FormatConvertEngine {
+  MEDIA = 'media',
+  IMAGE = 'image',
+}
+
 export enum FormatConvertCommandMode {
   PRESET = 'preset',
   CUSTOM = 'custom',
@@ -61,6 +66,12 @@ export const FORMAT_CONVERT_TERMINAL_STATUSES = Object.freeze([
   FormatConvertTaskStatus.COMPLETED,
   FormatConvertTaskStatus.CANCELED,
 ]);
+export const FORMAT_CONVERT_DELETABLE_STATUSES = Object.freeze([
+  ...FORMAT_CONVERT_FAILED_STATUSES,
+  ...FORMAT_CONVERT_TERMINAL_STATUSES,
+]);
+export const isFormatConvertTaskDeletable = (status: FormatConvertTaskStatus) =>
+  FORMAT_CONVERT_DELETABLE_STATUSES.includes(status as never);
 
 export const FORMAT_CONVERT_STATUS_TRANSITIONS = Object.freeze({
   [FormatConvertTaskStatus.PENDING]: [
@@ -110,8 +121,30 @@ export const FORMAT_CONVERT_OUTPUT_FORMATS = Object.freeze(['mp4', 'mkv', 'mov',
 export const FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS = Object.freeze(['mp3', 'aac', 'wav', 'flac']);
 export const FORMAT_CONVERT_VIDEO_CODECS = Object.freeze(['copy', 'h264', 'h265', 'vp9', 'av1']);
 export const FORMAT_CONVERT_AUDIO_CODECS = Object.freeze(['copy', 'aac', 'mp3', 'opus', 'pcm_s16le', 'flac']);
-export const FORMAT_CONVERT_RESOLUTIONS = Object.freeze(['source', '1080p', '720p', '480p']);
+export const FORMAT_CONVERT_RESOLUTIONS = Object.freeze(['source', '2160p', '1440p', '1080p', '720p', '480p']);
 export const FORMAT_CONVERT_ENCODING_PRESETS = Object.freeze(['ultrafast', 'fast', 'medium', 'slow', 'veryslow']);
+
+export const FORMAT_CONVERT_IMAGE_OUTPUT_FORMATS = Object.freeze(['jpeg', 'png', 'webp', 'avif']);
+export type FormatConvertImageFormat = (typeof FORMAT_CONVERT_IMAGE_OUTPUT_FORMATS)[number];
+
+export interface FormatConvertImageOption {
+  outputFormat: FormatConvertImageFormat;
+  quality: number;
+  width?: number;
+}
+
+export interface FormatConvertImageInfo {
+  format: string;
+  width: number;
+  height: number;
+  sizeBytes: number;
+}
+
+export interface FormatConvertImageSummary {
+  outputFormat: FormatConvertImageFormat;
+  quality: number;
+  width?: number;
+}
 
 export type FormatConvertOutputFormat = (typeof FORMAT_CONVERT_OUTPUT_FORMATS)[number];
 export type FormatConvertVideoCodec = (typeof FORMAT_CONVERT_VIDEO_CODECS)[number];
@@ -181,7 +214,6 @@ export interface FormatConvertPreset {
   commandMode: FormatConvertCommandMode.PRESET;
   outputFormat: FormatConvertOutputFormat;
   option: Partial<FormatConvertOption>;
-  labelKey: string;
   descriptionKey?: string;
 }
 
@@ -192,7 +224,27 @@ export const FORMAT_CONVERT_PRESET_DEFINITIONS: FormatConvertPreset[] = [
     commandMode: FormatConvertCommandMode.PRESET,
     outputFormat: 'mp4',
     option: { videoCodec: 'h264', audioCodec: 'aac', resolution: '1080p', crf: 23, encodingPreset: 'medium' },
-    labelKey: 'formatConvert.preset.videoMp4H2641080p',
+  },
+  {
+    id: 'video-mp4-h264-2160p',
+    mode: FormatConvertMode.LOCAL,
+    commandMode: FormatConvertCommandMode.PRESET,
+    outputFormat: 'mp4',
+    option: { videoCodec: 'h264', audioCodec: 'aac', resolution: '2160p', crf: 23, encodingPreset: 'medium' },
+  },
+  {
+    id: 'video-mp4-h265-2160p',
+    mode: FormatConvertMode.LOCAL,
+    commandMode: FormatConvertCommandMode.PRESET,
+    outputFormat: 'mp4',
+    option: { videoCodec: 'h265', audioCodec: 'aac', resolution: '2160p', crf: 26, encodingPreset: 'medium' },
+  },
+  {
+    id: 'video-mp4-h264-1440p',
+    mode: FormatConvertMode.LOCAL,
+    commandMode: FormatConvertCommandMode.PRESET,
+    outputFormat: 'mp4',
+    option: { videoCodec: 'h264', audioCodec: 'aac', resolution: '1440p', crf: 23, encodingPreset: 'medium' },
   },
   {
     id: 'video-mp4-h264-720p',
@@ -200,7 +252,13 @@ export const FORMAT_CONVERT_PRESET_DEFINITIONS: FormatConvertPreset[] = [
     commandMode: FormatConvertCommandMode.PRESET,
     outputFormat: 'mp4',
     option: { videoCodec: 'h264', audioCodec: 'aac', resolution: '720p', crf: 23, encodingPreset: 'medium' },
-    labelKey: 'formatConvert.preset.videoMp4H264720p',
+  },
+  {
+    id: 'video-webm-vp9-2160p',
+    mode: FormatConvertMode.LOCAL,
+    commandMode: FormatConvertCommandMode.PRESET,
+    outputFormat: 'webm',
+    option: { videoCodec: 'vp9', audioCodec: 'opus', resolution: '2160p', crf: 30, encodingPreset: 'medium' },
   },
   {
     id: 'video-webm-vp9-720p',
@@ -208,7 +266,6 @@ export const FORMAT_CONVERT_PRESET_DEFINITIONS: FormatConvertPreset[] = [
     commandMode: FormatConvertCommandMode.PRESET,
     outputFormat: 'webm',
     option: { videoCodec: 'vp9', audioCodec: 'opus', resolution: '720p', crf: 30, encodingPreset: 'medium' },
-    labelKey: 'formatConvert.preset.videoWebmVp9720p',
   },
   {
     id: 'audio-mp3-aac-copy',
@@ -216,7 +273,6 @@ export const FORMAT_CONVERT_PRESET_DEFINITIONS: FormatConvertPreset[] = [
     commandMode: FormatConvertCommandMode.PRESET,
     outputFormat: 'mp3',
     option: { audioCodec: 'mp3', keepAudio: true },
-    labelKey: 'formatConvert.preset.audioMp3AacCopy',
   },
   {
     id: 'audio-aac-aac-copy',
@@ -224,7 +280,6 @@ export const FORMAT_CONVERT_PRESET_DEFINITIONS: FormatConvertPreset[] = [
     commandMode: FormatConvertCommandMode.PRESET,
     outputFormat: 'aac',
     option: { audioCodec: 'aac', keepAudio: true },
-    labelKey: 'formatConvert.preset.audioAacAacCopy',
   },
   {
     id: 'audio-flac-lossless',
@@ -232,7 +287,6 @@ export const FORMAT_CONVERT_PRESET_DEFINITIONS: FormatConvertPreset[] = [
     commandMode: FormatConvertCommandMode.PRESET,
     outputFormat: 'flac',
     option: { audioCodec: 'flac', keepAudio: true },
-    labelKey: 'formatConvert.preset.audioFlacLossless',
   },
 ];
 
@@ -276,6 +330,8 @@ export interface CreateFormatConvertTaskRequest {
   target: FormatConvertTarget;
   option: FormatConvertOption;
   presetId?: string;
+  engine?: FormatConvertEngine;
+  imageOption?: FormatConvertImageOption;
 }
 
 export interface FormatConvertTaskItem {
@@ -290,6 +346,11 @@ export interface FormatConvertTaskItem {
   sourceMediaInfo?: FormatConvertMediaInfo;
   convertSummary?: FormatConvertSummary;
   resultMediaInfo?: FormatConvertMediaInfo;
+  engine?: FormatConvertEngine;
+  imageOption?: FormatConvertImageOption;
+  sourceImageInfo?: FormatConvertImageInfo;
+  resultImageInfo?: FormatConvertImageInfo;
+  imageSummary?: FormatConvertImageSummary;
   presetId?: string;
   attemptCount: number;
   lastStage?: FormatConvertTaskStage;

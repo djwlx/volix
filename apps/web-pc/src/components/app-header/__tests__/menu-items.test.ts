@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildHeaderDropdownItems, type HeaderDropdownItem } from './menu-items';
+import { buildHeaderDropdownItems, type HeaderDropdownItem } from '../menu-items';
 
 const createItem = (key: string): HeaderDropdownItem => ({
   key,

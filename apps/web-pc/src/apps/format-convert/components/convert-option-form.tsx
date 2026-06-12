@@ -21,8 +21,9 @@ const SelectAny = Select as any;
 export function ConvertOptionForm(props: ConvertOptionFormProps) {
   const { draft, onChange } = props;
   const { t } = useI18n();
+  const isPresetMode = draft.commandMode === FormatConvertCommandMode.PRESET;
   const formatOptions = buildFormatOptions();
-  const presetOptions = buildPresetOptions(FormatConvertMode.LOCAL);
+  const presetOptions = buildPresetOptions(FormatConvertMode.LOCAL, t);
   const videoCodecOptions = buildVideoCodecOptions(draft.option.outputFormat);
   const audioCodecOptions = buildAudioCodecOptions();
   const resolutionOptions = buildResolutionOptions();
@@ -49,7 +50,7 @@ export function ConvertOptionForm(props: ConvertOptionFormProps) {
         />
       </div>
 
-      {draft.commandMode === FormatConvertCommandMode.PRESET ? (
+      {isPresetMode ? (
         <div style={{ width: '100%' }}>
           <Typography.Text strong>{t('formatConvert.form.preset')}</Typography.Text>
           <SelectAny
@@ -57,7 +58,7 @@ export function ConvertOptionForm(props: ConvertOptionFormProps) {
             style={{ width: '100%', marginTop: 8 }}
             optionList={
               presetOptions.map(item => ({
-                label: t(item.labelKey),
+                label: item.label,
                 value: item.value,
               })) as any
             }
@@ -66,25 +67,27 @@ export function ConvertOptionForm(props: ConvertOptionFormProps) {
         </div>
       ) : null}
 
-      <div style={{ width: '100%' }}>
-        <Typography.Text strong>{t('formatConvert.form.outputFormat')}</Typography.Text>
-        <SelectAny
-          value={draft.option.outputFormat as any}
-          style={{ width: '100%', marginTop: 8 }}
-          optionList={formatOptions as any}
-          onChange={(value: unknown) =>
-            onChange({
-              ...draft,
-              option: {
-                ...draft.option,
-                outputFormat: String(value || 'mp4') as never,
-              },
-            })
-          }
-        />
-      </div>
+      {isPresetMode ? (
+        <div style={{ width: '100%' }}>
+          <Typography.Text strong>{t('formatConvert.form.outputFormat')}</Typography.Text>
+          <SelectAny
+            value={draft.option.outputFormat as any}
+            style={{ width: '100%', marginTop: 8 }}
+            optionList={formatOptions as any}
+            onChange={(value: unknown) =>
+              onChange({
+                ...draft,
+                option: {
+                  ...draft.option,
+                  outputFormat: String(value || 'mp4') as never,
+                },
+              })
+            }
+          />
+        </div>
+      ) : null}
 
-      {videoCodecOptions.length > 0 ? (
+      {isPresetMode && videoCodecOptions.length > 0 ? (
         <div style={{ width: '100%' }}>
           <Typography.Text strong>{t('formatConvert.form.videoCodec')}</Typography.Text>
           <SelectAny
@@ -104,41 +107,45 @@ export function ConvertOptionForm(props: ConvertOptionFormProps) {
         </div>
       ) : null}
 
-      <div style={{ width: '100%' }}>
-        <Typography.Text strong>{t('formatConvert.form.audioCodec')}</Typography.Text>
-        <SelectAny
-          value={draft.option.audioCodec as any}
-          style={{ width: '100%', marginTop: 8 }}
-          optionList={audioCodecOptions as any}
-          onChange={(value: unknown) =>
-            onChange({
-              ...draft,
-              option: {
-                ...draft.option,
-                audioCodec: String(value || ''),
-              },
-            })
-          }
-        />
-      </div>
+      {isPresetMode ? (
+        <div style={{ width: '100%' }}>
+          <Typography.Text strong>{t('formatConvert.form.audioCodec')}</Typography.Text>
+          <SelectAny
+            value={draft.option.audioCodec as any}
+            style={{ width: '100%', marginTop: 8 }}
+            optionList={audioCodecOptions as any}
+            onChange={(value: unknown) =>
+              onChange({
+                ...draft,
+                option: {
+                  ...draft.option,
+                  audioCodec: String(value || ''),
+                },
+              })
+            }
+          />
+        </div>
+      ) : null}
 
-      <div style={{ width: '100%' }}>
-        <Typography.Text strong>{t('formatConvert.form.resolution')}</Typography.Text>
-        <SelectAny
-          value={draft.option.resolution as any}
-          style={{ width: '100%', marginTop: 8 }}
-          optionList={resolutionOptions as any}
-          onChange={(value: unknown) =>
-            onChange({
-              ...draft,
-              option: {
-                ...draft.option,
-                resolution: String(value || 'source') as never,
-              },
-            })
-          }
-        />
-      </div>
+      {isPresetMode ? (
+        <div style={{ width: '100%' }}>
+          <Typography.Text strong>{t('formatConvert.form.resolution')}</Typography.Text>
+          <SelectAny
+            value={draft.option.resolution as any}
+            style={{ width: '100%', marginTop: 8 }}
+            optionList={resolutionOptions as any}
+            onChange={(value: unknown) =>
+              onChange({
+                ...draft,
+                option: {
+                  ...draft.option,
+                  resolution: String(value || 'source') as never,
+                },
+              })
+            }
+          />
+        </div>
+      ) : null}
 
       <div style={{ width: '100%' }}>
         <Typography.Text strong>{t('formatConvert.form.targetFileName')}</Typography.Text>
@@ -150,7 +157,7 @@ export function ConvertOptionForm(props: ConvertOptionFormProps) {
         />
       </div>
 
-      {draft.commandMode === FormatConvertCommandMode.CUSTOM ? (
+      {!isPresetMode ? (
         <div style={{ width: '100%' }}>
           <Typography.Text strong>{t('formatConvert.form.customArgs')}</Typography.Text>
           <Input
