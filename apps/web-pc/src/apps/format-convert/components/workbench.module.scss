@@ -130,6 +130,24 @@
   color: var(--semi-color-text-2);
 }
 
+.browserCurrentPath {
+  min-width: 0;
+}
+
+.browserPathValue {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--semi-color-text-2);
+  word-break: break-all;
+}
+
+.browserToolbarActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .treeSurface {
   border: 1px solid rgba(148, 163, 184, 0.2);
   border-radius: 16px;
@@ -166,6 +184,10 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--semi-color-text-1);
+}
+
+.browserNameButton {
+  padding-left: 0;
 }
 
 .treeCheckbox {
