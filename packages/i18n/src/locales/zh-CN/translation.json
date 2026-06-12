@@ -594,6 +594,7 @@
   "formatConvert.error.cleanupFailed": "清理本地文件失败",
   "formatConvert.error.invalidCloudSource": "云转换源文件必须来自 OpenList",
   "formatConvert.error.invalidCloudTarget": "云转换目标必须是 OpenList 目录",
+  "formatConvert.error.audioOutputRequiresSourceAudio": "源文件没有音频流，无法转换为音频文件",
   "formatConvert.error.targetRootNotAllowed": "云转换目标不能直接选择 OpenList 根目录，请进入具体挂载目录后再创建任务。",
   "formatConvert.error.taskNotFound": "格式转换任务不存在",
   "formatConvert.error.retryNotAllowed": "当前任务状态不允许重试",

@@ -46,4 +46,13 @@ describe('format convert preset options', () => {
     expect(preview).toContain('-vf scale=-2:720');
     expect(preview).toContain('"/output/demo.mp4"');
   });
+
+  it('adds -vn and avoids video-only preset flags for audio-only flac output', () => {
+    const draft = applyPresetToDraft(createFormatConvertDraft(), 'audio-flac-lossless');
+    const preview = buildFormatConvertCommandPreview(draft, '/input/demo.mov', '/output/demo.flac');
+
+    expect(preview).toContain('-c:a flac');
+    expect(preview).toContain('-vn');
+    expect(preview).not.toContain('-preset medium');
+  });
 });

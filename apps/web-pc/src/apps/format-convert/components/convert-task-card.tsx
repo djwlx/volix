@@ -8,7 +8,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '@/i18n';
 import { createCloudFormatConvertTask, createLocalFormatConvertTask } from '@/services/format-convert';
-import { getHttpErrorMessage } from '@/utils/error';
+import { getDisplayErrorMessage } from '@/utils/error';
 import {
   applyCommandModeToDraft,
   applyPresetToDraft,
@@ -117,8 +117,7 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
       onCreated();
     } catch (error) {
       const fallback = t('formatConvert.error.createLocalFailed');
-      const message = error instanceof Error ? error.message || fallback : getHttpErrorMessage(error, fallback);
-      Toast.error(message);
+      Toast.error(getDisplayErrorMessage(error, fallback));
     } finally {
       setLocalUploading(false);
     }
@@ -160,8 +159,7 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
       onCreated();
     } catch (error) {
       const fallback = t('formatConvert.error.createCloudFailed');
-      const message = error instanceof Error ? error.message || fallback : getHttpErrorMessage(error, fallback);
-      Toast.error(message);
+      Toast.error(getDisplayErrorMessage(error, fallback));
     } finally {
       setCloudSubmitting(false);
     }

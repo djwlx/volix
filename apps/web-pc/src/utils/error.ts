@@ -14,3 +14,20 @@ export const getHttpErrorMessage = (
 ) => {
   return (error as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
 };
+
+export const getDisplayErrorMessage = (
+  error: unknown,
+  fallback = translateClient({
+    id: 'common.error.requestFailed',
+    defaultMessage: '请求失败，请稍后重试',
+  })
+) => {
+  const httpMessage = getHttpErrorMessage(error, '');
+  if (httpMessage) {
+    return httpMessage;
+  }
+  if (error instanceof Error) {
+    return error.message || fallback;
+  }
+  return fallback;
+};

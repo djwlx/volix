@@ -1,5 +1,6 @@
 import path from 'path';
 import {
+  FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS,
   FormatConvertSourceType,
   FormatConvertTargetType,
   FormatConvertTaskStage,
@@ -22,6 +23,8 @@ import {
 } from './format-convert-workspace.service';
 import type { FormatConvertTaskItem } from '../types/format-convert.types';
 import { log } from '../../../utils/logger';
+
+const AUDIO_ONLY_OUTPUT_FORMATS = new Set(FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS);
 
 export interface FormatConvertRunnerHooks {
   onStatusChange?: (status: FormatConvertTaskStatus) => void;
@@ -92,6 +95,9 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
 
     if (!sourceMediaInfo) {
       sourceMediaInfo = await probeMediaFile(inputPath);
+    }
+    if (AUDIO_ONLY_OUTPUT_FORMATS.has(normalizedOption.outputFormat) && !sourceMediaInfo.hasAudio) {
+      throw new Error('源文件没有音频流，无法转换为音频文件');
     }
 
     currentStage = 'convert';

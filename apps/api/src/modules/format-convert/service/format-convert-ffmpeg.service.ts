@@ -2,10 +2,15 @@ import fs from 'fs';
 import path from 'path';
 import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
-import type { FormatConvertMediaInfo, FormatConvertOption } from '@volix/types';
+import {
+  FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS,
+  type FormatConvertMediaInfo,
+  type FormatConvertOption,
+} from '@volix/types';
 
 const execFileAsync = promisify(execFile);
 const MAX_FFMPEG_STDERR_TAIL_LENGTH = 16 * 1024;
+const AUDIO_ONLY_OUTPUT_FORMATS = new Set(FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS);
 
 export const appendFfmpegStderrTail = (current: string, chunk: string, maxLength = MAX_FFMPEG_STDERR_TAIL_LENGTH) => {
   return `${current}${chunk}`.slice(-maxLength);
@@ -121,6 +126,7 @@ export const probeMediaFile = async (filePath: string) => {
 
 export const buildFormatConvertArgs = (inputPath: string, outputPath: string, option: FormatConvertOption) => {
   const args = ['-y', '-i', inputPath];
+  const isAudioOnlyOutput = AUDIO_ONLY_OUTPUT_FORMATS.has(option.outputFormat);
 
   if (option.videoCodec) {
     const videoCodec =
@@ -143,7 +149,10 @@ export const buildFormatConvertArgs = (inputPath: string, outputPath: string, op
   if (typeof option.audioBitrateKbps === 'number') {
     args.push('-b:a', `${option.audioBitrateKbps}k`);
   }
-  if (option.encodingPreset) {
+  if (isAudioOnlyOutput) {
+    args.push('-vn');
+  }
+  if (option.encodingPreset && !isAudioOnlyOutput) {
     args.push('-preset', option.encodingPreset);
   }
   if (option.keepAudio === false) {

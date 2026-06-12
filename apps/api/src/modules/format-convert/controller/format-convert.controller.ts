@@ -4,6 +4,7 @@ import mime from 'mime-types';
 import { v4 as uuidV4 } from 'uuid';
 import type { CreateFormatConvertTaskRequest } from '@volix/types';
 import {
+  FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS,
   FORMAT_CONVERT_FAILED_STATUSES,
   FormatConvertTaskStatus,
   FormatConvertMode,
@@ -31,6 +32,8 @@ import { ensureFormatConvertQueueRunning } from '../service/format-convert-queue
 import { listFormatConvertOpenlistFs } from '../service/format-convert-openlist.service';
 import { probeMediaFile } from '../service/format-convert-ffmpeg.service';
 import type { FormatConvertTaskItem } from '../types/format-convert.types';
+
+const AUDIO_ONLY_OUTPUT_FORMATS = new Set(FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS);
 
 const ensureLoginUserId = (ctx: any) => {
   const userId = ctx.state.userInfo?.id;
@@ -116,6 +119,14 @@ export const createLocalFormatConvertTask: MyMiddleware = async ctx => {
     presetId: payload.presetId,
     option: payload.option,
   });
+  if (AUDIO_ONLY_OUTPUT_FORMATS.has(option.outputFormat) && !sourceMediaInfo.hasAudio) {
+    badRequest(
+      t({
+        id: 'formatConvert.error.audioOutputRequiresSourceAudio',
+        defaultMessage: '源文件没有音频流，无法转换为音频文件',
+      })
+    );
+  }
 
   const task = await createFormatConvertTask({
     userId,

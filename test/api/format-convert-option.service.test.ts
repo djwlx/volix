@@ -167,7 +167,6 @@ describe('format convert option service', () => {
       outputFormat: 'flac',
       audioCodec: 'flac',
       resolution: 'source',
-      encodingPreset: 'medium',
       keepAudio: true,
     });
   });

@@ -197,4 +197,55 @@ describe('format convert runner', () => {
       })
     );
   });
+
+  it('fails early with a clear message when audio-only output is requested from a silent source', async () => {
+    mocked.option.normalizeFormatConvertTaskOption.mockReturnValue({
+      outputFormat: 'flac',
+      audioCodec: 'flac',
+      resolution: 'source',
+      keepAudio: true,
+    });
+    mocked.option.buildFormatConvertSummary.mockReturnValue({
+      commandMode: 'preset',
+      outputFormat: 'flac',
+      audioCodec: 'flac',
+      resolution: 'source',
+      keepAudio: true,
+    });
+
+    const { runFormatConvertTask } = await import(
+      '../../apps/api/src/modules/format-convert/service/format-convert-runner.service'
+    );
+
+    await expect(
+      runFormatConvertTask({
+        id: 5,
+        userId: 'u3',
+        mode: FormatConvertMode.LOCAL,
+        commandMode: FormatConvertCommandMode.PRESET,
+        status: 'pending',
+        source: { type: FormatConvertSourceType.UPLOAD, fileName: 'silent.mov', uploadPath: '/upload/silent.mov' },
+        target: { type: FormatConvertTargetType.DOWNLOAD, fileName: 'silent.flac' },
+        option: { outputFormat: 'flac' },
+        sourceMediaInfo: {
+          formatName: 'mov',
+          durationSeconds: 3,
+          sizeBytes: 1024,
+          bitRateKbps: 512,
+          hasVideo: true,
+          hasAudio: false,
+          video: {
+            codecName: 'h264',
+            width: 1280,
+            height: 720,
+            frameRate: 30,
+            bitRateKbps: 512,
+          },
+        },
+        attemptCount: 0,
+      } as never)
+    ).rejects.toThrow('源文件没有音频流，无法转换为音频文件');
+
+    expect(mocked.ffmpeg.runFfmpegCommand).not.toHaveBeenCalled();
+  });
 });

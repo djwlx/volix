@@ -195,7 +195,7 @@ export function TaskRecordList(props: TaskRecordListProps) {
           loading={loading}
           dataSource={tasks}
           expandedRowKeys={expandedRowKeys}
-          expandIcon={() => null}
+          expandIcon={false}
           onExpand={(expanded, record) => {
             const taskId = record && 'id' in record ? record.id : undefined;
             if (!taskId) {

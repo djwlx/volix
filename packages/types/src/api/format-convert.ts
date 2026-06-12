@@ -107,6 +107,7 @@ export const FORMAT_CONVERT_MODE_STATUS_FLOW = Object.freeze({
 } as const);
 
 export const FORMAT_CONVERT_OUTPUT_FORMATS = Object.freeze(['mp4', 'mkv', 'mov', 'webm', 'mp3', 'aac', 'wav', 'flac']);
+export const FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS = Object.freeze(['mp3', 'aac', 'wav', 'flac']);
 export const FORMAT_CONVERT_VIDEO_CODECS = Object.freeze(['copy', 'h264', 'h265', 'vp9', 'av1']);
 export const FORMAT_CONVERT_AUDIO_CODECS = Object.freeze(['copy', 'aac', 'mp3', 'opus', 'pcm_s16le', 'flac']);
 export const FORMAT_CONVERT_RESOLUTIONS = Object.freeze(['source', '1080p', '720p', '480p']);

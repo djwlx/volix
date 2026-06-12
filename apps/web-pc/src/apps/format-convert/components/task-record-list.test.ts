@@ -14,6 +14,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@douyinfe/semi-ui', () => {
+  let lastTableProps: Record<string, unknown> | undefined;
   const Button = ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) =>
     createElement('button', { onClick }, children);
   const Card = ({ title, children }: { title?: ReactNode; children?: ReactNode }) =>
@@ -27,12 +28,14 @@ vi.mock('@douyinfe/semi-ui', () => {
     columns,
     expandedRowKeys,
     expandedRowRender,
+    ...rest
   }: {
     dataSource: Array<Record<string, unknown>>;
     columns: Array<{ render?: (_text: unknown, record: Record<string, unknown>) => ReactNode }>;
     expandedRowKeys?: Array<string | number>;
     expandedRowRender?: (record: Record<string, unknown>) => ReactNode;
-  }) =>
+  }) => (
+    (lastTableProps = { dataSource, columns, expandedRowKeys, expandedRowRender, ...rest }),
     createElement(
       'div',
       null,
@@ -46,7 +49,8 @@ vi.mock('@douyinfe/semi-ui', () => {
           expandedRowKeys?.includes(record.id as number) ? expandedRowRender?.(record) : null
         )
       )
-    );
+    )
+  );
 
   return {
     Button,
@@ -60,6 +64,7 @@ vi.mock('@douyinfe/semi-ui', () => {
     Typography: {
       Text,
     },
+    __getLastTableProps: () => lastTableProps,
   };
 });
 
@@ -148,6 +153,7 @@ describe('task record list', () => {
 
   it('shows source summary, convert summary, and result summary in expanded rows', async () => {
     const { TaskRecordList } = await import('./task-record-list');
+    const semi = await import('@douyinfe/semi-ui');
 
     await act(async () => {
       root.render(
@@ -219,6 +225,9 @@ describe('task record list', () => {
       );
     });
 
+    expect(
+      (semi as unknown as { __getLastTableProps: () => Record<string, unknown> }).__getLastTableProps()?.expandIcon
+    ).toBe(false);
     expect(document.body.textContent).toContain('查看详情');
 
     await act(async () => {

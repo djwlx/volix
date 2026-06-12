@@ -1,4 +1,5 @@
 import {
+  FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS,
   FORMAT_CONVERT_OUTPUT_FORMATS,
   FORMAT_CONVERT_AUDIO_CODECS,
   FORMAT_CONVERT_PRESET_DEFINITIONS,
@@ -19,7 +20,7 @@ export interface FormatConvertFormDraft {
   targetFileName: string;
 }
 
-const AUDIO_ONLY_OUTPUT_FORMATS = new Set(['mp3', 'aac', 'wav', 'flac']);
+const AUDIO_ONLY_OUTPUT_FORMATS = new Set(FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS);
 const getDefaultPreset = () => FORMAT_CONVERT_PRESET_DEFINITIONS[0];
 export const getPresetDefinition = (presetId?: string) =>
   FORMAT_CONVERT_PRESET_DEFINITIONS.find(item => item.id === presetId) || getDefaultPreset();
@@ -167,6 +168,7 @@ export const buildFormatConvertCommandPreview = (
   outputPath: string
 ) => {
   const args = ['ffmpeg', '-y', '-i', escapePreviewArg(sourcePath)];
+  const isAudioOnlyOutput = AUDIO_ONLY_OUTPUT_FORMATS.has(draft.option.outputFormat);
 
   if (draft.commandMode === FormatConvertCommandMode.PRESET) {
     const option = draft.option;
@@ -189,7 +191,10 @@ export const buildFormatConvertCommandPreview = (
     if (typeof option.audioBitrateKbps === 'number') {
       args.push('-b:a', `${option.audioBitrateKbps}k`);
     }
-    if (option.encodingPreset) {
+    if (isAudioOnlyOutput) {
+      args.push('-vn');
+    }
+    if (option.encodingPreset && !isAudioOnlyOutput) {
       args.push('-preset', option.encodingPreset);
     }
     if (option.keepAudio === false) {

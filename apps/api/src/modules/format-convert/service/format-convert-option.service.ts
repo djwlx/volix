@@ -1,4 +1,5 @@
 import {
+  FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS,
   FORMAT_CONVERT_PRESET_DEFINITIONS,
   FormatConvertCommandMode,
   type FormatConvertOption,
@@ -8,7 +9,7 @@ import {
 
 const CUSTOM_ARGS_BLOCKLIST = new Set(['-i', '-y', '-n', '-filter_complex_script']);
 const PATH_LIKE_REGEXP = /(^\/)|(\.\.?\/)|\.(mp4|mkv|mov|webm|mp3|aac|wav|flac|txt|json)$/i;
-const AUDIO_ONLY_OUTPUT_FORMATS = new Set(['mp3', 'aac', 'wav', 'flac']);
+const AUDIO_ONLY_OUTPUT_FORMATS = new Set(FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS);
 
 const DEFAULT_OPTION: Pick<FormatConvertOption, 'resolution' | 'encodingPreset' | 'keepAudio'> = {
   resolution: 'source',
@@ -47,6 +48,21 @@ const findPreset = (presetId?: string) => {
   return FORMAT_CONVERT_PRESETS.find(item => item.id === String(presetId || '').trim());
 };
 
+const sanitizeAudioOnlyOption = (option: FormatConvertOption): FormatConvertOption => {
+  if (!AUDIO_ONLY_OUTPUT_FORMATS.has(option.outputFormat)) {
+    return option;
+  }
+
+  return {
+    ...option,
+    videoCodec: undefined,
+    videoBitrateKbps: undefined,
+    crf: undefined,
+    encodingPreset: undefined,
+    resolution: 'source',
+  };
+};
+
 const sanitizePresetOption = (option: FormatConvertOption): FormatConvertOption => {
   const nextOption = {
     ...option,
@@ -54,12 +70,7 @@ const sanitizePresetOption = (option: FormatConvertOption): FormatConvertOption 
     customArgsText: undefined,
   };
 
-  if (AUDIO_ONLY_OUTPUT_FORMATS.has(nextOption.outputFormat)) {
-    nextOption.videoCodec = undefined;
-    nextOption.resolution = 'source';
-  }
-
-  return nextOption;
+  return sanitizeAudioOnlyOption(nextOption);
 };
 
 export const normalizeFormatConvertOption = (payload: {
@@ -88,11 +99,11 @@ export const normalizeFormatConvertOption = (payload: {
   const extraArgs = tokenizeCustomArgs(baseOption.customArgsText);
   validateCustomArgs(extraArgs);
 
-  return {
+  return sanitizeAudioOnlyOption({
     ...baseOption,
     extraArgs,
     customArgsText: extraArgs.join(' '),
-  };
+  });
 };
 
 export const normalizeFormatConvertTaskOption = (
