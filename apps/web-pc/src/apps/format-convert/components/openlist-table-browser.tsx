@@ -347,11 +347,11 @@ export function OpenlistTableBrowser(props: OpenlistTableBrowserProps) {
                 total: result?.total || 0,
                 size: 'small',
                 hoverShowPageSelect: true,
-                formatPageText: ({ currentStart, currentEnd, total }) =>
+                formatPageText: pageInfo =>
                   t('formatConvert.browser.paginationSummary', {
-                    start: currentStart,
-                    end: currentEnd,
-                    total,
+                    start: pageInfo?.currentStart ?? 0,
+                    end: pageInfo?.currentEnd ?? 0,
+                    total: pageInfo?.total ?? 0,
                   }),
                 onPageChange: nextPage => void load({ path: currentBrowsePath, page: nextPage }),
               }}
