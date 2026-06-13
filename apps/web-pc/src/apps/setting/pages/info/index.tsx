@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Avatar, Button, Card, Input, Space, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { Avatar, Button, Input, Space, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 import { sendCurrentUserEmailVerifyCode, updateCurrentUserProfile, verifyCurrentUserEmail } from '@/services/user';
 import { uploadLocalFile } from '@/services/file';
-import { AppForm } from '@/components';
+import { AppForm, PageCard } from '@/components';
 import { useAppPageContext } from '@/hooks';
 import { useI18n } from '@/i18n';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
@@ -123,7 +123,7 @@ function SettingInfoApp() {
   };
 
   return (
-    <Card title={t('setting.info.title')} shadows="hover" style={{ width: '100%' }}>
+    <PageCard title={t('setting.info.title')} shadows="hover" style={{ width: '100%' }}>
       <div style={{ display: 'grid', gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Avatar size="large" src={preview.avatar}>
@@ -210,7 +210,7 @@ function SettingInfoApp() {
           </Button>
         </div>
       </div>
-    </Card>
+    </PageCard>
   );
 }
 

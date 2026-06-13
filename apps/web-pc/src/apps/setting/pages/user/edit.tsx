@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Button, Card, Empty, Space, Toast } from '@douyinfe/semi-ui';
+import { Button, Empty, Space, Toast } from '@douyinfe/semi-ui';
 import { adminUpdateUser, getUserDetail } from '@/services/user';
 import { uploadLocalFile } from '@/services/file';
-import { AppForm } from '@/components';
+import { AppForm, PageCard } from '@/components';
 import { useParams } from 'react-router';
 import { useAppPageContext } from '@/hooks';
 import { useI18n } from '@/i18n';
@@ -90,14 +90,14 @@ function SettingUserEditApp() {
 
   if (!origin || !formInitValues) {
     return (
-      <Card title={t('setting.user.editTitle')} shadows="hover">
+      <PageCard title={t('setting.user.editTitle')} shadows="hover">
         <Empty title={t('common.status.loading')} />
-      </Card>
+      </PageCard>
     );
   }
 
   return (
-    <Card
+    <PageCard
       title={t('setting.user.editTitleWithEmail', { email: origin.email })}
       shadows="hover"
       style={{ width: '100%' }}
@@ -147,7 +147,7 @@ function SettingUserEditApp() {
           <Button onClick={() => requestNavigate('/setting/user')}>{t('common.action.cancel')}</Button>
         </div>
       </Space>
-    </Card>
+    </PageCard>
   );
 }
 

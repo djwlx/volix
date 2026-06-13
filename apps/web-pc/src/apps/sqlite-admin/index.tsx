@@ -17,6 +17,7 @@ import {
 import { useI18n } from '@/i18n';
 import { IconDelete, IconEdit, IconRefresh } from '@douyinfe/semi-icons';
 import { Button, Card, Empty, Input, Modal, Space, Tag, TextArea, Toast } from '@douyinfe/semi-ui';
+import { PageCard } from '@/components';
 import styles from './index.module.scss';
 import { SqliteAdminTableCard } from './table-card';
 
@@ -363,7 +364,7 @@ function SqliteAdminApp() {
     <div className={styles.page}>
       <div className={styles.content}>
         <div className={styles.layout}>
-          <Card
+          <PageCard
             className={styles.sidebarCard}
             bodyStyle={{ padding: 16 }}
             title={t('sqliteAdmin.sidebar.title')}
@@ -401,7 +402,7 @@ function SqliteAdminApp() {
                 <Empty title={t('sqliteAdmin.empty.noTables')} />
               )}
             </div>
-          </Card>
+          </PageCard>
 
           <SqliteAdminTableCard
             detailLoading={detailLoading}

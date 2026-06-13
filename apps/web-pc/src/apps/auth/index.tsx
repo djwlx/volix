@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Toast, Typography } from '@douyinfe/semi-ui';
 import type { LoginUserPayload, RegisterUserPayload } from '@volix/types';
 import { useI18n } from '@/i18n';
 import { getRegisterConfig, loginUser, registerUser, sendRegisterCode } from '@/services/user';
-import { AppForm } from '@/components';
+import { AppForm, PageCard } from '@/components';
 import { setAuthToken } from '@/utils';
 import { useLocation, useNavigate } from 'react-router';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
@@ -106,7 +106,7 @@ function AuthApp() {
         padding: 16,
       }}
     >
-      <Card
+      <PageCard
         title={
           mode === 'login'
             ? t({ id: 'auth.mode.login.title', defaultMessage: '账号登录' })
@@ -179,7 +179,7 @@ function AuthApp() {
             ? t({ id: 'auth.mode.login.switch', defaultMessage: '没有账号？去注册' })
             : t({ id: 'auth.mode.register.switch', defaultMessage: '已有账号？去登录' })}
         </Typography.Text>
-      </Card>
+      </PageCard>
     </div>
   );
 }

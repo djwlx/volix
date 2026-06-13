@@ -1,9 +1,10 @@
-import { Card, Skeleton, Space, Typography } from '@douyinfe/semi-ui';
+import { Skeleton, Space, Typography } from '@douyinfe/semi-ui';
 import { Login } from '@/apps/115/login';
 import { UserInfo } from '@/apps/115/user-info';
 import { PicSetting } from '@/apps/115/pic-setting';
 import { FileTree } from '@/apps/115/file-tree';
 import { useUserInfo } from '@/apps/115/hooks/useUserInfo';
+import { PageCard } from '@/components';
 import { useI18n } from '@/i18n';
 
 function SettingConfig115App() {
@@ -11,7 +12,7 @@ function SettingConfig115App() {
   const { data, loading } = useUserInfo();
 
   return (
-    <Card title={t('pic115.setting.title')} shadows="hover" style={{ width: '100%' }}>
+    <PageCard title={t('pic115.setting.title')} shadows="hover" style={{ width: '100%' }}>
       <Skeleton placeholder={<Skeleton.Paragraph rows={6} />} loading={loading}>
         {data ? (
           <Space vertical spacing={12} style={{ width: '100%' }}>
@@ -27,7 +28,7 @@ function SettingConfig115App() {
           </Space>
         )}
       </Skeleton>
-    </Card>
+    </PageCard>
   );
 }
 

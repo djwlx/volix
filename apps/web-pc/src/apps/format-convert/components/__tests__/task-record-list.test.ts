@@ -29,7 +29,7 @@ vi.mock('@douyinfe/semi-ui', () => {
   }) =>
     createElement(
       'section',
-      null,
+      { 'data-card-title-provided': title ? 'true' : 'false' },
       createElement('div', null, createElement('h2', null, title), headerExtraContent),
       children
     );
@@ -176,6 +176,26 @@ describe('task record list', () => {
     container = document.createElement('div');
     document.body.appendChild(container);
     root = createRoot(container);
+  });
+
+  it('renders its heading without using the Card title prop', async () => {
+    const { TaskRecordList } = await import('../task-record-list');
+
+    await act(async () => {
+      root.render(
+        createElement(TaskRecordList, {
+          loading: false,
+          tasks: [],
+          onBatchDelete: async () => undefined,
+          onDelete: async () => undefined,
+          onRetry: async () => undefined,
+        })
+      );
+    });
+
+    const card = container.querySelector('section');
+    expect(card?.getAttribute('data-card-title-provided')).toBe('false');
+    expect(container.textContent).toContain('转换记录');
   });
 
   afterEach(async () => {

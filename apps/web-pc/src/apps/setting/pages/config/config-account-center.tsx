@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Space, Toast, Typography } from '@douyinfe/semi-ui';
-import { AppForm, Loading } from '@/components';
+import { Button, Space, Toast, Typography } from '@douyinfe/semi-ui';
+import { AppForm, Loading, PageCard } from '@/components';
 import { useI18n } from '@/i18n';
 import { getAccountConfigs, testAccountConfig, updateAccountConfig } from '@/services/user';
 import { useAppPageContext } from '@/hooks';
@@ -98,7 +98,7 @@ function ServiceAccountCard({ title, platform, initialConfig, onSaved }: Service
   };
 
   return (
-    <Card title={title} shadows="hover" style={{ width: '100%' }}>
+    <PageCard title={title} shadows="hover" style={{ width: '100%' }}>
       <AppForm
         key={JSON.stringify(initialValues)}
         initValues={initialValues}
@@ -137,7 +137,7 @@ function ServiceAccountCard({ title, platform, initialConfig, onSaved }: Service
           </Button>
         </Space>
       </AppForm>
-    </Card>
+    </PageCard>
   );
 }
 
@@ -200,7 +200,7 @@ function BangumiAccountCard({ initialConfig, onSaved }: BangumiCardProps) {
   };
 
   return (
-    <Card title="Bangumi" shadows="hover" style={{ width: '100%' }}>
+    <PageCard title="Bangumi" shadows="hover" style={{ width: '100%' }}>
       <Space vertical spacing={12} style={{ width: '100%' }}>
         <Typography.Text type="secondary">{t('setting.account.bangumi.accessTokenHint')}</Typography.Text>
         <AppForm
@@ -232,7 +232,7 @@ function BangumiAccountCard({ initialConfig, onSaved }: BangumiCardProps) {
           </Space>
         </AppForm>
       </Space>
-    </Card>
+    </PageCard>
   );
 }
 
@@ -271,7 +271,7 @@ function SettingConfigAccountCenterApp() {
   }
 
   return (
-    <Card title={t('route.settingAccount.title')} shadows="hover" style={{ width: '100%' }}>
+    <PageCard title={t('route.settingAccount.title')} shadows="hover" style={{ width: '100%' }}>
       {loading ? (
         <Loading rows={8} />
       ) : (
@@ -320,7 +320,7 @@ function SettingConfigAccountCenterApp() {
           </div>
         </Space>
       )}
-    </Card>
+    </PageCard>
   );
 }
 

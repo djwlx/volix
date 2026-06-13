@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Button, Card, Empty, Nav, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Empty, Nav, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconArrowLeft, IconUserGroup } from '@douyinfe/semi-icons';
 import { IconAvatar, IconList } from '@douyinfe/semi-icons-lab';
 import { clearAuthToken } from '@/utils';
 import { useNavigate } from 'react-router';
 import { getCurrentUser, getUserList, setUserRole } from '@/services/user';
+import { PageCard } from '@/components';
 import { useI18n } from '@/i18n';
 import { UserRole } from '@volix/types';
 import type { UserInfoResponse } from '@volix/types';
@@ -141,7 +142,7 @@ function AdminApp() {
   const renderContent = () => {
     if (activeMenu === 'profile') {
       return (
-        <Card title={t('admin.profile.title')} shadows="hover">
+        <PageCard title={t('admin.profile.title')} shadows="hover">
           <div style={{ display: 'grid', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Typography.Text strong>{t('admin.profile.email')}</Typography.Text>
@@ -152,22 +153,22 @@ function AdminApp() {
               <Tag color={isAdmin ? 'red' : 'blue'}>{t(isAdmin ? 'admin.role.admin' : 'admin.role.user')}</Tag>
             </div>
           </div>
-        </Card>
+        </PageCard>
       );
     }
 
     if (!isAdmin) {
       return (
-        <Card title={t('admin.user.title')} shadows="hover">
+        <PageCard title={t('admin.user.title')} shadows="hover">
           <Empty title={t('admin.empty.noPermission.title')} description={t('admin.empty.noPermission.description')} />
-        </Card>
+        </PageCard>
       );
     }
 
     return (
-      <Card title={t('admin.user.title')} shadows="hover">
+      <PageCard title={t('admin.user.title')} shadows="hover">
         <Table<UserInfoResponse> rowKey="id" columns={columns} dataSource={userList} pagination={false} />
-      </Card>
+      </PageCard>
     );
   };
 

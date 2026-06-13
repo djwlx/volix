@@ -1,6 +1,7 @@
-import { Button, Card, Space, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Space, Toast, Typography } from '@douyinfe/semi-ui';
 import { FormatConvertSourceType, FormatConvertTargetType } from '@volix/types';
 import { useState } from 'react';
+import { PageCard } from '@/components';
 import { useI18n } from '@/i18n';
 import { getHttpErrorMessage } from '@/utils/error';
 import { createCloudFormatConvertTask } from '@/services/format-convert';
@@ -59,7 +60,7 @@ export function CloudConvertCard(props: CloudConvertCardProps) {
   };
 
   return (
-    <Card title={t('formatConvert.cloud.title')} shadows="hover">
+    <PageCard title={t('formatConvert.cloud.title')} shadows="hover">
       <Space vertical align="start" style={{ width: '100%' }} spacing={16}>
         <div style={{ width: '100%' }}>
           <Typography.Text strong>{t('formatConvert.cloud.sourceFile')}</Typography.Text>
@@ -100,6 +101,6 @@ export function CloudConvertCard(props: CloudConvertCardProps) {
           setBrowserMode('');
         }}
       />
-    </Card>
+    </PageCard>
   );
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Space, Toast } from '@douyinfe/semi-ui';
-import { AppForm, Loading } from '@/components';
+import { Button, Space, Toast } from '@douyinfe/semi-ui';
+import { AppForm, Loading, PageCard } from '@/components';
 import { useI18n } from '@/i18n';
 import { getAccountConfigs, testAccountConfig, updateAccountConfig } from '@/services/user';
 import { useAppPageContext } from '@/hooks';
@@ -115,7 +115,7 @@ function AccountConfigForm({ platform, title }: AccountConfigFormProps) {
   };
 
   return (
-    <Card title={title} shadows="hover" style={{ width: '100%' }}>
+    <PageCard title={title} shadows="hover" style={{ width: '100%' }}>
       {loading ? (
         <Loading rows={5} />
       ) : (
@@ -161,7 +161,7 @@ function AccountConfigForm({ platform, title }: AccountConfigFormProps) {
           </AppForm>
         </Space>
       )}
-    </Card>
+    </PageCard>
   );
 }
 

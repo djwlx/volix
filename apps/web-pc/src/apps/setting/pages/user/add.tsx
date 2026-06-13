@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
-import { Button, Card, Space, Toast } from '@douyinfe/semi-ui';
+import { Button, Space, Toast } from '@douyinfe/semi-ui';
 import { adminCreateUser } from '@/services/user';
 import { uploadLocalFile } from '@/services/file';
-import { AppForm } from '@/components';
+import { AppForm, PageCard } from '@/components';
 import { useAppPageContext } from '@/hooks';
 import { useI18n } from '@/i18n';
 import { UserRole } from '@volix/types';
@@ -82,7 +82,7 @@ function SettingUserAddApp() {
   };
 
   return (
-    <Card title={t('setting.user.addTitle')} shadows="hover" style={{ width: '100%' }}>
+    <PageCard title={t('setting.user.addTitle')} shadows="hover" style={{ width: '100%' }}>
       <Space vertical spacing={16} style={{ width: '100%' }}>
         <AppForm labelPosition="top" initValues={defaultValues} getFormApi={setFormApi} onSubmit={onSubmit}>
           <AppForm.Input field="email" label={t('auth.email.label')} placeholder={t('auth.email.placeholder')} />
@@ -128,7 +128,7 @@ function SettingUserAddApp() {
           <Button onClick={() => requestNavigate('/setting/user')}>{t('common.action.cancel')}</Button>
         </div>
       </Space>
-    </Card>
+    </PageCard>
   );
 }
 

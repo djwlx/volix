@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Avatar, Button, Card, Empty, Space, Table, Tag, Toast } from '@douyinfe/semi-ui';
+import { Avatar, Button, Empty, Space, Table, Tag, Toast } from '@douyinfe/semi-ui';
 import { getUserList } from '@/services/user';
+import { PageCard } from '@/components';
 import { useAppPageContext } from '@/hooks';
 import { useI18n } from '@/i18n';
 import type { UserInfoResponse } from '@volix/types';
@@ -27,14 +28,14 @@ function SettingUserApp() {
 
   if (!isAdmin) {
     return (
-      <Card title={t('setting.user.title')} shadows="hover" style={{ width: '100%' }} bodyStyle={{ width: '100%' }}>
+      <PageCard title={t('setting.user.title')} shadows="hover" style={{ width: '100%' }} bodyStyle={{ width: '100%' }}>
         <Empty title={t('admin.empty.noPermission.title')} description={t('setting.user.noPermission')} />
-      </Card>
+      </PageCard>
     );
   }
 
   return (
-    <Card
+    <PageCard
       title={t('setting.user.title')}
       shadows="hover"
       style={{ width: '100%' }}
@@ -121,7 +122,7 @@ function SettingUserApp() {
           ]}
         />
       </Space>
-    </Card>
+    </PageCard>
   );
 }
 

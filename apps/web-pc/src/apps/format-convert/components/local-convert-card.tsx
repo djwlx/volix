@@ -1,6 +1,7 @@
-import { Button, Card, Space, Toast, Typography } from '@douyinfe/semi-ui';
+import { Button, Space, Toast, Typography } from '@douyinfe/semi-ui';
 import { FormatConvertTargetType } from '@volix/types';
 import { useState } from 'react';
+import { PageCard } from '@/components';
 import { useI18n } from '@/i18n';
 import { getHttpErrorMessage } from '@/utils/error';
 import { createLocalFormatConvertTask } from '@/services/format-convert';
@@ -44,7 +45,7 @@ export function LocalConvertCard(props: LocalConvertCardProps) {
   };
 
   return (
-    <Card title={t('formatConvert.local.title')} shadows="hover">
+    <PageCard title={t('formatConvert.local.title')} shadows="hover">
       <Space vertical align="start" style={{ width: '100%' }} spacing={16}>
         <div>
           <Typography.Text strong>{t('formatConvert.local.selectedFile')}</Typography.Text>
@@ -69,6 +70,6 @@ export function LocalConvertCard(props: LocalConvertCardProps) {
           {t('formatConvert.local.submit')}
         </Button>
       </Space>
-    </Card>
+    </PageCard>
   );
 }

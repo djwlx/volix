@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Card, Empty, Input, InputNumber, Modal, Space, Toast, Typography } from '@douyinfe/semi-ui';
+import { PageCard } from '@/components';
 import { AppForm } from '@/components';
 import { useI18n } from '@/i18n';
 import {
@@ -338,7 +339,7 @@ function SettingConfigRsshubApp() {
   };
 
   return (
-    <Card
+    <PageCard
       title={t({ id: 'setting.rss.title', defaultMessage: 'RSS 配置' })}
       shadows="hover"
       style={{ width: '100%' }}
@@ -455,7 +456,7 @@ function SettingConfigRsshubApp() {
           />
         </div>
       </Modal>
-    </Card>
+    </PageCard>
   );
 }
 

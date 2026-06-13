@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Space, Toast } from '@douyinfe/semi-ui';
-import { AppForm, Loading } from '@/components';
+import { Button, Space, Toast } from '@douyinfe/semi-ui';
+import { AppForm, Loading, PageCard } from '@/components';
 import { useI18n } from '@/i18n';
 import { getSystemConfig, getUserList, updateSystemConfig } from '@/services/user';
 import { useAppPageContext } from '@/hooks';
@@ -141,7 +141,7 @@ function SettingSystemApp() {
   };
 
   return (
-    <Card
+    <PageCard
       title={t({ id: 'setting.system.title', defaultMessage: '系统配置' })}
       shadows="hover"
       style={{ width: '100%' }}
@@ -231,7 +231,7 @@ function SettingSystemApp() {
           </AppForm>
         </Space>
       )}
-    </Card>
+    </PageCard>
   );
 }
 

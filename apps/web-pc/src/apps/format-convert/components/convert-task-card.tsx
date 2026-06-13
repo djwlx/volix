@@ -20,8 +20,21 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
   const config = getConvertType(typeId);
 
   return (
-    <Card className={styles.sectionCard} title={t('route.formatConvert.title')} shadows="hover">
+    <Card className={styles.sectionCard} shadows="hover">
       <Space vertical align="start" style={{ width: '100%' }} spacing={20}>
+        <div style={{ width: '100%' }}>
+          <div
+            style={{
+              fontSize: 22,
+              fontWeight: 700,
+              lineHeight: '32px',
+              color: 'var(--semi-color-text-0)',
+            }}
+          >
+            {t('route.formatConvert.title')}
+          </div>
+        </div>
+
         <div className={styles.modePickerRow}>
           <div className={styles.modePickerMeta}>
             <div className={styles.sectionLabel}>

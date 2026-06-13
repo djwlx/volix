@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Space, Toast, Typography } from '@douyinfe/semi-ui';
-import { AppForm, Loading } from '@/components';
+import { Button, Space, Toast, Typography } from '@douyinfe/semi-ui';
+import { AppForm, Loading, PageCard } from '@/components';
 import { useI18n } from '@/i18n';
 import { getAccountConfigs, testAccountConfig, updateAccountConfig } from '@/services/user';
 import { useAppPageContext } from '@/hooks';
@@ -95,7 +95,7 @@ function SettingConfigBangumiApp() {
   };
 
   return (
-    <Card title="Bangumi" shadows="hover" style={{ width: '100%' }}>
+    <PageCard title="Bangumi" shadows="hover" style={{ width: '100%' }}>
       {loading ? (
         <Loading rows={4} />
       ) : (
@@ -132,7 +132,7 @@ function SettingConfigBangumiApp() {
           </AppForm>
         </Space>
       )}
-    </Card>
+    </PageCard>
   );
 }
 

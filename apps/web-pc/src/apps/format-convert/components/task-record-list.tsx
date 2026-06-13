@@ -50,6 +50,21 @@ const errorBannerStyle = {
   border: '1px solid var(--semi-color-danger-light-active)',
   background: 'var(--semi-color-danger-light-default)',
 };
+const cardHeaderStyle = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 12,
+  marginBottom: 16,
+  flexWrap: 'wrap',
+};
+const cardTitleStyle = {
+  margin: 0,
+  fontSize: 18,
+  fontWeight: 700,
+  lineHeight: '28px',
+  color: 'var(--semi-color-text-0)',
+};
 
 const formatDuration = (value?: number) => {
   const totalSeconds = Math.max(0, Math.round(Number(value || 0)));
@@ -213,9 +228,9 @@ export function TaskRecordList(props: TaskRecordListProps) {
   };
 
   return (
-    <Card
-      title={t('formatConvert.record.title')}
-      headerExtraContent={
+    <Card shadows="hover" style={{ width: '100%' }} bodyStyle={{ width: '100%' }}>
+      <div style={cardHeaderStyle}>
+        <h3 style={cardTitleStyle}>{t('formatConvert.record.title')}</h3>
         <Popconfirm
           title={t('formatConvert.record.batchDeleteConfirmTitle')}
           content={t('formatConvert.record.batchDeleteConfirmContent')}
@@ -228,11 +243,8 @@ export function TaskRecordList(props: TaskRecordListProps) {
               : t('formatConvert.record.batchDelete')}
           </Button>
         </Popconfirm>
-      }
-      shadows="hover"
-      style={{ width: '100%' }}
-      bodyStyle={{ width: '100%' }}
-    >
+      </div>
+
       {tasks.length === 0 ? (
         <Empty title={t('formatConvert.record.emptyTitle')} description={t('formatConvert.record.emptyDescription')} />
       ) : (
