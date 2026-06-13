@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import type { Server } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { WsMessage, WebsocketReadyPayload } from './ws-protocol';
-import { consumeWebsocketTicket } from './ws-ticket.service';
 import { WS_CONNECTION_READY_EVENT, WS_HEARTBEAT_INTERVAL_MS } from './ws-protocol';
+import JWT from '../../../utils/jwt';
+import { queryUser } from '../../user';
 
 type RegistrySocket = Pick<WebSocket, 'send' | 'close' | 'on' | 'ping' | 'terminate'> & {
   isAlive?: boolean;
@@ -100,6 +101,31 @@ const createHeartbeatLoop = (wss: WebSocketServer) => {
   }, WS_HEARTBEAT_INTERVAL_MS);
 };
 
+export const resolveWebsocketUserId = async (request: { url?: string | null }) => {
+  const url = new URL(request.url || '', 'http://localhost');
+  const token = String(url.searchParams.get('token') || '').trim();
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const data = JWT.getData(token);
+    const userId = data?.id;
+    if (userId === undefined || userId === null || String(userId).trim() === '') {
+      return null;
+    }
+
+    const user = await queryUser({ id: userId });
+    if (!user?.dataValues?.id && user?.dataValues?.id !== 0) {
+      return null;
+    }
+
+    return String(user.dataValues.id);
+  } catch {
+    return null;
+  }
+};
+
 export const attachWebsocketServer = (server: Server) => {
   const wss = new WebSocketServer({
     noServer: true,
@@ -107,24 +133,23 @@ export const attachWebsocketServer = (server: Server) => {
 
   createHeartbeatLoop(wss);
 
-  server.on('upgrade', (request, socket, head) => {
+  server.on('upgrade', async (request, socket, head) => {
     const url = new URL(request.url || '', 'http://localhost');
     if (url.pathname !== '/ws') {
       socket.destroy();
       return;
     }
 
-    const ticketValue = String(url.searchParams.get('ticket') || '').trim();
-    const consumed = consumeWebsocketTicket(ticketValue);
-    if (!consumed) {
+    const userId = await resolveWebsocketUserId(request);
+    if (!userId) {
       socket.destroy();
       return;
     }
 
     wss.handleUpgrade(request, socket, head, ws => {
       const registrySocket = ws as RegistrySocket;
-      registry.add(consumed.userId, registrySocket);
-      bindSocketLifecycle(consumed.userId, registrySocket);
+      registry.add(userId, registrySocket);
+      bindSocketLifecycle(userId, registrySocket);
       sendReadyMessage(registrySocket);
     });
   });

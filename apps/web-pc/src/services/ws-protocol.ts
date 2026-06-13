@@ -7,11 +7,6 @@ export interface WsMessage<T = unknown> {
   data: T;
 }
 
-export interface CreateWebsocketTicketResult {
-  value: string;
-  expiresAt: string;
-}
-
 export interface WsReadyPayload {
   heartbeatMs: number;
   serverTime: string;

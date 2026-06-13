@@ -1,31 +1,32 @@
-import { createWebsocketTicket } from './websocket-ticket';
-import type { CreateWebsocketTicketResult, EventHandler, WsConnectionState, WsMessage } from './ws-protocol';
+import { getAuthToken } from '@/utils/auth';
+import type { EventHandler, WsConnectionState, WsMessage } from './ws-protocol';
 
 type SocketLike = Pick<WebSocket, 'close' | 'onclose' | 'onerror' | 'onmessage' | 'onopen'>;
 type LocationLike = Pick<Location, 'host' | 'protocol'>;
 
 type CreateWebsocketManagerOptions = {
   createSocket?: (url: string) => SocketLike;
-  createTicket?: () => Promise<CreateWebsocketTicketResult>;
   getLocation?: () => LocationLike;
   reconnectDelaysMs?: number[];
+  getToken?: () => string | null;
 };
 
 const DEFAULT_RECONNECT_DELAYS_MS = [1_000, 2_000, 5_000, 10_000, 20_000];
 
-const buildWebsocketUrl = (location: LocationLike, ticket: string) => {
+const buildWebsocketUrl = (location: LocationLike, token: string) => {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${location.host}/ws?ticket=${encodeURIComponent(ticket)}`;
+  return `${protocol}//${location.host}/ws?token=${encodeURIComponent(token)}`;
 };
 
 export const createWebsocketManager = (options?: CreateWebsocketManagerOptions) => {
   const createSocket = options?.createSocket || (url => new WebSocket(url));
   const getLocation = options?.getLocation || (() => window.location);
-  const requestTicket = options?.createTicket || createWebsocketTicket;
+  const getToken = options?.getToken || getAuthToken;
   const reconnectDelaysMs = options?.reconnectDelaysMs || DEFAULT_RECONNECT_DELAYS_MS;
   const handlers = new Map<string, Set<EventHandler>>();
   let socket: SocketLike | null = null;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let connectPromise: Promise<void> | null = null;
   let reconnectAttempt = 0;
   let disconnecting = false;
   let state: WsConnectionState = 'disconnected';
@@ -74,39 +75,60 @@ export const createWebsocketManager = (options?: CreateWebsocketManagerOptions) 
     if (socket) {
       return;
     }
+    if (connectPromise) {
+      return connectPromise;
+    }
 
     disconnecting = false;
     setState(isReconnect ? 'reconnecting' : 'connecting');
 
-    const ticket = await requestTicket();
-    const url = buildWebsocketUrl(getLocation(), ticket.value);
-    const nextSocket = createSocket(url);
-    socket = nextSocket;
-
-    nextSocket.onmessage = event => {
+    connectPromise = (async () => {
       try {
-        const message = JSON.parse(String(event.data || '')) as WsMessage;
-        if (message.event === 'ws.connection.ready') {
-          reconnectAttempt = 0;
-          setState('connected');
+        const token = String(getToken() || '').trim();
+        if (!token) {
+          throw new Error('websocket-missing-auth-token');
         }
-        emit(message.event, message.data);
-      } catch {
-        return;
+
+        const url = buildWebsocketUrl(getLocation(), token);
+        const nextSocket = createSocket(url);
+        socket = nextSocket;
+
+        nextSocket.onmessage = event => {
+          try {
+            const message = JSON.parse(String(event.data || '')) as WsMessage;
+            if (message.event === 'ws.connection.ready') {
+              reconnectAttempt = 0;
+              setState('connected');
+            }
+            emit(message.event, message.data);
+          } catch {
+            return;
+          }
+        };
+
+        nextSocket.onclose = () => {
+          handleClose();
+        };
+
+        nextSocket.onerror = () => {
+          return;
+        };
+
+        nextSocket.onopen = () => {
+          return;
+        };
+      } catch (error) {
+        socket = null;
+        if (!disconnecting) {
+          setState('disconnected');
+        }
+        throw error;
+      } finally {
+        connectPromise = null;
       }
-    };
+    })();
 
-    nextSocket.onclose = () => {
-      handleClose();
-    };
-
-    nextSocket.onerror = () => {
-      return;
-    };
-
-    nextSocket.onopen = () => {
-      return;
-    };
+    return connectPromise;
   };
 
   const disconnect = () => {

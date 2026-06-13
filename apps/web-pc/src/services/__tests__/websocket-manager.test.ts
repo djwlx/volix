@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocked = vi.hoisted(() => ({
-  createTicket: vi.fn(),
+  getAuthToken: vi.fn(),
 }));
 
-vi.mock('../websocket-ticket', () => ({
-  createWebsocketTicket: mocked.createTicket,
+vi.mock('@/utils/auth', () => ({
+  getAuthToken: mocked.getAuthToken,
 }));
 
 class FakeWebSocket {
@@ -46,14 +46,10 @@ describe('websocket manager', () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     FakeWebSocket.instances = [];
+    mocked.getAuthToken.mockReturnValue('token-1');
   });
 
-  it('requests a ticket before opening the socket and dispatches parsed events', async () => {
-    mocked.createTicket.mockResolvedValue({
-      value: 'ticket-1',
-      expiresAt: '2026-06-13T00:00:00.000Z',
-    });
-
+  it('uses the current auth token in the websocket query and dispatches parsed events', async () => {
     const { createWebsocketManager } = await import('../websocket-manager');
     const manager = createWebsocketManager({
       createSocket: url => new FakeWebSocket(url) as never,
@@ -68,8 +64,8 @@ describe('websocket manager', () => {
 
     await manager.connect();
 
-    expect(mocked.createTicket).toHaveBeenCalledTimes(1);
-    expect(FakeWebSocket.instances[0]?.url).toBe('wss://volix.test/ws?ticket=ticket-1');
+    expect(mocked.getAuthToken).toHaveBeenCalledTimes(1);
+    expect(FakeWebSocket.instances[0]?.url).toBe('wss://volix.test/ws?token=token-1');
 
     FakeWebSocket.instances[0]?.emitOpen();
     FakeWebSocket.instances[0]?.emitMessage({
@@ -93,17 +89,24 @@ describe('websocket manager', () => {
     expect(stateHandler).toHaveBeenNthCalledWith(2, 'connected');
   });
 
-  it('reconnects with a fresh ticket after an unexpected close', async () => {
-    mocked.createTicket
-      .mockResolvedValueOnce({
-        value: 'ticket-1',
-        expiresAt: '2026-06-13T00:00:00.000Z',
-      })
-      .mockResolvedValueOnce({
-        value: 'ticket-2',
-        expiresAt: '2026-06-13T00:01:00.000Z',
-      });
+  it('coalesces concurrent connect calls into a single socket attempt', async () => {
+    const { createWebsocketManager } = await import('../websocket-manager');
+    const manager = createWebsocketManager({
+      createSocket: url => new FakeWebSocket(url) as never,
+      getLocation: () => ({ protocol: 'https:', host: 'volix.test' }),
+      reconnectDelaysMs: [10],
+    });
 
+    const first = manager.connect();
+    const second = manager.connect();
+
+    await Promise.all([first, second]);
+
+    expect(FakeWebSocket.instances).toHaveLength(1);
+    expect(mocked.getAuthToken).toHaveBeenCalledTimes(1);
+  });
+
+  it('switches to reconnecting after an unexpected close', async () => {
     const { createWebsocketManager } = await import('../websocket-manager');
     const manager = createWebsocketManager({
       createSocket: url => new FakeWebSocket(url) as never,
@@ -126,8 +129,6 @@ describe('websocket manager', () => {
     FakeWebSocket.instances[0]?.emitClose();
     await vi.advanceTimersByTimeAsync(10);
 
-    expect(mocked.createTicket).toHaveBeenCalledTimes(2);
-    expect(FakeWebSocket.instances[1]?.url).toBe('ws://volix.test/ws?ticket=ticket-2');
     expect(stateHandler).toHaveBeenNthCalledWith(3, 'reconnecting');
   });
 });
