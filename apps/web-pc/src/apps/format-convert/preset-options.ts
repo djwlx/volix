@@ -13,6 +13,7 @@ import {
 } from '@volix/types';
 
 export type FormatConvertSourceMode = 'local' | 'cloud';
+export const AUDIO_EXTRACT_AUTO_PRESET_ID = 'audio-extract-auto';
 
 const VIDEO_CODEC_DISPLAY: Record<string, string> = {
   h264: 'H.264',
@@ -30,7 +31,13 @@ export const getVideoCodecDisplay = (value?: string) => VIDEO_CODEC_DISPLAY[Stri
 
 export const getResolutionDisplay = (value?: string) => RESOLUTION_DISPLAY[String(value || '')] || String(value || '');
 
+export const isAutoAudioExtractPreset = (presetId?: string) =>
+  String(presetId || '').trim() === AUDIO_EXTRACT_AUTO_PRESET_ID;
+
 export const buildPresetLabel = (preset: FormatConvertPreset, t: (key: string) => string) => {
+  if (isAutoAudioExtractPreset(preset.id)) {
+    return t('formatConvert.preset.audioExtractAuto');
+  }
   const isAudioOnly = AUDIO_ONLY_OUTPUT_FORMATS.has(preset.outputFormat);
   const typeLabel = t(isAudioOnly ? 'formatConvert.preset.typeAudio' : 'formatConvert.preset.typeVideo');
   const { videoCodec, resolution, audioCodec } = preset.option;
@@ -52,6 +59,11 @@ export const buildPresetLabel = (preset: FormatConvertPreset, t: (key: string) =
 export const getPresetLabel = (presetId: string | undefined, t: (key: string) => string) => {
   const preset = FORMAT_CONVERT_PRESET_DEFINITIONS.find(item => item.id === presetId);
   return preset ? buildPresetLabel(preset, t) : presetId || '';
+};
+
+export const getPresetDescription = (presetId: string | undefined, t: (key: string) => string) => {
+  const preset = FORMAT_CONVERT_PRESET_DEFINITIONS.find(item => item.id === presetId);
+  return preset?.descriptionKey ? t(preset.descriptionKey) : '';
 };
 
 export interface FormatConvertFormDraft {
@@ -103,6 +115,10 @@ export const buildAudioCodecOptions = () => {
 
 export const buildResolutionOptions = () => {
   return [...FORMAT_CONVERT_RESOLUTIONS].map(value => ({ label: getResolutionDisplay(value), value }));
+};
+
+export const shouldShowPresetConfig = (draft: Pick<FormatConvertFormDraft, 'commandMode' | 'presetId'>) => {
+  return draft.commandMode === FormatConvertCommandMode.PRESET && !isAutoAudioExtractPreset(draft.presetId);
 };
 
 export const applyPresetToDraft = (draft: FormatConvertFormDraft, presetId: string): FormatConvertFormDraft => {
@@ -247,6 +263,9 @@ export const buildFormatConvertCommandPreview = (
   sourcePath: string,
   outputPath: string
 ) => {
+  if (isAutoAudioExtractPreset(draft.presetId) && draft.commandMode === FormatConvertCommandMode.PRESET) {
+    return '';
+  }
   const args = ['ffmpeg', '-y', '-i', escapePreviewArg(sourcePath)];
   const isAudioOnlyOutput = AUDIO_ONLY_OUTPUT_FORMATS.has(draft.option.outputFormat);
 

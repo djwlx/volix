@@ -22,6 +22,7 @@ import {
   createFormatConvertDraft,
   getSuggestedTargetFileName,
   isBatchTargetFileNameLocked,
+  isAutoAudioExtractPreset,
   syncDraftOutputFormatFromFilename,
 } from '../preset-options';
 import type { ConvertSourceKind } from '../convert-types';
@@ -84,6 +85,9 @@ export function MediaConvertPanel(props: MediaConvertPanelProps) {
   const commandPreview = useMemo(
     () => buildFormatConvertCommandPreview(draft, previewSourcePath, previewOutputPath),
     [draft, previewOutputPath, previewSourcePath]
+  );
+  const showCommandPreview = !(
+    draft.commandMode === FormatConvertCommandMode.PRESET && isAutoAudioExtractPreset(draft.presetId)
   );
   const disableActions = submitting;
 
@@ -413,12 +417,14 @@ export function MediaConvertPanel(props: MediaConvertPanelProps) {
                   ) : null}
                 </div>
 
-                <div className={styles.summaryItem}>
-                  <div className={styles.summaryTitle}>{t('formatConvert.form.finalCommand')}</div>
-                  <div style={{ marginTop: 10 }}>
-                    <Input readonly value={commandPreview} />
+                {showCommandPreview ? (
+                  <div className={styles.summaryItem}>
+                    <div className={styles.summaryTitle}>{t('formatConvert.form.finalCommand')}</div>
+                    <div style={{ marginTop: 10 }}>
+                      <Input readonly value={commandPreview} />
+                    </div>
                   </div>
-                </div>
+                ) : null}
 
                 <div className={styles.summaryItem}>
                   <div className={styles.summaryTitle}>{t('formatConvert.workbench.summaryTitle')}</div>

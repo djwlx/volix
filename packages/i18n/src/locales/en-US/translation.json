@@ -683,6 +683,7 @@
   "formatConvert.error.invalidCloudSource": "Cloud convert source must come from OpenList",
   "formatConvert.error.invalidCloudTarget": "Cloud convert target must be an OpenList directory",
   "formatConvert.error.audioOutputRequiresSourceAudio": "The source file has no audio stream, so it cannot be converted to an audio-only file.",
+  "formatConvert.error.audioExtractAutoUnsupportedCodec": "The first audio track codec is not supported for lossless extraction by the auto audio extract preset.",
   "formatConvert.error.targetRootNotAllowed": "Do not use the OpenList root directory as the cloud convert target. Open a specific mounted directory first.",
   "formatConvert.error.taskNotFound": "Format convert task not found",
   "formatConvert.error.retryNotAllowed": "This task state cannot be retried",
@@ -692,6 +693,8 @@
   "formatConvert.error.resultNotFound": "Format convert result not found",
   "formatConvert.upload.completedNotifyTitle": "Upload complete",
   "formatConvert.upload.completedNotifyContent": "All files have been uploaded. Conversion continues in the background, you can leave this page.",
+  "formatConvert.preset.audioExtractAuto": "Audio_extract_auto",
+  "formatConvert.preset.audioExtractAutoDescription": "Adaptively extract the first audio track and package it into the matching format.",
   "formatConvert.preset.typeVideo": "Video",
   "formatConvert.preset.typeAudio": "Audio"
 }

@@ -5,12 +5,15 @@ import {
   buildFormatConvertTargetFileName,
   buildAudioCodecOptions,
   buildFormatOptions,
+  getPresetDescription,
   buildPresetLabel,
   buildResolutionOptions,
   buildVideoCodecOptions,
   createFormatConvertDraft,
   getPresetLabel,
+  isAutoAudioExtractPreset,
   isBatchTargetFileNameLocked,
+  shouldShowPresetConfig,
 } from '../preset-options';
 import { FORMAT_CONVERT_PRESET_DEFINITIONS } from '@volix/types';
 
@@ -118,5 +121,13 @@ describe('format convert preset options', () => {
   it('resolves a preset label by id and falls back to the raw id', () => {
     expect(getPresetLabel('video-mp4-h264-2160p', labelT)).toBe('视频_mp4_H.264_4k_aac');
     expect(getPresetLabel('custom-unknown', identityT)).toBe('custom-unknown');
+  });
+  it('treats audio extract auto as a zero-config preset', () => {
+    const draft = applyPresetToDraft(createFormatConvertDraft(), 'audio-extract-auto');
+
+    expect(isAutoAudioExtractPreset(draft.presetId)).toBe(true);
+    expect(shouldShowPresetConfig(draft)).toBe(false);
+    expect(getPresetDescription(draft.presetId, identityT)).toBe('audioExtractAutoDescription');
+    expect(buildFormatConvertCommandPreview(draft, '/input/demo.mov', '/output/demo.m4a')).toBe('');
   });
 });

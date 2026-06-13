@@ -16,7 +16,11 @@ import {
   downloadFormatConvertOpenlistSource,
   uploadFormatConvertResultToOpenlist,
 } from './format-convert-openlist.service';
-import { buildFormatConvertSummary, normalizeFormatConvertTaskOption } from './format-convert-option.service';
+import {
+  buildFormatConvertSummary,
+  resolveFormatConvertExecutionPlan,
+  type FormatConvertExecutionPlan,
+} from './format-convert-option.service';
 import { updateFormatConvertTaskStatus } from './format-convert-task-db.service';
 import {
   ensureFormatConvertWorkspace,
@@ -66,23 +70,12 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
     return runImageConvertTask(task, hooks);
   }
 
-  const normalizedOption = normalizeFormatConvertTaskOption(task);
-  const convertSummary =
-    task.convertSummary ||
-    buildFormatConvertSummary({
-      commandMode: task.commandMode,
-      presetId: task.presetId,
-      option: normalizedOption,
-    });
-  const outputFilename = buildOutputFilename(task, normalizedOption.outputFormat);
   const sourceWorkspaceName = `source${path.extname(task.source.fileName || '') || '.bin'}`;
-  const outputWorkspaceName = `output.${normalizedOption.outputFormat}`;
   const logWorkspacePath = getFormatConvertLogPath(task.id);
   let currentStage: 'download' | 'convert' | 'upload' = 'convert';
 
   await ensureFormatConvertWorkspace(task.id);
   const sourceWorkspacePath = getFormatConvertWorkspaceFilePath(task.id, sourceWorkspaceName);
-  const outputWorkspacePath = getFormatConvertWorkspaceFilePath(task.id, outputWorkspaceName);
 
   try {
     let inputPath = '';
@@ -105,7 +98,7 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
     if (!sourceMediaInfo) {
       sourceMediaInfo = await probeMediaFile(inputPath);
     }
-    if (AUDIO_ONLY_OUTPUT_FORMATS.has(normalizedOption.outputFormat) && !sourceMediaInfo.hasAudio) {
+    if (AUDIO_ONLY_OUTPUT_FORMATS.has(task.option.outputFormat) && !sourceMediaInfo.hasAudio) {
       throw new Error(
         t({
           id: 'formatConvert.error.audioOutputRequiresSourceAudio',
@@ -113,6 +106,35 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
         })
       );
     }
+
+    let executionPlan: FormatConvertExecutionPlan;
+    try {
+      executionPlan = resolveFormatConvertExecutionPlan({
+        commandMode: task.commandMode,
+        presetId: task.presetId,
+        option: task.option,
+        sourceMediaInfo,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === 'format-convert-audio-extract-auto-unsupported-codec') {
+        throw new Error(
+          t({
+            id: 'formatConvert.error.audioExtractAutoUnsupportedCodec',
+            defaultMessage:
+              'The first audio track codec is not supported for lossless extraction by the auto audio extract preset.',
+          })
+        );
+      }
+      throw error;
+    }
+    const normalizedOption = executionPlan.option;
+    const convertSummary = buildFormatConvertSummary({
+      commandMode: task.commandMode,
+      presetId: task.presetId,
+      option: normalizedOption,
+    });
+    const outputFilename = buildOutputFilename(task, executionPlan.outputExtension);
+    const outputWorkspacePath = getFormatConvertWorkspaceFilePath(task.id, `output.${executionPlan.outputExtension}`);
 
     currentStage = 'convert';
     hooks?.onStatusChange?.(FormatConvertTaskStatus.CONVERTING);
@@ -127,7 +149,9 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
       started_at: new Date(),
     });
 
-    const commandArgs = buildFormatConvertArgs(inputPath, outputWorkspacePath, normalizedOption);
+    const commandArgs = buildFormatConvertArgs(inputPath, outputWorkspacePath, normalizedOption, {
+      audioTrackIndex: executionPlan.audioTrackIndex,
+    });
     log.info('[format-convert] task converting', {
       taskId: task.id,
       mode: task.mode,

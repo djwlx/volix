@@ -684,6 +684,7 @@
   "formatConvert.error.invalidCloudSource": "云转换源文件必须来自 OpenList",
   "formatConvert.error.invalidCloudTarget": "云转换目标必须是 OpenList 目录",
   "formatConvert.error.audioOutputRequiresSourceAudio": "源文件没有音频流，无法转换为音频文件",
+  "formatConvert.error.audioExtractAutoUnsupportedCodec": "自动音轨提取预设暂不支持当前首条音轨编码的无损提取。",
   "formatConvert.error.targetRootNotAllowed": "云转换目标不能直接选择 OpenList 根目录，请进入具体挂载目录后再创建任务。",
   "formatConvert.error.taskNotFound": "格式转换任务不存在",
   "formatConvert.error.retryNotAllowed": "当前任务状态不允许重试",
@@ -694,5 +695,7 @@
   "formatConvert.upload.completedNotifyTitle": "上传完成",
   "formatConvert.upload.completedNotifyContent": "文件已全部上传，转换任务将在后台继续，您可以离开页面。",
   "formatConvert.preset.typeVideo": "视频",
-  "formatConvert.preset.typeAudio": "音频"
+  "formatConvert.preset.typeAudio": "音频",
+  "formatConvert.preset.audioExtractAuto": "音频_音轨提取_auto",
+  "formatConvert.preset.audioExtractAutoDescription": "自适应提取首条音轨，并封装为对应格式"
 }

@@ -9,7 +9,9 @@ import {
   buildResolutionOptions,
   buildVideoCodecOptions,
   buildPresetOptions,
+  getPresetDescription,
   replaceTargetFileExtension,
+  shouldShowPresetConfig,
   type FormatConvertFormDraft,
 } from '../preset-options';
 import styles from './workbench.module.scss';
@@ -26,6 +28,8 @@ export function ConvertSettingsForm(props: ConvertSettingsFormProps) {
   const { disableActions, draft, onChange } = props;
   const { t } = useI18n();
   const isPresetMode = draft.commandMode === FormatConvertCommandMode.PRESET;
+  const showPresetConfig = shouldShowPresetConfig(draft);
+  const presetDescription = getPresetDescription(draft.presetId, t);
   const presetOptions = buildPresetOptions(FormatConvertMode.LOCAL, t);
   const formatOptions = buildFormatOptions();
   const videoCodecOptions = buildVideoCodecOptions(draft.option.outputFormat);
@@ -80,7 +84,9 @@ export function ConvertSettingsForm(props: ConvertSettingsFormProps) {
         </div>
       ) : null}
 
-      {isPresetMode ? (
+      {isPresetMode && presetDescription ? <div className={styles.targetHint}>{presetDescription}</div> : null}
+
+      {showPresetConfig ? (
         <div style={{ width: '100%' }}>
           <div className={styles.sectionLabel}>{t('formatConvert.form.outputFormat')}</div>
           <div style={{ marginTop: 10 }}>
@@ -113,7 +119,7 @@ export function ConvertSettingsForm(props: ConvertSettingsFormProps) {
         </div>
       ) : null}
 
-      {isPresetMode && videoCodecOptions.length ? (
+      {showPresetConfig && videoCodecOptions.length ? (
         <div style={{ width: '100%' }}>
           <div className={styles.sectionLabel}>{t('formatConvert.form.videoCodec')}</div>
           <div style={{ marginTop: 10 }}>
@@ -136,7 +142,7 @@ export function ConvertSettingsForm(props: ConvertSettingsFormProps) {
         </div>
       ) : null}
 
-      {isPresetMode ? (
+      {showPresetConfig ? (
         <div style={{ width: '100%' }}>
           <div className={styles.sectionLabel}>{t('formatConvert.form.audioCodec')}</div>
           <div style={{ marginTop: 10 }}>
@@ -159,7 +165,7 @@ export function ConvertSettingsForm(props: ConvertSettingsFormProps) {
         </div>
       ) : null}
 
-      {isPresetMode && videoCodecOptions.length ? (
+      {showPresetConfig && videoCodecOptions.length ? (
         <div style={{ width: '100%' }}>
           <div className={styles.sectionLabel}>{t('formatConvert.form.resolution')}</div>
           <div style={{ marginTop: 10 }}>

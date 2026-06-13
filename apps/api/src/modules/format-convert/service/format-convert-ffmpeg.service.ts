@@ -144,9 +144,21 @@ export const probeMediaFile = async (filePath: string) => {
   return parseProbeResult(JSON.parse(stdout || '{}') as ProbePayload, path.extname(filePath));
 };
 
-export const buildFormatConvertArgs = (inputPath: string, outputPath: string, option: FormatConvertOption) => {
+export interface BuildFormatConvertArgsOptions {
+  audioTrackIndex?: number;
+}
+
+export const buildFormatConvertArgs = (
+  inputPath: string,
+  outputPath: string,
+  option: FormatConvertOption,
+  controls?: BuildFormatConvertArgsOptions
+) => {
   const args = ['-y', '-i', inputPath];
   const isAudioOnlyOutput = AUDIO_ONLY_OUTPUT_FORMATS.has(option.outputFormat);
+  if (typeof controls?.audioTrackIndex === 'number') {
+    args.push('-map', `0:a:${controls.audioTrackIndex}`);
+  }
 
   if (option.videoCodec) {
     const videoCodec =

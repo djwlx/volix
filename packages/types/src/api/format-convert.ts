@@ -117,8 +117,38 @@ export const FORMAT_CONVERT_MODE_STATUS_FLOW = Object.freeze({
   ],
 } as const);
 
-export const FORMAT_CONVERT_OUTPUT_FORMATS = Object.freeze(['mp4', 'mkv', 'mov', 'webm', 'mp3', 'aac', 'wav', 'flac']);
-export const FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS = Object.freeze(['mp3', 'aac', 'wav', 'flac']);
+export const FORMAT_CONVERT_OUTPUT_FORMATS = Object.freeze([
+  'mp4',
+  'mkv',
+  'mov',
+  'webm',
+  'mp3',
+  'mp2',
+  'aac',
+  'ac3',
+  'eac3',
+  'dts',
+  'truehd',
+  'wav',
+  'flac',
+  'm4a',
+  'opus',
+  'wv',
+]);
+export const FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS = Object.freeze([
+  'mp3',
+  'mp2',
+  'aac',
+  'ac3',
+  'eac3',
+  'dts',
+  'truehd',
+  'wav',
+  'flac',
+  'm4a',
+  'opus',
+  'wv',
+]);
 export const FORMAT_CONVERT_VIDEO_CODECS = Object.freeze(['copy', 'h264', 'h265', 'vp9', 'av1']);
 export const FORMAT_CONVERT_AUDIO_CODECS = Object.freeze(['copy', 'aac', 'mp3', 'opus', 'pcm_s16le', 'flac']);
 export const FORMAT_CONVERT_RESOLUTIONS = Object.freeze(['source', '2160p', '1440p', '1080p', '720p', '480p']);
@@ -287,6 +317,14 @@ export const FORMAT_CONVERT_PRESET_DEFINITIONS: FormatConvertPreset[] = [
     commandMode: FormatConvertCommandMode.PRESET,
     outputFormat: 'flac',
     option: { audioCodec: 'flac', keepAudio: true },
+  },
+  {
+    id: 'audio-extract-auto',
+    mode: FormatConvertMode.LOCAL,
+    commandMode: FormatConvertCommandMode.PRESET,
+    outputFormat: 'm4a',
+    option: { keepAudio: true },
+    descriptionKey: 'formatConvert.preset.audioExtractAutoDescription',
   },
 ];
 

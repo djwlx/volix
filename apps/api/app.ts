@@ -9,6 +9,7 @@ import getGlobalInfo from './src/middleware/global-info';
 import requestContextMiddleware from './src/middleware/request-context';
 import staticMiddleware from './src/middleware/static';
 import initApp from './src/utils/dependencies';
+import { getKoaBodyOptions } from './src/utils/body-parser-options';
 import { log } from './src/utils/logger';
 import { formatTime } from '@volix/utils';
 import { startRssFeedAutoRefreshTask } from './src/modules/rss/service/rss-auto-refresh.service';
@@ -32,7 +33,7 @@ async function startApp() {
   // 跨域
   app.use(cors());
   // 解析requestBody
-  app.use(koaBody({ multipart: true }));
+  app.use(koaBody(getKoaBodyOptions()));
   // 请求上下文
   app.use(requestContextMiddleware());
   // 记录日志

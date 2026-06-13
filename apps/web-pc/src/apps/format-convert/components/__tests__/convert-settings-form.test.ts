@@ -11,21 +11,7 @@ vi.mock('@douyinfe/semi-ui', () => ({
 
 vi.mock('@/i18n', () => ({
   useI18n: () => ({
-    t: (key: string) =>
-      ((
-        {
-          'formatConvert.form.commandMode': '转换方式',
-          'formatConvert.form.outputFormat': '输出格式',
-          'formatConvert.form.videoCodec': '视频编码',
-          'formatConvert.form.audioCodec': '音频编码',
-          'formatConvert.form.resolution': '分辨率',
-          'formatConvert.form.customArgs': '自定义参数',
-          'formatConvert.form.customArgsPlaceholder': '例如 -movflags +faststart',
-          'formatConvert.form.commandModePreset': '预设模式',
-          'formatConvert.form.commandModeCustom': '自定义附加参数',
-          'formatConvert.form.preset': '预设方案',
-        } as Record<string, string>
-      )[key] || key),
+    t: (key: string) => key,
   }),
 }));
 
@@ -43,12 +29,33 @@ describe('convert settings form', () => {
       })
     );
 
-    expect(markup).toContain('转换方式');
-    expect(markup).toContain('自定义参数');
-    expect(markup).not.toContain('预设方案');
-    expect(markup).not.toContain('输出格式');
-    expect(markup).not.toContain('视频编码');
-    expect(markup).not.toContain('音频编码');
-    expect(markup).not.toContain('分辨率');
+    expect(markup).toContain('formatConvert.form.commandMode');
+    expect(markup).toContain('formatConvert.form.customArgs');
+    expect(markup).not.toContain('formatConvert.form.preset');
+    expect(markup).not.toContain('formatConvert.form.outputFormat');
+    expect(markup).not.toContain('formatConvert.form.videoCodec');
+    expect(markup).not.toContain('formatConvert.form.audioCodec');
+    expect(markup).not.toContain('formatConvert.form.resolution');
+  });
+
+  it('hides preset config controls for audio extract auto and shows its description', async () => {
+    const { ConvertSettingsForm } = await import('../convert-settings-form');
+    const draft = createFormatConvertDraft();
+    draft.presetId = 'audio-extract-auto';
+    draft.option.outputFormat = 'm4a' as never;
+
+    const markup = renderToStaticMarkup(
+      createElement(ConvertSettingsForm, {
+        draft,
+        onChange: () => undefined,
+      })
+    );
+
+    expect(markup).toContain('formatConvert.form.preset');
+    expect(markup).toContain('formatConvert.preset.audioExtractAutoDescription');
+    expect(markup).not.toContain('formatConvert.form.outputFormat');
+    expect(markup).not.toContain('formatConvert.form.videoCodec');
+    expect(markup).not.toContain('formatConvert.form.audioCodec');
+    expect(markup).not.toContain('formatConvert.form.resolution');
   });
 });
