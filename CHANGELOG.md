@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.1.14] - 2026-06-13
+
+### 中文
+#### Changed
+- 修复类型定义
+
+### English
+#### Changed
+- Fix type definition
+
 ## [1.1.12] - 2026-06-13
 
 ### 中文
