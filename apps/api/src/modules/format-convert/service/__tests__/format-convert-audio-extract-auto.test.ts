@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { FormatConvertMediaInfo } from '@volix/types';
+import { FormatConvertCommandMode, type FormatConvertMediaInfo } from '@volix/types';
 
 const createSourceMediaInfo = (codecName: string): FormatConvertMediaInfo => ({
   formatName: 'mov,mp4,m4a,3gp,3g2,mj2',
@@ -23,7 +23,7 @@ describe('format convert audio extract auto', () => {
 
     expect(
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('aac'),
@@ -39,7 +39,7 @@ describe('format convert audio extract auto', () => {
 
     expect(
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('mp3'),
@@ -55,7 +55,7 @@ describe('format convert audio extract auto', () => {
 
     expect(
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('flac'),
@@ -71,7 +71,7 @@ describe('format convert audio extract auto', () => {
 
     expect(
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('opus'),
@@ -87,7 +87,7 @@ describe('format convert audio extract auto', () => {
 
     expect(
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('pcm_s16le'),
@@ -103,7 +103,7 @@ describe('format convert audio extract auto', () => {
 
     expect(
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('pcm_s24le'),
@@ -119,7 +119,7 @@ describe('format convert audio extract auto', () => {
 
     expect(
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('pcm_f32le'),
@@ -135,7 +135,7 @@ describe('format convert audio extract auto', () => {
 
     expect(
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('ac3'),
@@ -151,7 +151,7 @@ describe('format convert audio extract auto', () => {
 
     expect(
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('eac3'),
@@ -167,7 +167,7 @@ describe('format convert audio extract auto', () => {
 
     expect(
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('dts'),
@@ -183,7 +183,7 @@ describe('format convert audio extract auto', () => {
 
     expect(
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('truehd'),
@@ -199,7 +199,7 @@ describe('format convert audio extract auto', () => {
 
     expect(
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('mp2'),
@@ -215,7 +215,7 @@ describe('format convert audio extract auto', () => {
 
     expect(
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('wavpack'),
@@ -235,7 +235,7 @@ describe('format convert audio extract auto', () => {
 
     expect(() =>
       resolveFormatConvertExecutionPlan({
-        commandMode: 'preset',
+        commandMode: FormatConvertCommandMode.PRESET,
         presetId: 'audio-extract-auto',
         option: { outputFormat: 'm4a' },
         sourceMediaInfo: createSourceMediaInfo('vorbis'),
