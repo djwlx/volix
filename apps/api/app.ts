@@ -1,3 +1,4 @@
+import { createServer } from 'node:http';
 import Koa from 'koa';
 import router from './src/routes';
 import cors from '@koa/cors';
@@ -13,6 +14,7 @@ import { formatTime } from '@volix/utils';
 import { startRssFeedAutoRefreshTask } from './src/modules/rss/service/rss-auto-refresh.service';
 import { sync115FileCacheDbWithFsOnStartup } from './src/modules/115/service/picture/picture-cache-startup-sync';
 import { recoverAndStartFormatConvertQueue } from './src/modules/format-convert/service/format-convert-queue.service';
+import { attachWebsocketServer } from './src/modules/shared/websocket/ws-server';
 
 async function startApp() {
   log.info('应用启动时间：', formatTime());
@@ -42,7 +44,10 @@ async function startApp() {
   // 路由
   app.use(router.routes());
 
-  app.listen(config.port, () => {
+  const server = createServer(app.callback());
+  attachWebsocketServer(server);
+
+  server.listen(config.port, () => {
     log.info('应用启动在端口：', config.port);
   });
 }
