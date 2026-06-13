@@ -10,6 +10,7 @@ import type {
   FormatConvertTaskItem,
   FormatConvertTaskSnapshot,
 } from '../types/format-convert.types';
+import { emitFormatConvertTaskCreated, emitFormatConvertTaskUpdated } from './format-convert-task-realtime.service';
 
 const parseJson = <T>(value: string, fallback: T) => {
   try {
@@ -112,7 +113,9 @@ export const createFormatConvertTask = async (payload: CreateFormatConvertTaskDb
     attempt_count: payload.attemptCount || 0,
     request_user_agent: payload.requestUserAgent || undefined,
   });
-  return mapFormatConvertTaskRow(row.dataValues as FormatConvertTaskEntity);
+  const task = mapFormatConvertTaskRow(row.dataValues as FormatConvertTaskEntity);
+  await emitFormatConvertTaskCreated(task);
+  return task;
 };
 
 export const getFormatConvertTaskById = async (taskId: number) => {
@@ -201,7 +204,11 @@ export const updateFormatConvertTask = async (taskId: number, payload: Partial<F
       id: taskId,
     },
   });
-  return getFormatConvertTaskById(taskId);
+  const task = await getFormatConvertTaskById(taskId);
+  if (task) {
+    await emitFormatConvertTaskUpdated(task);
+  }
+  return task;
 };
 
 export const updateFormatConvertTaskStatus = async (

@@ -38,6 +38,7 @@ import {
   resetFormatConvertTaskToPending,
   updateFormatConvertTask,
 } from '../service/format-convert-task-db.service';
+import { emitFormatConvertTaskDeleted } from '../service/format-convert-task-realtime.service';
 import { ensureFormatConvertQueueRunning } from '../service/format-convert-queue.service';
 import { listFormatConvertOpenlistFs } from '../service/format-convert-openlist.service';
 import { probeMediaFile } from '../service/format-convert-ffmpeg.service';
@@ -330,6 +331,7 @@ export const deleteFormatConvertTask: MyMiddleware = async ctx => {
 
   await cleanupFormatConvertTaskLocalArtifacts(task);
   await deleteFormatConvertTaskByIdAndUserId(taskId, userId);
+  emitFormatConvertTaskDeleted(userId, taskId);
   return {
     success: true,
   };
@@ -365,6 +367,10 @@ export const deleteFormatConvertTasks: MyMiddleware = async ctx => {
         userId
       )
     : 0;
+
+  deletableTasks.forEach(task => {
+    emitFormatConvertTaskDeleted(userId, task.id);
+  });
 
   return {
     success: true,
