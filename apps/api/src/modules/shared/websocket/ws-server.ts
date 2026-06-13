@@ -81,18 +81,6 @@ const sendReadyMessage = (socket: RegistrySocket) => {
 
 let heartbeatTimer: NodeJS.Timeout | null = null;
 
-const ensureHeartbeatTimer = () => {
-  if (heartbeatTimer) {
-    return;
-  }
-
-  heartbeatTimer = setInterval(() => {
-    for (const userId of Array.from(new Set<string>())) {
-      registry.list(userId);
-    }
-  }, WS_HEARTBEAT_INTERVAL_MS);
-};
-
 const createHeartbeatLoop = (wss: WebSocketServer) => {
   if (heartbeatTimer) {
     return;
@@ -118,7 +106,6 @@ export const attachWebsocketServer = (server: Server) => {
   });
 
   createHeartbeatLoop(wss);
-  ensureHeartbeatTimer();
 
   server.on('upgrade', (request, socket, head) => {
     const url = new URL(request.url || '', 'http://localhost');

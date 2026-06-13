@@ -9,13 +9,22 @@ import {
   getFormatConvertTasks,
   retryFormatConvertTask,
 } from '@/services/format-convert';
+import { websocketEventBus } from '@/services/websocket-event-bus';
 import { ConvertTaskCard, TaskRecordList } from './components';
+import { subscribeToFormatConvertTaskEvents } from './format-convert-realtime';
+import { removeFormatConvertTaskById, upsertFormatConvertTask } from './format-convert-task-events';
 import styles from './index.module.scss';
 
 function FormatConvertApp() {
   const { t } = useI18n();
   const [loading, setLoading] = useState(false);
   const [tasks, setTasks] = useState<FormatConvertTaskItem[]>([]);
+
+  const syncTasksWhenSocketOffline = () => {
+    if (websocketEventBus.getState() !== 'connected') {
+      void loadTasks();
+    }
+  };
 
   const loadTasks = async () => {
     try {
@@ -31,15 +40,32 @@ function FormatConvertApp() {
 
   useEffect(() => {
     void loadTasks();
-    const timer = window.setInterval(() => {
-      void loadTasks();
-    }, 4000);
-    return () => window.clearInterval(timer);
+
+    const unsubscribe = subscribeToFormatConvertTaskEvents({
+      onCreated: task => {
+        setTasks(current => upsertFormatConvertTask(current, task));
+      },
+      onUpdated: task => {
+        setTasks(current => upsertFormatConvertTask(current, task));
+      },
+      onDeleted: taskId => {
+        setTasks(current => removeFormatConvertTaskById(current, taskId));
+      },
+      onReconnect: () => {
+        void loadTasks();
+      },
+    });
+
+    void websocketEventBus.connect();
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   return (
     <div className={styles.page}>
-      <ConvertTaskCard onCreated={() => void loadTasks()} />
+      <ConvertTaskCard onCreated={syncTasksWhenSocketOffline} />
       <TaskRecordList
         loading={loading}
         tasks={tasks}
@@ -51,7 +77,7 @@ function FormatConvertApp() {
                 count: response.data?.deletedCount ?? taskIds.length,
               })
             );
-            void loadTasks();
+            syncTasksWhenSocketOffline();
           } catch (error) {
             Toast.error(getHttpErrorMessage(error, t('formatConvert.error.deleteFailed')));
           }
@@ -60,7 +86,7 @@ function FormatConvertApp() {
           try {
             await deleteFormatConvertTask(task.id);
             Toast.success(t('formatConvert.record.deleteSuccess'));
-            void loadTasks();
+            syncTasksWhenSocketOffline();
           } catch (error) {
             Toast.error(getHttpErrorMessage(error, t('formatConvert.error.deleteFailed')));
           }
@@ -69,7 +95,7 @@ function FormatConvertApp() {
           try {
             await retryFormatConvertTask(task.id);
             Toast.success(t('formatConvert.record.retrySuccess'));
-            void loadTasks();
+            syncTasksWhenSocketOffline();
           } catch (error) {
             Toast.error(getHttpErrorMessage(error, t('formatConvert.error.retryFailed')));
           }
