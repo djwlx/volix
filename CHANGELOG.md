@@ -1,5 +1,39 @@
 # Changelog
 
+## [1.1.12] - 2026-06-13
+
+### 中文
+#### Added
+- 新增运行时日志查看模块，支持实时查看和解析日志
+- 新增 WebSocket 共享运行时，支持前后端实时通信
+- 格式转换任务支持实时状态推送，无需手动刷新
+- 新增设置页面更新日志弹窗，方便查看版本变更
+- 新增 PageCard 通用组件
+#### Changed
+- 优化日志维护工具，提升日志清理效率
+- 改进格式转换任务列表，集成实时更新
+- 更新系统设置相关页面，优化配置体验
+- 更新国际化翻译文件，新增相关词条
+#### Fixed
+- 修复构建问题，确保编译通过
+- 修复日志维护测试文件位置错误
+
+### English
+#### Added
+- Added runtime log viewer module for real-time log viewing and parsing
+- Added shared WebSocket runtime for real-time frontend-backend communication
+- Format conversion tasks now support real-time status updates without manual refresh
+- Added changelog modal in settings page for easy version history viewing
+- Added PageCard common component
+#### Changed
+- Optimized log maintenance utility for improved log cleanup efficiency
+- Improved format conversion task list with real-time updates integration
+- Updated system settings related pages for better configuration experience
+- Updated i18n translation files with new entries
+#### Fixed
+- Fixed build issues to ensure successful compilation
+- Fixed incorrect location of log maintenance test file
+
 ## [1.1.10] - 2026-06-12
 
 ### 中文
