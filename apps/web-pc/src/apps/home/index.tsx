@@ -1,5 +1,5 @@
 import { AppCard } from './components';
-import { IconStar, IconTabsStroked } from '@douyinfe/semi-icons';
+import { IconArticle, IconStar, IconTabsStroked } from '@douyinfe/semi-icons';
 import { useI18n } from '@/i18n';
 import { isAuthenticated } from '@/utils';
 import { useUser } from '@/hooks';
@@ -108,6 +108,20 @@ function HomeApp() {
                       style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #020617 0%, #0369a1 100%)' }}
                     >
                       <IconTabsStroked size="large" />
+                    </div>
+                  }
+                />
+              ) : null}
+              {isAdmin ? (
+                <AppCard
+                  title={t('home.card.logViewer.title')}
+                  description={t('home.card.logViewer.description')}
+                  link="/log-viewer"
+                  icon={
+                    <div
+                      style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #1e293b 0%, #4f46e5 100%)' }}
+                    >
+                      <IconArticle size="large" />
                     </div>
                   }
                 />

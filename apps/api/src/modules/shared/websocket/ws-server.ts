@@ -4,6 +4,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import type { WsMessage, WebsocketReadyPayload } from './ws-protocol';
 import { WS_CONNECTION_READY_EVENT, WS_HEARTBEAT_INTERVAL_MS } from './ws-protocol';
 import JWT from '../../../utils/jwt';
+import { log } from '../../../utils/logger';
 import { queryUser } from '../../user';
 
 type RegistrySocket = Pick<WebSocket, 'send' | 'close' | 'on' | 'ping' | 'terminate'> & {
@@ -66,9 +67,11 @@ const bindSocketLifecycle = (userId: string, socket: RegistrySocket) => {
   });
   socket.on('close', () => {
     registry.remove(userId, socket);
+    log.info('[websocket] 连接关闭', { userId });
   });
-  socket.on('error', () => {
+  socket.on('error', error => {
     registry.remove(userId, socket);
+    log.warn('[websocket] 连接异常', { userId, error });
   });
 };
 
@@ -142,6 +145,7 @@ export const attachWebsocketServer = (server: Server) => {
 
     const userId = await resolveWebsocketUserId(request);
     if (!userId) {
+      log.warn('[websocket] 升级被拒绝：鉴权失败');
       socket.destroy();
       return;
     }
@@ -151,6 +155,7 @@ export const attachWebsocketServer = (server: Server) => {
       registry.add(userId, registrySocket);
       bindSocketLifecycle(userId, registrySocket);
       sendReadyMessage(registrySocket);
+      log.info('[websocket] 连接建立', { userId });
     });
   });
 

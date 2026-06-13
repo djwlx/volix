@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, Empty, Input, InputNumber, Modal, Space, Toast, Typography } from '@douyinfe/semi-ui';
+import { formatTime } from '@volix/utils';
+import { Button, Empty, Input, InputNumber, Modal, Space, Toast, Typography } from '@douyinfe/semi-ui';
 import { PageCard } from '@/components';
 import { AppForm } from '@/components';
 import { useI18n } from '@/i18n';
@@ -42,18 +43,6 @@ const formatBytes = (value: number) => {
     unitIndex += 1;
   }
   return `${current >= 10 || unitIndex === 0 ? current.toFixed(0) : current.toFixed(1)} ${units[unitIndex]}`;
-};
-
-const formatTime = (value: string) => {
-  const text = String(value || '').trim();
-  if (!text) {
-    return 'Unknown';
-  }
-  const timestamp = Date.parse(text);
-  if (Number.isNaN(timestamp)) {
-    return 'Unknown';
-  }
-  return new Date(timestamp).toLocaleString();
 };
 
 function SettingConfigRsshubApp() {
@@ -420,6 +409,7 @@ function SettingConfigRsshubApp() {
       <Modal
         title={t({ id: 'setting.rss.clearHistory.title', defaultMessage: '清理订阅历史' })}
         visible={clearHistoryModalState.visible}
+        width="min(520px, 92vw)"
         okText={t({ id: 'common.action.confirmClear', defaultMessage: '确认清理' })}
         cancelText={t({ id: 'common.action.cancel', defaultMessage: '取消' })}
         okButtonProps={{

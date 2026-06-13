@@ -1,5 +1,6 @@
 import { UserRole } from '@volix/types';
 import { t } from '../../../utils/i18n';
+import { log } from '../../../utils/logger';
 import type {
   AdminCreateUserPayload,
   AdminUpdateUserPayload,
@@ -59,6 +60,7 @@ export const setUserRole: MyMiddleware = async ctx => {
   }
 
   await updateUser(userId, { role });
+  log.info('管理员调整用户角色', { operatorId: ctx.state.userInfo?.id, targetUserId: userId, role });
 
   return {
     id: targetUser.dataValues.id,
@@ -137,6 +139,7 @@ export const adminCreateUser: MyMiddleware = async ctx => {
     role,
     settings_json: '{}',
   });
+  log.info('管理员创建用户', { operatorId: ctx.state.userInfo?.id, userId: user.dataValues.id, email, role });
 
   return toUserResponse(user.dataValues);
 };
@@ -191,6 +194,7 @@ export const adminUpdateUser: MyMiddleware = async ctx => {
   }
 
   await updateUser(id, nextData);
+  log.info('管理员更新用户', { operatorId: ctx.state.userInfo?.id, targetUserId: id, fields: Object.keys(nextData) });
   const updated = await queryUser({ id });
   if (!updated) {
     badRequest(t({ id: 'auth.user.notFound', defaultMessage: '用户不存在' }));

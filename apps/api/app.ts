@@ -47,6 +47,10 @@ async function startApp() {
   const server = createServer(app.callback());
   attachWebsocketServer(server);
 
+  server.on('error', error => {
+    log.error('HTTP 服务异常', error);
+  });
+
   server.listen(config.port, () => {
     log.info('应用启动在端口：', config.port);
   });
@@ -57,10 +61,18 @@ void startApp().catch(error => {
   process.exit(1);
 });
 
-process.on('unhandledRejection', reason => {
-  log.error('未处理 Promise 拒绝', reason);
+process.on('unhandledRejection', (reason, promise) => {
+  log.error('未处理 Promise 拒绝', { reason, promise });
 });
 
-process.on('uncaughtException', error => {
-  log.error('未捕获异常', error);
+process.on('uncaughtException', (error, origin) => {
+  log.error('未捕获异常', { origin, error });
+});
+
+process.on('warning', warning => {
+  log.warn('进程告警', {
+    name: warning.name,
+    message: warning.message,
+    stack: warning.stack,
+  });
 });

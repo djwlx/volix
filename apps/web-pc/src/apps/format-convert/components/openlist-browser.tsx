@@ -27,6 +27,7 @@ export function OpenlistBrowser(props: OpenlistBrowserProps) {
       title={title}
       visible={open}
       onCancel={onCancel}
+      width="min(720px, 92vw)"
       footer={
         selectMode === 'dir' ? (
           <Button

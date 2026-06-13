@@ -7,3 +7,4 @@
 5. For any package update, automatically switch to the Node.js version specified in `.nvmrc` via `nvm` before installation.
 6. Any newly added user-visible copy must be added to i18n resources; do not introduce new hardcoded UI or API text directly in code.
 7. Do not add operational or instructional user-facing copy that explains how to use a feature unless the user explicitly requests that guidance.
+8. When changing UI code, keep it compatible with dark mode—use Semi Design theme variables (e.g. `var(--semi-color-*)`) instead of hardcoded colors.

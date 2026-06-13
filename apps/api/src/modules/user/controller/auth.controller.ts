@@ -10,6 +10,7 @@ import type {
   VerifyCurrentUserEmailPayload,
 } from '@volix/types';
 import { t } from '../../../utils/i18n';
+import { log } from '../../../utils/logger';
 import jwt from '../../../utils/jwt';
 import { badRequest, unauthorized } from '../../shared/http-handler';
 import {
@@ -47,6 +48,7 @@ const sendVerifyCodeEmail = async (params: { smtp: SmtpAccountConfigItem; email:
     code,
   });
   saveRegisterVerifyCode(params.email, code);
+  log.info('已发送邮箱验证码', { email: params.email });
 };
 
 export const loginUser: MyMiddleware = async ctx => {
@@ -65,6 +67,7 @@ export const loginUser: MyMiddleware = async ctx => {
     password,
   });
   if (!findOne) {
+    log.warn('用户登录失败：凭证错误', { email });
     badRequest(t({ id: 'auth.login.invalidCredentials', defaultMessage: '邮箱或密码错误' }));
   }
   const userId = findOne?.dataValues?.id;
@@ -72,6 +75,7 @@ export const loginUser: MyMiddleware = async ctx => {
     badRequest(t({ id: 'auth.user.invalid', defaultMessage: '用户信息异常' }));
   }
 
+  log.info('用户登录成功', { userId, email });
   return {
     token: jwt.setToken({ id: userId as string | number }),
   };
@@ -125,6 +129,7 @@ export const registerUser: MyMiddleware = async ctx => {
     role,
     settings_json: '{}',
   });
+  log.info('新用户注册成功', { userId: user.dataValues.id, email, role, emailVerified: shouldVerifyEmail });
   const featurePermissions = getFeaturePermissions((user.dataValues.role || role) as UserRole);
 
   return {
@@ -245,6 +250,7 @@ export const verifyCurrentUserEmail: MyMiddleware = async ctx => {
   await updateUser(userId as string | number, {
     email_verified: true,
   });
+  log.info('用户邮箱验证成功', { userId, email: user.email });
 
   const updatedRecord = await queryUser({ id: userId as string | number });
   if (!updatedRecord) {
@@ -313,6 +319,7 @@ export const updateCurrentUserProfile: MyMiddleware = async ctx => {
   }
 
   await updateUser(userId as string | number, nextProfile);
+  log.info('用户更新个人资料', { userId, fields: Object.keys(nextProfile) });
 
   const updated = await queryUser({ id: userId as string | number });
   if (!updated) {

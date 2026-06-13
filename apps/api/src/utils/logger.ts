@@ -1,22 +1,29 @@
 import path from 'path';
+import { format } from 'node:util';
 import log4js from 'log4js';
+import { formatTime } from '@volix/utils';
 import { PATH } from './path';
 import { LOG_MAX_SIZE_BYTES, startLogMaintenance } from './log-maintenance';
 const { NODE_ENV } = process.env;
 
 const isProd = NODE_ENV === 'production';
-const getNormalAppenders = () => (isProd ? ['normal', 'consoleError'] : ['console']);
+const getNormalAppenders = () => (isProd ? ['normal'] : ['normal', 'console']);
 const getDatabaseAppenders = () => ['database'];
+
+const LOCAL_TIME_LAYOUT = { type: 'localTime' } as const;
+
+log4js.addLayout('localTime', () => logEvent => {
+  const time = formatTime(logEvent.startTime);
+  const level = logEvent.level.levelStr;
+  const message = format(...logEvent.data);
+  return `[${time}] [${level}] ${logEvent.categoryName} - ${message}`;
+});
 
 log4js.configure({
   appenders: {
     console: {
       type: 'console',
-    },
-    consoleError: {
-      type: 'logLevelFilter',
-      appender: 'console',
-      level: 'error',
+      layout: LOCAL_TIME_LAYOUT,
     },
     normal: {
       type: 'dateFile',
@@ -25,6 +32,7 @@ log4js.configure({
       pattern: 'yyyy-MM-dd.log',
       filename: path.join(`${PATH.log}/normal`, 'normal'), //生成文件名
       numBackups: 5,
+      layout: LOCAL_TIME_LAYOUT,
     },
     database: {
       type: 'dateFile',
@@ -33,6 +41,7 @@ log4js.configure({
       pattern: 'yyyy-MM-dd.log',
       filename: path.join(`${PATH.log}/databse`, 'database'), //生成文件名
       numBackups: 5,
+      layout: LOCAL_TIME_LAYOUT,
     },
   },
   categories: {
@@ -57,11 +66,11 @@ const baseLog = log4js.getLogger('dataBase');
 
 startLogMaintenance({
   onSuccess(result, trigger) {
-    if (result.archivedFileCount > 0) {
-      log.info('[log-maintenance] 归档完成', {
+    if (result.deletedFileCount > 0 || result.removedArchiveDirCount > 0) {
+      log.info('[log-maintenance] 清理完成', {
         trigger,
-        archivedBatchCount: result.archivedBatchCount,
-        archivedFileCount: result.archivedFileCount,
+        deletedFileCount: result.deletedFileCount,
+        removedArchiveDirCount: result.removedArchiveDirCount,
       });
     }
   },

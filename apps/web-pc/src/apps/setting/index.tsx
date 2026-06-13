@@ -6,6 +6,7 @@ import { useLocation, Outlet } from 'react-router';
 import { useI18n } from '@/i18n';
 import { useAppPageContext } from '@/hooks';
 import type { ReactNode } from 'react';
+import { ChangelogModal } from './changelog-modal';
 import styles from './index.module.scss';
 
 const COMPACT_LAYOUT_QUERY = '(max-width: 1100px)';
@@ -46,6 +47,7 @@ function SettingApp() {
   const location = useLocation();
   const [isCompactLayout, setIsCompactLayout] = useState(getCompactLayout);
   const [mobileNavVisible, setMobileNavVisible] = useState(false);
+  const [changelogVisible, setChangelogVisible] = useState(false);
   const { isAdmin, requestNavigate } = useAppPageContext();
 
   useEffect(() => {
@@ -185,6 +187,17 @@ function SettingApp() {
       : []),
   ];
 
+  const versionFooter = __APP_VERSION__ ? (
+    <button
+      type="button"
+      className={styles.versionButton}
+      onClick={() => setChangelogVisible(true)}
+      title={t({ id: 'setting.changelog.title', defaultMessage: '更新日志' })}
+    >
+      v{__APP_VERSION__}
+    </button>
+  ) : null;
+
   return (
     <div className={styles.page}>
       {isCompactLayout ? (
@@ -193,7 +206,7 @@ function SettingApp() {
           visible={mobileNavVisible}
           onCancel={() => setMobileNavVisible(false)}
           placement="left"
-          width={280}
+          width="min(280px, 80vw)"
           bodyStyle={{ padding: 0 }}
         >
           <Nav
@@ -207,6 +220,7 @@ function SettingApp() {
             onSelect={data => {
               handleNavSelect(data.itemKey as string);
             }}
+            footer={versionFooter}
           />
         </SideSheet>
       ) : null}
@@ -226,6 +240,7 @@ function SettingApp() {
             onSelect={data => {
               handleNavSelect(data.itemKey as string);
             }}
+            footer={versionFooter}
           />
         ) : null}
         <div className={`${styles.content} ${isCompactLayout ? styles.contentMobile : ''}`}>
@@ -239,6 +254,7 @@ function SettingApp() {
           <Outlet />
         </div>
       </div>
+      <ChangelogModal visible={changelogVisible} onClose={() => setChangelogVisible(false)} />
     </div>
   );
 }

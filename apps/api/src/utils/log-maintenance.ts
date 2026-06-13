@@ -1,34 +1,28 @@
 import fs from 'fs';
 import path from 'path';
-import { execFile } from 'child_process';
-import { promisify } from 'util';
 import { PATH } from './path';
-
-const execFileAsync = promisify(execFile);
+import { LOG_RETENTION_DAYS_DEFAULT } from '../modules/user/service/system-setting.constants';
 
 export const LOG_MAX_SIZE_BYTES = 200 * 1024 * 1024;
-export const LOG_ARCHIVE_AFTER_DAYS = 5;
-const LOG_ARCHIVE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const LOG_MAINTENANCE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
 const LOG_DATE_REGEXP = /(\d{4}-\d{2}-\d{2})\.log$/;
+const ARCHIVE_DIR_NAME = 'archive';
 
-type ZipRunner = (archivePath: string, filePaths: string[]) => Promise<void>;
-type ArchiveExpiredLogsResult = {
-  archivedBatchCount: number;
-  archivedFileCount: number;
+type DeleteExpiredLogsResult = {
+  deletedFileCount: number;
+  removedArchiveDirCount: number;
 };
 type LogMaintenanceTrigger = 'startup' | 'interval';
+type RetentionProvider = () => Promise<number> | number;
 type StartLogMaintenanceOptions = {
-  onSuccess?: (result: ArchiveExpiredLogsResult, trigger: LogMaintenanceTrigger) => void;
+  onSuccess?: (result: DeleteExpiredLogsResult, trigger: LogMaintenanceTrigger) => void;
   onError?: (error: unknown, trigger: LogMaintenanceTrigger) => void;
 };
 
-const defaultZipRunner: ZipRunner = async (archivePath, filePaths) => {
-  if (filePaths.length === 0) {
-    return;
-  }
+let retentionProvider: RetentionProvider = () => LOG_RETENTION_DAYS_DEFAULT;
 
-  await fs.promises.mkdir(path.dirname(archivePath), { recursive: true });
-  await execFileAsync('zip', ['-j', archivePath, ...filePaths]);
+export const setLogRetentionProvider = (provider: RetentionProvider) => {
+  retentionProvider = provider;
 };
 
 const parseLogDateFromFilename = (filename: string) => {
@@ -42,10 +36,7 @@ const parseLogDateFromFilename = (filename: string) => {
     return null;
   }
 
-  return {
-    dateText: matched[1],
-    time: parsed.getTime(),
-  };
+  return parsed.getTime();
 };
 
 const listLogDirectories = async (rootDir: string) => {
@@ -57,80 +48,48 @@ const listLogDirectories = async (rootDir: string) => {
   }
 };
 
-const ensureArchivePath = async (archiveDir: string, archiveBaseName: string) => {
-  let archivePath = path.join(archiveDir, `${archiveBaseName}.zip`);
-  let suffix = 1;
-
-  // Keep old archive batches immutable; if the same range appears again,
-  // create a numbered sibling archive instead of overwriting.
-  while (
-    await fs.promises
-      .access(archivePath, fs.constants.F_OK)
-      .then(() => true)
-      .catch(() => false)
-  ) {
-    archivePath = path.join(archiveDir, `${archiveBaseName}.${suffix}.zip`);
-    suffix += 1;
-  }
-
-  return archivePath;
-};
-
-export const archiveExpiredLogs = async (options?: {
+export const deleteExpiredLogs = async (options: {
+  retentionDays: number;
   rootDir?: string;
   now?: () => number;
-  zipRunner?: ZipRunner;
-}): Promise<ArchiveExpiredLogsResult> => {
-  const rootDir = options?.rootDir || PATH.log;
-  const now = options?.now || (() => Date.now());
-  const zipRunner = options?.zipRunner || defaultZipRunner;
-  const cutoffTime = now() - LOG_ARCHIVE_AFTER_DAYS * 24 * 60 * 60 * 1000;
+}): Promise<DeleteExpiredLogsResult> => {
+  const rootDir = options.rootDir || PATH.log;
+  const now = options.now || (() => Date.now());
+  const retentionDays = options.retentionDays;
+  const cutoffTime = now() - retentionDays * 24 * 60 * 60 * 1000;
   const logDirs = await listLogDirectories(rootDir);
-  let archivedBatchCount = 0;
-  let archivedFileCount = 0;
+  let deletedFileCount = 0;
+  let removedArchiveDirCount = 0;
 
   for (const logDir of logDirs) {
-    const archiveDir = path.join(logDir, 'archive');
+    const archiveDir = path.join(logDir, ARCHIVE_DIR_NAME);
+    const archiveExisted = await fs.promises
+      .access(archiveDir, fs.constants.F_OK)
+      .then(() => true)
+      .catch(() => false);
+    if (archiveExisted) {
+      await fs.promises.rm(archiveDir, { recursive: true, force: true });
+      removedArchiveDirCount += 1;
+    }
+
     const entries = await fs.promises.readdir(logDir, { withFileTypes: true }).catch(() => []);
     const expiredFiles = entries
       .filter(entry => entry.isFile() && entry.name.endsWith('.log'))
       .map(entry => ({
-        name: entry.name,
         fullPath: path.join(logDir, entry.name),
-        parsedDate: parseLogDateFromFilename(entry.name),
+        time: parseLogDateFromFilename(entry.name),
       }))
-      .filter(item => item.parsedDate && item.parsedDate.time <= cutoffTime);
+      .filter((item): item is { fullPath: string; time: number } => item.time !== null && item.time <= cutoffTime);
 
-    if (!expiredFiles.length) {
-      continue;
+    for (const file of expiredFiles) {
+      await fs.promises.rm(file.fullPath, { force: true });
+      deletedFileCount += 1;
     }
-
-    const datedFiles = expiredFiles
-      .filter((item): item is typeof item & { parsedDate: NonNullable<typeof item.parsedDate> } =>
-        Boolean(item.parsedDate?.dateText)
-      )
-      .sort((a, b) => a.parsedDate.time - b.parsedDate.time);
-
-    if (!datedFiles.length) {
-      continue;
-    }
-
-    const fromDate = datedFiles[0].parsedDate.dateText;
-    const toDate = datedFiles[datedFiles.length - 1].parsedDate.dateText;
-    const logType = path.basename(logDir);
-    const archiveBaseName = `${logType}.${fromDate}_to_${toDate}`;
-    const archivePath = await ensureArchivePath(archiveDir, archiveBaseName);
-    const filePaths = datedFiles.map(item => item.fullPath);
-
-    await zipRunner(archivePath, filePaths);
-    await Promise.all(filePaths.map(filePath => fs.promises.rm(filePath, { force: true })));
-    archivedBatchCount += 1;
-    archivedFileCount += filePaths.length;
   }
 
   return {
-    archivedBatchCount,
-    archivedFileCount,
+    deletedFileCount,
+    removedArchiveDirCount,
   };
 };
 
@@ -143,7 +102,8 @@ export const startLogMaintenance = (options?: StartLogMaintenanceOptions) => {
   maintenanceStarted = true;
 
   const run = (trigger: LogMaintenanceTrigger) => {
-    void archiveExpiredLogs()
+    void Promise.resolve(retentionProvider())
+      .then(retentionDays => deleteExpiredLogs({ retentionDays: retentionDays || LOG_RETENTION_DAYS_DEFAULT }))
       .then(result => {
         options?.onSuccess?.(result, trigger);
       })
@@ -155,6 +115,6 @@ export const startLogMaintenance = (options?: StartLogMaintenanceOptions) => {
   run('startup');
   const timer = setInterval(() => {
     run('interval');
-  }, LOG_ARCHIVE_CHECK_INTERVAL_MS);
+  }, LOG_MAINTENANCE_CHECK_INTERVAL_MS);
   timer.unref();
 };

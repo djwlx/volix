@@ -282,6 +282,7 @@ function SqliteAdminApp() {
     }
 
     Modal.confirm({
+      width: 'min(416px, 92vw)',
       title: t('sqliteAdmin.deleteConfirm.title'),
       content: t('sqliteAdmin.deleteConfirm.description'),
       okButtonProps: {
@@ -428,7 +429,7 @@ function SqliteAdminApp() {
         onCancel={closeEditor}
         onOk={() => submitEditor().catch(() => undefined)}
         okButtonProps={{ loading: saving }}
-        width={760}
+        width="min(760px, 92vw)"
       >
         <div className={styles.modalBody}>
           {editor.mode === 'edit' && editor.identity ? (

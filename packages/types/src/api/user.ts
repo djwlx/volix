@@ -85,6 +85,7 @@ export interface SystemConfigResponse {
   registerEmailVerifyEnabled: boolean;
   registerEmailVerifySmtp?: SmtpAccountConfigItem;
   randomPicDefaultUserId?: string | number;
+  logRetentionDays?: number;
   settings?: SystemSettingsJson;
 }
 
@@ -92,6 +93,7 @@ export interface UpdateSystemConfigPayload {
   registerEmailVerifyEnabled: boolean;
   registerEmailVerifySmtp?: SmtpAccountConfigItem;
   randomPicDefaultUserId?: string | number;
+  logRetentionDays?: number;
 }
 
 export interface LoginUserPayload {

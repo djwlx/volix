@@ -1,4 +1,2 @@
-export function formatTime() {
-  return 'time';
-}
+export * from './time';
 export * from './object';

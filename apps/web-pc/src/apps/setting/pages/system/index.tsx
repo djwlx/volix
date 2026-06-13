@@ -10,12 +10,18 @@ import { UserRole } from '@volix/types';
 interface SystemConfigFormValues {
   registerEmailVerifyEnabled: boolean;
   randomPicDefaultUserId: string;
+  logRetentionDays: number;
   registerEmailVerifySmtp: SmtpAccountConfigItem;
 }
+
+const DEFAULT_LOG_RETENTION_DAYS = 10;
+const MIN_LOG_RETENTION_DAYS = 1;
+const MAX_LOG_RETENTION_DAYS = 365;
 
 const DEFAULT_VALUES: SystemConfigFormValues = {
   registerEmailVerifyEnabled: false,
   randomPicDefaultUserId: '',
+  logRetentionDays: DEFAULT_LOG_RETENTION_DAYS,
   registerEmailVerifySmtp: {
     host: '',
     port: 587,
@@ -40,12 +46,14 @@ function SettingSystemApp() {
   const toFormValues = (params: {
     registerEmailVerifyEnabled?: boolean;
     randomPicDefaultUserId?: string | number;
+    logRetentionDays?: number;
     registerEmailVerifySmtp?: SmtpAccountConfigItem;
   }): SystemConfigFormValues => {
     const smtp = params.registerEmailVerifySmtp;
     return {
       registerEmailVerifyEnabled: Boolean(params.registerEmailVerifyEnabled),
       randomPicDefaultUserId: String(params.randomPicDefaultUserId || ''),
+      logRetentionDays: Number(params.logRetentionDays) || DEFAULT_LOG_RETENTION_DAYS,
       registerEmailVerifySmtp: {
         host: smtp?.host || '',
         port: smtp?.port || 587,
@@ -72,6 +80,7 @@ function SettingSystemApp() {
           toFormValues({
             registerEmailVerifyEnabled: systemRes.data?.registerEmailVerifyEnabled,
             randomPicDefaultUserId: systemRes.data?.randomPicDefaultUserId,
+            logRetentionDays: systemRes.data?.logRetentionDays,
             registerEmailVerifySmtp: systemRes.data?.registerEmailVerifySmtp,
           })
         );
@@ -115,11 +124,22 @@ function SettingSystemApp() {
       }
     }
 
+    const logRetentionDays = Number(payload.logRetentionDays);
+    if (
+      !Number.isInteger(logRetentionDays) ||
+      logRetentionDays < MIN_LOG_RETENTION_DAYS ||
+      logRetentionDays > MAX_LOG_RETENTION_DAYS
+    ) {
+      Toast.error(t({ id: 'setting.system.logRetention.invalid', defaultMessage: '日志保留天数必须为 1-365 的整数' }));
+      return;
+    }
+
     try {
       setSaving(true);
       const nextData = {
         registerEmailVerifyEnabled: Boolean(payload.registerEmailVerifyEnabled),
         randomPicDefaultUserId: String(payload.randomPicDefaultUserId || ''),
+        logRetentionDays,
         registerEmailVerifySmtp: payload.registerEmailVerifyEnabled ? normalizedSmtp : undefined,
       };
       await updateSystemConfig(nextData);
@@ -127,6 +147,7 @@ function SettingSystemApp() {
       const savedValues = toFormValues({
         registerEmailVerifyEnabled: latest.data?.registerEmailVerifyEnabled,
         randomPicDefaultUserId: latest.data?.randomPicDefaultUserId,
+        logRetentionDays: latest.data?.logRetentionDays,
         registerEmailVerifySmtp: latest.data?.registerEmailVerifySmtp,
       });
       setInitialValues(savedValues);
@@ -167,6 +188,15 @@ function SettingSystemApp() {
               })}
               optionList={userOptions}
               showClear
+            />
+            <AppForm.InputNumber
+              field="logRetentionDays"
+              label={t({ id: 'setting.system.logRetention', defaultMessage: '日志最多保留天数' })}
+              min={MIN_LOG_RETENTION_DAYS}
+              max={MAX_LOG_RETENTION_DAYS}
+              step={1}
+              precision={0}
+              style={{ width: 200 }}
             />
             <AppForm.RadioGroup
               field="registerEmailVerifyEnabled"

@@ -1,6 +1,8 @@
 import { PATH } from './path';
 import fs from 'fs';
 import { log } from './logger';
+import { setLogRetentionProvider } from './log-maintenance';
+import { getLogRetentionDays } from '../modules/user/service/system-setting.service';
 import { ensureFormatConvertTaskSchema } from '../modules/format-convert/model/format-convert-task.model';
 
 const initApp = async () => {
@@ -21,6 +23,8 @@ const initApp = async () => {
       fs.mkdirSync(filePath, { recursive: true });
     }
   }
+
+  setLogRetentionProvider(() => getLogRetentionDays());
 
   await ensureFormatConvertTaskSchema();
 };

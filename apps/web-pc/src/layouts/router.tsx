@@ -1,6 +1,7 @@
 import { createBrowserRouter } from 'react-router';
 import {
   IconApps,
+  IconArticle,
   IconCloudStroked,
   IconComment,
   IconMailStroked,
@@ -9,6 +10,7 @@ import {
 } from '@douyinfe/semi-icons';
 import HomeApp from '@/apps/home';
 import SqliteAdminApp from '@/apps/sqlite-admin';
+import LogViewerApp from '@/apps/log-viewer';
 import ColorPickerApp from '@/apps/color-picker';
 import FormatterApp from '@/apps/formatter';
 import PicApp from '@/apps/pic';
@@ -79,6 +81,22 @@ export const router = createBrowserRouter([
             logo: (
               <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #020617 0%, #0369a1 100%)' }}>
                 <IconTabsStroked style={{ fontSize: 20 }} />
+              </div>
+            ),
+          },
+        }),
+      },
+      {
+        path: 'log-viewer',
+        Component: LogViewerApp,
+        handle: routeHandle({
+          requiresAuth: true,
+          appHeader: {
+            title: msg('route.logViewer.title', '运行日志'),
+            description: msg('route.logViewer.description', '管理员可查看普通日志与数据库日志，按级别过滤和搜索'),
+            logo: (
+              <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #1e293b 0%, #4f46e5 100%)' }}>
+                <IconArticle style={{ fontSize: 20 }} />
               </div>
             ),
           },

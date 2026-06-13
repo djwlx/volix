@@ -10,7 +10,8 @@ import {
   type FormatConvertSummary,
   type FormatConvertTaskItem,
 } from '@volix/types';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { formatTime } from '@volix/utils';
 import { useI18n } from '@/i18n';
 import { getHttpErrorMessage } from '@/utils/error';
 import { downloadFormatConvertResult } from '@/services/format-convert';
@@ -50,7 +51,7 @@ const errorBannerStyle = {
   border: '1px solid var(--semi-color-danger-light-active)',
   background: 'var(--semi-color-danger-light-default)',
 };
-const cardHeaderStyle = {
+const cardHeaderStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
@@ -370,7 +371,7 @@ export function TaskRecordList(props: TaskRecordListProps) {
             {
               title: t('formatConvert.record.updatedAt'),
               dataIndex: 'updatedAt',
-              render: (_text, record: FormatConvertTaskItem) => record.updatedAt || '-',
+              render: (_text, record: FormatConvertTaskItem) => formatTime(record.updatedAt),
             },
             {
               title: t('formatConvert.record.action'),

@@ -3,7 +3,7 @@ import type { ComponentProps, JSX } from 'react';
 
 type AppFormStatics = Pick<
   typeof Form,
-  'Input' | 'Select' | 'Slot' | 'Radio' | 'RadioGroup' | 'Checkbox' | 'CheckboxGroup' | 'TextArea'
+  'Input' | 'InputNumber' | 'Select' | 'Slot' | 'Radio' | 'RadioGroup' | 'Checkbox' | 'CheckboxGroup' | 'TextArea'
 > & {
   ArrayField: typeof ArrayField;
 };
@@ -20,6 +20,7 @@ const AppFormImpl = ({ labelAlign = 'left', ...restProps }: ComponentProps<typeo
 
 export const AppForm = Object.assign(AppFormImpl, {
   Input: Form.Input,
+  InputNumber: Form.InputNumber,
   Select: Form.Select,
   Slot: Form.Slot,
   Radio: Form.Radio,

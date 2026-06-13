@@ -10,6 +10,7 @@ import type {
 import sequelize from '../../../utils/sequelize';
 import { badRequest } from '../../shared/http-handler';
 import { t } from '../../../utils/i18n';
+import { log } from '../../../utils/logger';
 
 type SqliteTableInfoRow = {
   cid: number;
@@ -264,6 +265,8 @@ export const createSqliteAdminRow = async (rawTableName: string, payload: Create
 
   const row = await selectRowByWhere(tableName, 'rowid = ?', [id]);
 
+  log.warn('[sqlite-admin] 新增表记录', { table: tableName, columns: entries.map(([key]) => key) });
+
   return {
     table: tableName,
     row: row || undefined,
@@ -297,6 +300,12 @@ export const updateSqliteAdminRow = async (rawTableName: string, payload: Update
 
   const row = await selectRowByWhere(tableName, identitySpec.whereSql, identitySpec.replacements);
 
+  log.warn('[sqlite-admin] 更新表记录', {
+    table: tableName,
+    columns: entries.map(([key]) => key),
+    identity: identitySpec.replacements,
+  });
+
   return {
     table: tableName,
     row: row || undefined,
@@ -318,6 +327,8 @@ export const deleteSqliteAdminRow = async (rawTableName: string, payload: Delete
       type: QueryTypes.DELETE,
     }
   );
+
+  log.warn('[sqlite-admin] 删除表记录', { table: tableName, identity: identitySpec.replacements });
 
   return {
     table: tableName,

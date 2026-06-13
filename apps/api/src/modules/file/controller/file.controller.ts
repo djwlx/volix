@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { v4 as uuidV4 } from 'uuid';
 import { t } from '../../../utils/i18n';
+import { log } from '../../../utils/logger';
 import { PATH } from '../../../utils/path';
 import { badRequest } from '../../shared/http-handler';
 import { FileEntity } from '../model/file.model';
@@ -40,6 +41,8 @@ export const uploadFile: MyMiddleware = async ctx => {
   await fs.promises.mkdir(PATH.upload, { recursive: true });
   await moveUploadedFile(filepath, newPath);
 
+  log.info('文件上传成功', { uuid: fileUuid, name: safeOriginalName, size, mimeType: mimetype });
+
   return saveFile({
     extension: path.extname(safeOriginalName),
     name: safeOriginalName,
@@ -54,6 +57,7 @@ export const downloadFile: MyMiddleware = async ctx => {
   const { fileId } = ctx.params;
   const fileInfo = await getFile(fileId);
   if (!fileInfo) {
+    log.warn('文件下载失败：文件不存在', { fileId });
     badRequest(t({ id: 'file.notFound', defaultMessage: '文件不存在' }));
   }
 
