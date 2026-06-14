@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.1.16] - 2026-06-14
+
+### 中文
+#### Added
+- 新增 RSS 公共资源路径服务
+- 新增资源代理缓存路径服务
+- 新增密码工具和密钥管理工具
+- 新增加密存储工具
+#### Changed
+- 重构 RSS 存储资源服务，优化资源代理缓存逻辑
+- 优化 115 图片缓存格式，移除内存缓存
+- 更新配置服务，支持更多安全配置
+- 更新用户认证控制器，增强安全性
+- 更新 Dockerfile 和多个依赖版本
+#### Fixed
+- 修复若干安全漏洞
+
+### English
+#### Added
+- Added RSS public resource path service
+- Added resource proxy cache path service
+- Added password utility and secrets management utility
+- Added crypto store utility
+#### Changed
+- Refactored RSS storage resource service, optimized resource proxy cache logic
+- Optimized 115 picture cache format, removed memory cache
+- Updated config service to support more secure configuration
+- Updated user auth controller for enhanced security
+- Updated Dockerfile and multiple dependency versions
+#### Fixed
+- Fixed several security vulnerabilities
+
 ## [1.1.15] - 2026-06-14
 
 ### 中文
