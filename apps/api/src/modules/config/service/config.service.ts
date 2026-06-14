@@ -1,5 +1,6 @@
 import { log } from '../../../utils/logger';
 import { getRequestActingUserId } from '../../../utils/request-context';
+import { decryptSecret, encryptSecret } from '../../../utils/crypto-store';
 import { AppConfigEnum, ConfigType } from '../model/config.model';
 import {
   deleteSystemSettingsByKeys,
@@ -19,6 +20,20 @@ const USER_SCOPED_CONFIG_KEYS = new Set<string>([
 ]);
 
 const USER_SCOPED_CONFIG_PREFIXES = ['picture_115_'];
+
+// 落库前需加密、读取后需解密的敏感配置键
+const ENCRYPTED_CONFIG_KEYS = new Set<string>([AppConfigEnum.cookie_115]);
+
+const isEncryptedConfigKey = (key: string) => ENCRYPTED_CONFIG_KEYS.has(key);
+
+const decryptConfigMap = (result: Partial<Record<AppConfigEnum, string>>) => {
+  (Object.keys(result) as AppConfigEnum[]).forEach(key => {
+    if (isEncryptedConfigKey(String(key))) {
+      result[key] = decryptSecret(result[key] || '');
+    }
+  });
+  return result;
+};
 
 const isUserScopedConfigKey = (key: string) => {
   if (USER_SCOPED_CONFIG_KEYS.has(key)) {
@@ -165,7 +180,7 @@ export async function getConfig(key?: AppConfigEnum | AppConfigEnum[]) {
           result[settingKey as AppConfigEnum] = String(userSettingContext.settings[settingKey] || '');
         });
       }
-      return result;
+      return decryptConfigMap(result);
     }
 
     if (Array.isArray(key)) {
@@ -189,23 +204,23 @@ export async function getConfig(key?: AppConfigEnum | AppConfigEnum[]) {
           })
         );
       }
-      return result;
+      return decryptConfigMap(result);
     }
 
     const singleKey = String(key);
     if (isUserScopedConfigKey(singleKey)) {
-      return {
+      return decryptConfigMap({
         [singleKey]: await getUserScopedConfigValue(singleKey),
-      } as Partial<Record<AppConfigEnum, string>>;
+      } as Partial<Record<AppConfigEnum, string>>);
     }
 
     const row = await querySystemSettingByKey(singleKey);
     if (!row) {
       return {} as Partial<Record<AppConfigEnum, string>>;
     }
-    return {
+    return decryptConfigMap({
       [key]: String(row.dataValues.setting_value || ''),
-    } as Partial<Record<AppConfigEnum, string>>;
+    } as Partial<Record<AppConfigEnum, string>>);
   } catch (e) {
     log.error(e);
     return null;
@@ -215,8 +230,9 @@ export async function getConfig(key?: AppConfigEnum | AppConfigEnum[]) {
 export async function setConfig(key: AppConfigEnum, configContent: string) {
   try {
     const normalizedKey = String(key);
+    const storedContent = isEncryptedConfigKey(normalizedKey) ? encryptSecret(configContent) : configContent;
     if (isUserScopedConfigKey(normalizedKey)) {
-      await setUserScopedConfigValue(normalizedKey, configContent);
+      await setUserScopedConfigValue(normalizedKey, storedContent);
       const result: ConfigType = {
         config_name: key,
         config_content: configContent,
@@ -226,7 +242,7 @@ export async function setConfig(key: AppConfigEnum, configContent: string) {
 
     await upsertSystemSetting({
       setting_key: normalizedKey,
-      setting_value: configContent,
+      setting_value: storedContent,
     });
 
     const result: ConfigType = {

@@ -12,6 +12,7 @@ import type {
 import { t } from '../../../utils/i18n';
 import { log } from '../../../utils/logger';
 import jwt from '../../../utils/jwt';
+import { hashPassword, isHashedPassword, verifyPassword } from '../../../utils/password';
 import { badRequest, unauthorized } from '../../shared/http-handler';
 import {
   assertRegisterCodeCanSend,
@@ -62,17 +63,31 @@ export const loginUser: MyMiddleware = async ctx => {
     badRequest(t({ id: 'auth.validation.invalidEmail', defaultMessage: '邮箱格式错误' }));
   }
 
-  const findOne = await queryUser({
-    email,
-    password,
-  });
+  const findOne = await queryUser({ email });
   if (!findOne) {
     log.warn('用户登录失败：凭证错误', { email });
     badRequest(t({ id: 'auth.login.invalidCredentials', defaultMessage: '邮箱或密码错误' }));
   }
+
+  const storedPassword = findOne?.dataValues?.password;
+  const passwordMatches = await verifyPassword(password, storedPassword);
+  if (!passwordMatches) {
+    log.warn('用户登录失败：凭证错误', { email });
+    badRequest(t({ id: 'auth.login.invalidCredentials', defaultMessage: '邮箱或密码错误' }));
+  }
+
   const userId = findOne?.dataValues?.id;
   if (userId === undefined || userId === null) {
     badRequest(t({ id: 'auth.user.invalid', defaultMessage: '用户信息异常' }));
+  }
+
+  // 历史明文密码在校验通过后自动升级为哈希存储
+  if (!isHashedPassword(storedPassword)) {
+    try {
+      await updateUser(userId as string | number, { password: await hashPassword(password) });
+    } catch (e) {
+      log.warn('密码哈希升级失败', { userId, error: e });
+    }
   }
 
   log.info('用户登录成功', { userId, email });

@@ -6,6 +6,7 @@ import type {
   ServiceAccountConfigItem,
 } from '@volix/types';
 import { badRequest } from '../../shared/http-handler';
+import { decryptSecret, encryptSecret } from '../../../utils/crypto-store';
 import { queryUser, updateUser } from './user.service';
 
 const EMAIL_REGEXP = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -137,7 +138,7 @@ const parseAccountList = (raw?: string): AccountListData => {
     return {};
   }
   try {
-    const parsed = JSON.parse(raw) as AccountListData;
+    const parsed = JSON.parse(decryptSecret(raw)) as AccountListData;
     if (!parsed || typeof parsed !== 'object') {
       return {};
     }
@@ -215,7 +216,7 @@ export async function updateUserAccountConfig(
   const accountList = parseAccountList(user?.dataValues.account_list);
   accountList[platform] = normalized;
   await updateUser(userId, {
-    account_list: JSON.stringify(accountList),
+    account_list: encryptSecret(JSON.stringify(accountList)),
   });
 
   return normalized;

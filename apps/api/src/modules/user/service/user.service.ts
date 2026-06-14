@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { UserModel } from '../model/user.model';
 import { SystemSettingModel } from '../model/system-setting.model';
 import { CreateUserParams, SystemSettingEntity, UserEntity } from '../types/user.types';
+import { hashPassword } from '../../../utils/password';
 
 export const buildUserDirKey = (seed?: string) => {
   const normalizedSeed = String(seed || '').trim();
@@ -18,8 +19,10 @@ export const queryUser = async (param: WhereOptions<UserEntity>) => {
 };
 
 export const addUser = async (param: CreateUserParams) => {
+  const password = param.password ? await hashPassword(param.password) : param.password;
   return UserModel.create({
     ...param,
+    password,
     dir_key: param.dir_key || buildUserDirKey(),
   });
 };

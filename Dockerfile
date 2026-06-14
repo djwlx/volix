@@ -5,6 +5,10 @@ WORKDIR /app
 # 时区，可在运行容器时通过 -e TZ=Region/City 覆盖
 ENV TZ=Asia/Shanghai
 
+# 限制 glibc malloc arena 与 libuv 线程池，缓解 sharp/libvips 原生内存碎片
+ENV MALLOC_ARENA_MAX=2
+ENV UV_THREADPOOL_SIZE=4
+
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ffmpeg tzdata \
   && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \

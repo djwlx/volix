@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
-
-const key = 'DJWL';
+import config from '../../config/index';
+import { getJwtSecret } from './secrets';
 
 interface JwtData {
   id: string | number;
@@ -8,10 +8,10 @@ interface JwtData {
 
 class JWT {
   static setToken(data: JwtData) {
-    return jwt.sign(data, key, {});
+    return jwt.sign(data, getJwtSecret(), { expiresIn: config.jwtExpiresIn } as jwt.SignOptions);
   }
   static getData(token: string): JwtData {
-    const data = jwt.verify(token, key);
+    const data = jwt.verify(token, getJwtSecret());
     if (typeof data === 'string' || !data || !('id' in data)) {
       throw new Error('无效的token');
     }
