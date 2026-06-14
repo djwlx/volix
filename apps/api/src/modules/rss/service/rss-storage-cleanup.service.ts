@@ -12,7 +12,7 @@ import {
   clearRssItemHtmlFilesByRoute,
   clearRssItemHtmlFilesByUser,
 } from './rss-feed-item-html-file.service';
-import { getRssFeedRootDirByUserId, getRssTaskRootDirByUserId } from './rss-storage-path.service';
+import { getRssResourceProxyCacheDirByUserId, getRssTaskRootDirByUserId } from './rss-storage-path.service';
 import { countUserRssFeedItemsByRoute, trimUserRssFeedItemsByRoute } from './rss-feed-retention.service';
 
 interface PendingFeedTaskMeta {
@@ -139,7 +139,7 @@ export const clearRssStorageInternal = async (userId: string, payload?: ClearRss
 
   const scope = String(payload?.scope || 'all');
   if (scope === 'resource-cache' || scope === 'all') {
-    await clearDirContents(getRssFeedRootDirByUserId(normalizedUserId));
+    await clearDirContents(getRssResourceProxyCacheDirByUserId(normalizedUserId));
   }
   if (scope === 'history' || scope === 'all') {
     const inputRoutes = normalizeRouteListFromPayload(payload);

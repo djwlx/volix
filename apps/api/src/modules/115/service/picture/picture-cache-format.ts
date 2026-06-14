@@ -133,6 +133,30 @@ const buildWebpCacheBySource = async (
   return buildJob;
 };
 
+export const getFreshWebpCacheIfExists = async (
+  pc: string,
+  options: PicCacheFormatOptions
+): Promise<FormattedLocalPicCache | undefined> => {
+  const normalizedPc = String(pc || '').trim();
+  if (!normalizedPc) {
+    return undefined;
+  }
+  const webpPath = getWebpCachePathByPc(normalizedPc, options);
+  try {
+    const stat = await fs.promises.stat(webpPath);
+    if (!stat.isFile() || stat.size <= 0) {
+      return undefined;
+    }
+    return {
+      filePath: webpPath,
+      fileName: path.basename(webpPath),
+      mimeType: 'image/webp',
+    };
+  } catch {
+    return undefined;
+  }
+};
+
 export const resolvePicCacheByFormat = async (params: {
   format: PicCacheFormat;
   source: LocalPicCacheSource;

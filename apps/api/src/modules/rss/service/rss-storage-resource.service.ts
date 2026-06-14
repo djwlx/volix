@@ -1,8 +1,4 @@
-import crypto from 'crypto';
-import mime from 'mime-types';
-import path from 'path';
-import request from '../../../utils/request';
-import { buildRssItemHtmlFileKey, writeRssItemResourceFile } from './rss-feed-item-html-file.service';
+import { buildResourceProxyUrl, cacheRemoteResource } from '../../shared/service/resource-proxy-cache.service';
 import type { RssFeedItem } from '../types/rss.types';
 
 const ATTRIBUTE_QUOTE_PATTERN = `(?:"|'|&quot;|&#34;|&apos;|&#39;)`;
@@ -99,108 +95,32 @@ const mapWithConcurrency = async <T, R>(list: T[], concurrency: number, worker: 
 
 export const mapWithConcurrencyLimited = mapWithConcurrency;
 
-const parseProxyRequestConfig = (proxyUrl: string) => {
-  const raw = String(proxyUrl || '').trim();
-  if (!raw) {
-    return undefined;
-  }
-  try {
-    const parsed = new URL(raw);
-    const protocol = parsed.protocol.replace(':', '');
-    const port = Number(parsed.port || (protocol === 'https' ? 443 : 80));
-    if (!protocol || !parsed.hostname || !Number.isFinite(port)) {
-      return undefined;
-    }
-    const username = decodeURIComponent(parsed.username || '');
-    const password = decodeURIComponent(parsed.password || '');
-    return {
-      protocol,
-      host: parsed.hostname,
-      port,
-      auth: username ? { username, password } : undefined,
-    };
-  } catch {
-    return undefined;
-  }
-};
-
-const requestRemoteResource = async (params: { sourceUrl: string; requestProxyUrl: string }) => {
-  const requestConfig: any = {
-    responseType: 'arraybuffer',
-    timeout: 12000,
-    maxContentLength: 50 * 1024 * 1024,
-    headers: {
-      Accept: '*/*',
-    },
-    muteErrorLog: true,
-  };
-
-  const proxyConfig = parseProxyRequestConfig(params.requestProxyUrl);
-  const requestDirectly = () => request.get<ArrayBuffer | Buffer>(params.sourceUrl, requestConfig);
-
-  if (!proxyConfig) {
-    return requestDirectly();
-  }
-
-  try {
-    return await requestDirectly();
-  } catch {
-    return request.get<ArrayBuffer | Buffer>(params.sourceUrl, {
-      ...requestConfig,
-      proxy: proxyConfig,
-    });
-  }
-};
-
-const resolveResourceFileName = (sourceUrl: string, contentType: string) => {
-  let extFromUrl = '';
-  try {
-    const parsedExt = path.extname(new URL(sourceUrl).pathname || '').toLowerCase();
-    extFromUrl = /^[.][a-z0-9]{1,8}$/i.test(parsedExt) ? parsedExt : '';
-  } catch {
-    extFromUrl = '';
-  }
-  const extFromMime = extFromUrl ? '' : `.${String(mime.extension(contentType) || 'bin')}`;
-  const ext = extFromUrl || extFromMime;
-  return `${crypto.createHash('sha256').update(sourceUrl).digest('hex').slice(0, 20)}${ext}`;
-};
-
-const cacheRssItemResourceFileWithRetry = async (params: {
+const cacheRssItemResourceWithRetry = async (params: {
   userId: string;
   sourceUrl: string;
   requestProxyUrl: string;
-  fileKey: string;
+  cacheSizeMb: number;
 }) => {
   let attempt = 0;
   while (attempt < RETRY_LIMIT) {
     attempt += 1;
     try {
-      const response = await requestRemoteResource({
-        sourceUrl: params.sourceUrl,
-        requestProxyUrl: params.requestProxyUrl,
-      });
-      const rawData = response.data;
-      const buffer = Buffer.isBuffer(rawData) ? rawData : Buffer.from(rawData);
-      if (!buffer.length) {
-        throw new Error('empty-resource');
-      }
-      const contentType = String(response.headers['content-type'] || 'application/octet-stream')
-        .split(';')[0]
-        .trim();
-      const fileName = resolveResourceFileName(params.sourceUrl, contentType);
-      const publicUrl = await writeRssItemResourceFile({
+      const cached = await cacheRemoteResource({
+        scope: 'rss',
         userId: params.userId,
-        key: params.fileKey,
-        fileName,
-        content: buffer,
+        sourceUrl: params.sourceUrl,
+        maxCacheSizeMb: params.cacheSizeMb,
+        requestProxyUrl: params.requestProxyUrl,
+        requestTimeoutMs: 12000,
+        silentOnError: true,
       });
-      if (!publicUrl) {
-        throw new Error('resource-write-failed');
+      const replacement = buildResourceProxyUrl({ scope: 'rss', cacheKey: cached.cacheKey });
+      if (replacement) {
+        return {
+          ok: true,
+          replacement,
+        } as const;
       }
-      return {
-        ok: true,
-        replacement: publicUrl,
-      } as const;
     } catch {
       // retry
     }
@@ -213,7 +133,7 @@ const cacheRssItemResourceFileWithRetry = async (params: {
 
 export const rewriteRssItemResourcesStrict = async (
   item: RssFeedItem,
-  params: { requestProxyUrl: string; userId: string; route: string; itemKey: string }
+  params: { requestProxyUrl: string; userId: string; cacheSizeMb: number }
 ) => {
   const urls = collectHtmlResourceUrls(item.descriptionHtml, item.imageUrls);
   if (urls.length === 0) {
@@ -223,18 +143,12 @@ export const rewriteRssItemResourcesStrict = async (
     };
   }
 
-  const fileKey = buildRssItemHtmlFileKey({
-    userId: params.userId,
-    route: params.route,
-    itemKey: params.itemKey,
-  });
-
   const mappings = await mapWithConcurrency(urls, 6, async sourceUrl => {
-    const cached = await cacheRssItemResourceFileWithRetry({
+    const cached = await cacheRssItemResourceWithRetry({
       userId: params.userId,
       sourceUrl,
       requestProxyUrl: params.requestProxyUrl,
-      fileKey,
+      cacheSizeMb: params.cacheSizeMb,
     });
     return {
       sourceUrl,

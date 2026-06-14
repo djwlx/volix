@@ -11,10 +11,6 @@ import {
   updateUserRssSetting,
 } from '../service/rss.service';
 import fs from 'fs';
-import mime from 'mime-types';
-import { badRequest } from '../../shared/http-handler';
-import { t } from '../../../utils/i18n';
-import { readRssItemResourceFile } from '../service/rss-feed-item-html-file.service';
 import type {
   ClearRssStoragePayload,
   CreateUserRssSubscriptionPayload,
@@ -72,25 +68,4 @@ export const getRssCachedResource: MyMiddleware = async ctx => {
   ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(cached.fileName || 'resource.bin')}"`);
   ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
   ctx.body = fs.createReadStream(cached.filePath);
-};
-
-export const getRssItemResource: MyMiddleware = async ctx => {
-  const subscriptionKey = String(ctx.params?.subscriptionKey || '');
-  const itemKey = String(ctx.params?.itemKey || '');
-  const fileName = String(ctx.params?.fileName || '');
-  const resource = await readRssItemResourceFile({
-    userId: String(ctx.state.userInfo?.id || ''),
-    subscriptionKey,
-    itemKey,
-    fileName,
-  });
-  if (!resource) {
-    badRequest(t('rssApi.resourceNotFound'));
-    return;
-  }
-  const contentType = String(mime.lookup(resource.fileName) || 'application/octet-stream');
-  ctx.set('Content-Type', contentType);
-  ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(resource.fileName || 'resource.bin')}"`);
-  ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
-  ctx.body = fs.createReadStream(resource.filePath);
 };

@@ -7,11 +7,8 @@ import {
   toRssRouteSegment,
   toRssUserSegment,
 } from './rss-storage-path.service';
-import { resolvePublicRssItemResourcePath } from './rss-public-resource-path.service';
 
 const KEY_SEGMENT_REGEX = /^[a-f0-9]{16,64}$/i;
-const SUBSCRIPTION_SEGMENT_REGEX = /^[a-f0-9]{16}-[a-f0-9]{16}$/i;
-const RESOURCE_FILE_NAME_REGEX = /^[a-z0-9][a-z0-9._-]{0,127}$/i;
 
 const normalizeText = (value: string) => String(value || '').trim();
 
@@ -126,80 +123,4 @@ export const clearRssItemFilesByRouteItemKeys = async (params: {
 
 export const clearRssItemHtmlFilesByUser = async (userId: string) => {
   await fs.promises.rm(getRssFeedRootDirByUserId(userId), { recursive: true, force: true }).catch(() => undefined);
-};
-
-const sanitizeResourceFileName = (fileName: string) => {
-  const normalized = path.basename(normalizeText(fileName).toLowerCase()).replace(/[^a-z0-9._-]/g, '-');
-  if (!RESOURCE_FILE_NAME_REGEX.test(normalized)) {
-    return '';
-  }
-  return normalized;
-};
-
-const parseSubscriptionAndItemFromKey = (key: string) => {
-  const [userSegRaw, routeSegRaw, itemSegRaw] = String(key || '').split('/');
-  const userSeg = sanitizeKeyPart(userSegRaw);
-  const routeSeg = sanitizeKeyPart(routeSegRaw);
-  const itemSeg = sanitizeKeyPart(itemSegRaw);
-  if (!userSeg || !routeSeg || !itemSeg) {
-    return null;
-  }
-  return {
-    subscriptionKey: toSubscriptionSegment(userSeg, routeSeg),
-    itemKey: itemSeg,
-  };
-};
-
-export const buildRssItemResourcePublicUrl = (params: { key: string; fileName: string }) => {
-  const parsed = parseSubscriptionAndItemFromKey(params.key);
-  const normalizedFileName = sanitizeResourceFileName(params.fileName);
-  if (!parsed || !normalizedFileName) {
-    return '';
-  }
-  return `/api/rss/resource/${encodeURIComponent(parsed.subscriptionKey)}/${encodeURIComponent(
-    parsed.itemKey
-  )}/${encodeURIComponent(normalizedFileName)}`;
-};
-
-export const writeRssItemResourceFile = async (params: {
-  userId: string;
-  key: string;
-  fileName: string;
-  content: Buffer;
-}) => {
-  const itemDirPath = toItemDirPathByUserId(params.userId, params.key);
-  const normalizedFileName = sanitizeResourceFileName(params.fileName);
-  if (!itemDirPath || !normalizedFileName || !Buffer.isBuffer(params.content) || params.content.length === 0) {
-    return '';
-  }
-  const filePath = path.join(itemDirPath, normalizedFileName);
-  await fs.promises.mkdir(itemDirPath, { recursive: true });
-  await fs.promises.writeFile(filePath, params.content);
-  return buildRssItemResourcePublicUrl({
-    key: params.key,
-    fileName: normalizedFileName,
-  });
-};
-
-export const readRssItemResourceFile = async (params: {
-  userId: string;
-  subscriptionKey: string;
-  itemKey: string;
-  fileName: string;
-}) => {
-  const subscriptionKey = normalizeText(params.subscriptionKey).toLowerCase();
-  const itemKey = sanitizeKeyPart(params.itemKey);
-  const fileName = sanitizeResourceFileName(params.fileName);
-  if (!SUBSCRIPTION_SEGMENT_REGEX.test(subscriptionKey) || !itemKey || !fileName) {
-    return null;
-  }
-  const filePath = path.join(getRssFeedRootDirByUserId(params.userId), subscriptionKey, itemKey, fileName);
-  const stat = await fs.promises.stat(filePath).catch(() => null);
-  if (!stat?.isFile()) {
-    return resolvePublicRssItemResourcePath({ subscriptionKey, itemKey, fileName });
-  }
-  return {
-    filePath,
-    fileName,
-  };
 };

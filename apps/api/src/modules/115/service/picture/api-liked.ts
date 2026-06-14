@@ -31,6 +31,7 @@ import {
 } from './picture-cache-fs-folder';
 import {
   clearWebpCacheByPc,
+  getFreshWebpCacheIfExists,
   normalizePicCacheFormat,
   normalizePicCacheFormatOptions,
   type PicCacheFormatOptions,
@@ -244,58 +245,58 @@ export async function get115PicCacheFileByPcData(
     quality: options?.quality,
   });
 
-  const localFsCache = await getLocalPicCacheByPcFromFs(normalizedPc);
-  if (localFsCache) {
+  // 1) webp 命中快路径：直接 stat 确定性 webp 路径，命中即返回（零目录扫描、零 sharp）
+  if (cacheFormat === 'webp') {
+    const freshWebp = await getFreshWebpCacheIfExists(normalizedPc, formatOptions);
+    if (freshWebp) {
+      return {
+        kind: 'local' as const,
+        pc: normalizedPc,
+        filePath: freshWebp.filePath,
+        fileName: freshWebp.fileName,
+        mimeType: freshWebp.mimeType,
+        url: getPicCachePublicUrl(normalizedPc),
+      };
+    }
+  }
+
+  // 2) 原图定位优先走 DB（O(1)），仅在 DB 未命中时回退到目录扫描兜底
+  const file = await getFile115ByPc(normalizedPc);
+  const normalizedUserAgent = userAgent || DEFAULT_115_DOWNLOAD_UA;
+  const dbCache = file
+    ? await getLocalPicCacheByFile({
+        pc: file.pc,
+        localCacheFileName: file.localCacheFileName,
+      })
+    : undefined;
+  const localCache = dbCache || (await getLocalPicCacheByPcFromFs(normalizedPc));
+
+  if (localCache) {
     const formattedCache = await resolvePicCacheByFormat({
       format: cacheFormat,
       options: formatOptions,
       source: {
-        pc: localFsCache.pc,
-        filePath: localFsCache.filePath,
-        fileName: localFsCache.fileName,
-        mimeType: localFsCache.mimeType,
+        pc: localCache.pc,
+        filePath: localCache.filePath,
+        fileName: localCache.fileName,
+        mimeType: localCache.mimeType,
       },
     });
     return {
       kind: 'local' as const,
-      pc: localFsCache.pc,
+      pc: localCache.pc,
       filePath: formattedCache.filePath,
       fileName: formattedCache.fileName,
       mimeType: formattedCache.mimeType,
-      url: localFsCache.url,
+      url: localCache.url,
     };
   }
 
-  const file = await getFile115ByPc(normalizedPc);
+  // 3) 完全未缓存：异步预热本地缓存，本次先回源
   if (!file) {
     badRequest(t('pic115Api.currentPicNotFound'));
   }
   const safeFile = file as Cloud115DbFileItem;
-  const normalizedUserAgent = userAgent || DEFAULT_115_DOWNLOAD_UA;
-
-  const cache = await getLocalPicCacheByFile({
-    pc: safeFile.pc,
-    localCacheFileName: safeFile.localCacheFileName,
-  });
-  if (cache) {
-    const formattedCache = await resolvePicCacheByFormat({
-      format: cacheFormat,
-      options: formatOptions,
-      source: {
-        pc: cache.pc,
-        filePath: cache.filePath,
-        fileName: cache.fileName,
-        mimeType: cache.mimeType,
-      },
-    });
-    return {
-      kind: 'local' as const,
-      ...cache,
-      filePath: formattedCache.filePath,
-      fileName: formattedCache.fileName,
-      mimeType: formattedCache.mimeType,
-    };
-  }
 
   if (cacheFormat === 'webp') {
     prewarmWebpCacheByFileAsync(safeFile, normalizedUserAgent, formatOptions);

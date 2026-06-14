@@ -4,7 +4,6 @@ import { http } from '../shared/http-handler';
 import {
   addCurrentUserRssSubscription,
   clearCurrentUserRssStorage,
-  getRssItemResource,
   getRssCachedResource,
   getCurrentUserRssSetting,
   getCurrentUserRssSubscriptions,
@@ -20,9 +19,8 @@ const router = new Router({
 });
 
 router
-  .get('/resource-cache/:cacheKey', http(getRssCachedResource))
-  .get('/resource/:subscriptionKey/:itemKey/:fileName', http(getRssItemResource))
   .use(authenticate())
+  .get('/resource-cache/:cacheKey', http(getRssCachedResource))
   .get('/feed', http(getRssFeed))
   .get('/setting', http(getCurrentUserRssSetting))
   .put('/setting', http(updateCurrentUserRssSetting))
