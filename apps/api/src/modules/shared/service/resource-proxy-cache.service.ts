@@ -3,8 +3,17 @@ import fs from 'fs';
 import mime from 'mime-types';
 import path from 'path';
 import request from '../../../utils/request';
-import { PATH } from '../../../utils/path';
-import { getRssResourceProxyCacheDirByUserId } from '../../rss/service/rss-storage-path.service';
+import {
+  buildDataFileName,
+  getDataPathCandidates,
+  getDataPathCandidatesByDir,
+  getDataPathByFileName,
+  getMetaPath,
+  getScopeDir,
+  getScopeDirList,
+  sanitizeDataFileName,
+  type ResourceProxyUserScopedParams,
+} from './resource-proxy-cache-path.service';
 
 export type ResourceProxyScope = 'rss';
 
@@ -24,10 +33,6 @@ export type ResourceProxyCacheRecord = {
   contentType: string;
   sizeBytes: number;
   updatedAtMs: number;
-};
-
-type ResourceProxyUserScopedParams = {
-  userId?: string;
 };
 
 const normalizeCacheKey = (value: string) => {
@@ -66,84 +71,23 @@ const clampCacheSizeMb = (value: number) => {
   return Math.min(MAX_CACHE_SIZE_MB, Math.max(MIN_CACHE_SIZE_MB, Math.round(raw)));
 };
 
-const getScopeDir = (scope: ResourceProxyScope, params?: ResourceProxyUserScopedParams) => {
-  if (scope === 'rss' && params?.userId) {
-    return getRssResourceProxyCacheDirByUserId(params.userId);
-  }
-  return path.join(PATH.cache, 'rss-resource-proxy');
-};
-
-const getLegacyDataPath = (scope: ResourceProxyScope, cacheKey: string, params?: ResourceProxyUserScopedParams) => {
-  return path.join(getScopeDir(scope, params), `${cacheKey}.bin`);
-};
-
-const getDataPathByFileName = (
-  scope: ResourceProxyScope,
-  dataFileName: string,
-  params?: ResourceProxyUserScopedParams
-) => {
-  return path.join(getScopeDir(scope, params), dataFileName);
-};
-
-const getMetaPath = (scope: ResourceProxyScope, cacheKey: string, params?: ResourceProxyUserScopedParams) => {
-  return path.join(getScopeDir(scope, params), `${cacheKey}.json`);
-};
-
-const sanitizeDataFileName = (value: string) => {
-  const normalized = path.basename(String(value || '').trim()).replace(/[\\/:*?"<>|]/g, '_');
-  if (!normalized) {
-    return '';
-  }
-  if (normalized.includes('..')) {
-    return '';
-  }
-  return normalized;
-};
-
-const buildDataFileName = (cacheKey: string, fileName: string) => {
-  const safeFileName = sanitizeDataFileName(fileName);
-  if (!safeFileName) {
-    return `${cacheKey}.bin`;
-  }
-  return `${cacheKey}-${safeFileName}`;
-};
-
-const getDataPathCandidates = (
-  scope: ResourceProxyScope,
-  cacheKey: string,
-  record?: ResourceProxyCacheRecord,
-  params?: ResourceProxyUserScopedParams
-) => {
-  const fileNameCandidates = new Set<string>();
-  const dataFileName = sanitizeDataFileName(record?.dataFileName || '');
-  if (dataFileName) {
-    fileNameCandidates.add(dataFileName);
-  }
-
-  const fallbackByFileName = buildDataFileName(cacheKey, String(record?.fileName || ''));
-  if (fallbackByFileName) {
-    fileNameCandidates.add(fallbackByFileName);
-  }
-
-  const candidatePaths = Array.from(fileNameCandidates).map(name => getDataPathByFileName(scope, name, params));
-  candidatePaths.push(getLegacyDataPath(scope, cacheKey, params));
-  return Array.from(new Set(candidatePaths));
-};
-
 const resolveCachedDataPath = async (
   scope: ResourceProxyScope,
   cacheKey: string,
   record?: ResourceProxyCacheRecord,
   params?: ResourceProxyUserScopedParams
 ): Promise<{ filePath: string; stat: fs.Stats } | null> => {
-  const candidates = getDataPathCandidates(scope, cacheKey, record, params);
-  for (const candidate of candidates) {
-    const stat = await fs.promises.stat(candidate).catch(() => null);
-    if (stat?.isFile()) {
-      return {
-        filePath: candidate,
-        stat,
-      };
+  const dirList = await getScopeDirList(scope, params);
+  for (const dir of dirList) {
+    const candidates = getDataPathCandidatesByDir(dir, cacheKey, record);
+    for (const candidate of candidates) {
+      const stat = await fs.promises.stat(candidate).catch(() => null);
+      if (stat?.isFile()) {
+        return {
+          filePath: candidate,
+          stat,
+        };
+      }
     }
   }
   return null;
@@ -168,7 +112,22 @@ const readCacheRecord = async (
   cacheKey: string,
   params?: ResourceProxyUserScopedParams
 ): Promise<ResourceProxyCacheRecord | null> => {
-  const metaPath = getMetaPath(scope, cacheKey, params);
+  const dirList = await getScopeDirList(scope, params);
+  let metaPath = getMetaPath(scope, cacheKey, params);
+  if (!params?.userId && scope === 'rss') {
+    metaPath = '';
+    for (const dir of dirList) {
+      const candidate = path.join(dir, `${cacheKey}.json`);
+      const stat = await fs.promises.stat(candidate).catch(() => null);
+      if (stat?.isFile()) {
+        metaPath = candidate;
+        break;
+      }
+    }
+    if (!metaPath) {
+      return null;
+    }
+  }
 
   try {
     const raw = await fs.promises.readFile(metaPath, 'utf-8');

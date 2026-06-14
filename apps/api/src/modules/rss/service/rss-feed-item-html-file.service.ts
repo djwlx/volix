@@ -7,6 +7,7 @@ import {
   toRssRouteSegment,
   toRssUserSegment,
 } from './rss-storage-path.service';
+import { resolvePublicRssItemResourcePath } from './rss-public-resource-path.service';
 
 const KEY_SEGMENT_REGEX = /^[a-f0-9]{16,64}$/i;
 const SUBSCRIPTION_SEGMENT_REGEX = /^[a-f0-9]{16}-[a-f0-9]{16}$/i;
@@ -195,7 +196,7 @@ export const readRssItemResourceFile = async (params: {
   const filePath = path.join(getRssFeedRootDirByUserId(params.userId), subscriptionKey, itemKey, fileName);
   const stat = await fs.promises.stat(filePath).catch(() => null);
   if (!stat?.isFile()) {
-    return null;
+    return resolvePublicRssItemResourcePath({ subscriptionKey, itemKey, fileName });
   }
   return {
     filePath,
