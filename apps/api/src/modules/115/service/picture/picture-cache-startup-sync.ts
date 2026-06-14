@@ -1,9 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { Op } from 'sequelize';
-import { PATH } from '../../../../utils/path';
 import { log } from '../../../../utils/logger';
 import { File115Model } from '../../model/file115.model';
+import { UserModel } from '../../../user/model/user.model';
+import { get115OriginalCacheDir } from './picture-cache-path';
 import { cleanupOrphanUnifiedCacheFiles } from './picture-cache-unified';
 
 type FileCacheRow = {
@@ -12,12 +13,12 @@ type FileCacheRow = {
   localCacheFileName: string | null;
 };
 
-const normalizeScopeUserId = (userId: string) => {
-  return String(userId || 'public').replace(/[^\w.-]/g, '_') || 'public';
+type UserDirRow = {
+  id: string | null;
 };
 
 const getUnifiedCacheDirByUserId = (userId: string) => {
-  return path.join(PATH.cache, '115-file', normalizeScopeUserId(userId));
+  return get115OriginalCacheDir(userId);
 };
 
 export const sync115FileCacheDbWithFsOnStartup = async () => {
@@ -32,8 +33,12 @@ export const sync115FileCacheDbWithFsOnStartup = async () => {
       },
       raw: true,
     })) as unknown as FileCacheRow[];
+    const users = (await UserModel.findAll({
+      attributes: ['id'],
+      raw: true,
+    })) as unknown as UserDirRow[];
 
-    if (rows.length === 0) {
+    if (rows.length === 0 && users.length === 0) {
       return;
     }
 
@@ -88,21 +93,13 @@ export const sync115FileCacheDbWithFsOnStartup = async () => {
       })
     );
 
-    const userScopeCacheRoot = path.join(PATH.cache, '115-file');
-    try {
-      const scopeEntries = await fs.promises.readdir(userScopeCacheRoot, { withFileTypes: true });
-      scopeEntries
-        .filter(item => item.isDirectory())
-        .forEach(item => {
-          const userId = String(item.name || '').trim();
-          if (!userId || validLocalCacheFileNameSetByUser.has(userId)) {
-            return;
-          }
-          validLocalCacheFileNameSetByUser.set(userId, new Set<string>());
-        });
-    } catch {
-      // ignore
-    }
+    users.forEach(row => {
+      const userId = String(row.id || '').trim();
+      if (!userId || validLocalCacheFileNameSetByUser.has(userId)) {
+        return;
+      }
+      validLocalCacheFileNameSetByUser.set(userId, new Set<string>());
+    });
 
     await Promise.all(
       Array.from(validLocalCacheFileNameSetByUser.entries()).map(async ([userId, fileNameSet]) => {

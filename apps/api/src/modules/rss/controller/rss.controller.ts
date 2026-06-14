@@ -67,7 +67,7 @@ export const clearCurrentUserRssStorage: MyMiddleware = async ctx => {
 
 export const getRssCachedResource: MyMiddleware = async ctx => {
   const cacheKey = String(ctx.params?.cacheKey || '');
-  const cached = await getRssCachedResourceData(cacheKey);
+  const cached = await getRssCachedResourceData(ctx.state.userInfo?.id, cacheKey);
   ctx.set('Content-Type', cached.contentType || 'application/octet-stream');
   ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(cached.fileName || 'resource.bin')}"`);
   ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
@@ -79,6 +79,7 @@ export const getRssItemResource: MyMiddleware = async ctx => {
   const itemKey = String(ctx.params?.itemKey || '');
   const fileName = String(ctx.params?.fileName || '');
   const resource = await readRssItemResourceFile({
+    userId: String(ctx.state.userInfo?.id || ''),
     subscriptionKey,
     itemKey,
     fileName,

@@ -28,6 +28,7 @@ import {
   normalizeFormatConvertImageOption,
 } from '../service/format-convert-image-option.service';
 import { probeImageFile } from '../service/format-convert-image.service';
+import { getFormatConvertManualSourcePath } from '../service/format-convert-workspace.service';
 import {
   createFormatConvertTask,
   deleteFormatConvertTaskByIdAndUserId,
@@ -43,6 +44,7 @@ import { ensureFormatConvertQueueRunning } from '../service/format-convert-queue
 import { listFormatConvertOpenlistFs } from '../service/format-convert-openlist.service';
 import { probeMediaFile } from '../service/format-convert-ffmpeg.service';
 import type { FormatConvertTaskItem } from '../types/format-convert.types';
+import { resolveUserDirKeyOrThrow } from '../../user/service/user-dir.service';
 
 const ensureLoginUserId = (ctx: any) => {
   const userId = ctx.state.userInfo?.id;
@@ -91,11 +93,6 @@ const toPublicFormatConvertTask = (task: FormatConvertTaskItem | null | undefine
   return publicTask;
 };
 
-const buildStoredUploadPath = (originalFilename: string) => {
-  const safeOriginalName = path.basename(originalFilename || 'upload.bin');
-  return path.join(PATH.uploadFormatConvert, 'sources', `${uuidV4()}-${safeOriginalName}`);
-};
-
 const sendDownloadFile = async (ctx: any, filePath: string, fallbackMessageId: string, fallbackMessage: string) => {
   const resolvedPath = String(filePath || '').trim();
   if (!resolvedPath) {
@@ -120,6 +117,7 @@ const sendDownloadFile = async (ctx: any, filePath: string, fallbackMessageId: s
 
 export const createLocalFormatConvertTask: MyMiddleware = async ctx => {
   const userId = ensureLoginUserId(ctx);
+  const userDirKey = await resolveUserDirKeyOrThrow(userId);
   const file = ctx.request.files?.file as UploadedFileFormData | undefined;
   if (!file) {
     badRequest(t({ id: 'file.notFound', defaultMessage: '文件不存在' }));
@@ -128,7 +126,11 @@ export const createLocalFormatConvertTask: MyMiddleware = async ctx => {
   const payload = parseJsonField<Omit<CreateFormatConvertTaskRequest, 'mode' | 'source'>>(
     ctx.request.body?.payload || '{}'
   );
-  const storedUploadPath = buildStoredUploadPath(file?.originalFilename || 'upload.bin');
+  const storedUploadPath = getFormatConvertManualSourcePath(
+    userDirKey,
+    file?.originalFilename || 'upload.bin',
+    uuidV4()
+  );
   await fs.promises.mkdir(path.dirname(storedUploadPath), { recursive: true });
   await moveUploadedFile(String(file?.filepath || ''), storedUploadPath);
 

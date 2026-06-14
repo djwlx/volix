@@ -4,12 +4,9 @@ import mime from 'mime-types';
 import path from 'path';
 import request from '../../../utils/request';
 import { PATH } from '../../../utils/path';
+import { getRssResourceProxyCacheDirByUserId } from '../../rss/service/rss-storage-path.service';
 
 export type ResourceProxyScope = 'rss';
-
-const SCOPE_DIR_MAP: Record<ResourceProxyScope, string> = {
-  rss: 'rss-resource-proxy',
-};
 
 const SCOPE_PATH_MAP: Record<ResourceProxyScope, string> = {
   rss: '/api/rss/resource-cache',
@@ -27,6 +24,10 @@ export type ResourceProxyCacheRecord = {
   contentType: string;
   sizeBytes: number;
   updatedAtMs: number;
+};
+
+type ResourceProxyUserScopedParams = {
+  userId?: string;
 };
 
 const normalizeCacheKey = (value: string) => {
@@ -65,20 +66,27 @@ const clampCacheSizeMb = (value: number) => {
   return Math.min(MAX_CACHE_SIZE_MB, Math.max(MIN_CACHE_SIZE_MB, Math.round(raw)));
 };
 
-const getScopeDir = (scope: ResourceProxyScope) => {
-  return path.join(PATH.cache, SCOPE_DIR_MAP[scope]);
+const getScopeDir = (scope: ResourceProxyScope, params?: ResourceProxyUserScopedParams) => {
+  if (scope === 'rss' && params?.userId) {
+    return getRssResourceProxyCacheDirByUserId(params.userId);
+  }
+  return path.join(PATH.cache, 'rss-resource-proxy');
 };
 
-const getLegacyDataPath = (scope: ResourceProxyScope, cacheKey: string) => {
-  return path.join(getScopeDir(scope), `${cacheKey}.bin`);
+const getLegacyDataPath = (scope: ResourceProxyScope, cacheKey: string, params?: ResourceProxyUserScopedParams) => {
+  return path.join(getScopeDir(scope, params), `${cacheKey}.bin`);
 };
 
-const getDataPathByFileName = (scope: ResourceProxyScope, dataFileName: string) => {
-  return path.join(getScopeDir(scope), dataFileName);
+const getDataPathByFileName = (
+  scope: ResourceProxyScope,
+  dataFileName: string,
+  params?: ResourceProxyUserScopedParams
+) => {
+  return path.join(getScopeDir(scope, params), dataFileName);
 };
 
-const getMetaPath = (scope: ResourceProxyScope, cacheKey: string) => {
-  return path.join(getScopeDir(scope), `${cacheKey}.json`);
+const getMetaPath = (scope: ResourceProxyScope, cacheKey: string, params?: ResourceProxyUserScopedParams) => {
+  return path.join(getScopeDir(scope, params), `${cacheKey}.json`);
 };
 
 const sanitizeDataFileName = (value: string) => {
@@ -100,7 +108,12 @@ const buildDataFileName = (cacheKey: string, fileName: string) => {
   return `${cacheKey}-${safeFileName}`;
 };
 
-const getDataPathCandidates = (scope: ResourceProxyScope, cacheKey: string, record?: ResourceProxyCacheRecord) => {
+const getDataPathCandidates = (
+  scope: ResourceProxyScope,
+  cacheKey: string,
+  record?: ResourceProxyCacheRecord,
+  params?: ResourceProxyUserScopedParams
+) => {
   const fileNameCandidates = new Set<string>();
   const dataFileName = sanitizeDataFileName(record?.dataFileName || '');
   if (dataFileName) {
@@ -112,17 +125,18 @@ const getDataPathCandidates = (scope: ResourceProxyScope, cacheKey: string, reco
     fileNameCandidates.add(fallbackByFileName);
   }
 
-  const candidatePaths = Array.from(fileNameCandidates).map(name => getDataPathByFileName(scope, name));
-  candidatePaths.push(getLegacyDataPath(scope, cacheKey));
+  const candidatePaths = Array.from(fileNameCandidates).map(name => getDataPathByFileName(scope, name, params));
+  candidatePaths.push(getLegacyDataPath(scope, cacheKey, params));
   return Array.from(new Set(candidatePaths));
 };
 
 const resolveCachedDataPath = async (
   scope: ResourceProxyScope,
   cacheKey: string,
-  record?: ResourceProxyCacheRecord
+  record?: ResourceProxyCacheRecord,
+  params?: ResourceProxyUserScopedParams
 ): Promise<{ filePath: string; stat: fs.Stats } | null> => {
-  const candidates = getDataPathCandidates(scope, cacheKey, record);
+  const candidates = getDataPathCandidates(scope, cacheKey, record, params);
   for (const candidate of candidates) {
     const stat = await fs.promises.stat(candidate).catch(() => null);
     if (stat?.isFile()) {
@@ -138,21 +152,23 @@ const resolveCachedDataPath = async (
 const removeCachedDataAndMeta = async (
   scope: ResourceProxyScope,
   cacheKey: string,
-  record?: ResourceProxyCacheRecord
+  record?: ResourceProxyCacheRecord,
+  params?: ResourceProxyUserScopedParams
 ) => {
   await Promise.all(
-    getDataPathCandidates(scope, cacheKey, record).map(filePath =>
+    getDataPathCandidates(scope, cacheKey, record, params).map(filePath =>
       fs.promises.rm(filePath, { force: true }).catch(() => undefined)
     )
   );
-  await fs.promises.rm(getMetaPath(scope, cacheKey), { force: true }).catch(() => undefined);
+  await fs.promises.rm(getMetaPath(scope, cacheKey, params), { force: true }).catch(() => undefined);
 };
 
 const readCacheRecord = async (
   scope: ResourceProxyScope,
-  cacheKey: string
+  cacheKey: string,
+  params?: ResourceProxyUserScopedParams
 ): Promise<ResourceProxyCacheRecord | null> => {
-  const metaPath = getMetaPath(scope, cacheKey);
+  const metaPath = getMetaPath(scope, cacheKey, params);
 
   try {
     const raw = await fs.promises.readFile(metaPath, 'utf-8');
@@ -175,20 +191,28 @@ const readCacheRecord = async (
   }
 };
 
-const writeCacheRecord = async (scope: ResourceProxyScope, record: ResourceProxyCacheRecord) => {
-  const metaPath = getMetaPath(scope, record.cacheKey);
+const writeCacheRecord = async (
+  scope: ResourceProxyScope,
+  record: ResourceProxyCacheRecord,
+  params?: ResourceProxyUserScopedParams
+) => {
+  const metaPath = getMetaPath(scope, record.cacheKey, params);
   await fs.promises.writeFile(metaPath, JSON.stringify(record), 'utf-8');
 };
 
-const ensureScopeDir = async (scope: ResourceProxyScope) => {
-  await fs.promises.mkdir(getScopeDir(scope), { recursive: true });
+const ensureScopeDir = async (scope: ResourceProxyScope, params?: ResourceProxyUserScopedParams) => {
+  await fs.promises.mkdir(getScopeDir(scope, params), { recursive: true });
 };
 
-const cleanupScopeCacheByLimit = async (scope: ResourceProxyScope, maxCacheSizeMb: number) => {
+const cleanupScopeCacheByLimit = async (
+  scope: ResourceProxyScope,
+  maxCacheSizeMb: number,
+  params?: ResourceProxyUserScopedParams
+) => {
   if (Number(maxCacheSizeMb) <= 0) {
     return;
   }
-  const dir = getScopeDir(scope);
+  const dir = getScopeDir(scope, params);
   const maxBytes = clampCacheSizeMb(maxCacheSizeMb) * 1024 * 1024;
   const entries = await fs.promises.readdir(dir, { withFileTypes: true }).catch(() => [] as fs.Dirent[]);
   const metaNames = entries.filter(item => item.isFile() && item.name.endsWith('.json')).map(item => item.name);
@@ -201,14 +225,14 @@ const cleanupScopeCacheByLimit = async (scope: ResourceProxyScope, maxCacheSizeM
           return undefined;
         }
 
-        const record = await readCacheRecord(scope, cacheKey);
+        const record = await readCacheRecord(scope, cacheKey, params);
         if (!record) {
           return undefined;
         }
 
-        const data = await resolveCachedDataPath(scope, cacheKey, record);
+        const data = await resolveCachedDataPath(scope, cacheKey, record, params);
         if (!data) {
-          await removeCachedDataAndMeta(scope, cacheKey, record);
+          await removeCachedDataAndMeta(scope, cacheKey, record, params);
           return undefined;
         }
 
@@ -241,7 +265,7 @@ const cleanupScopeCacheByLimit = async (scope: ResourceProxyScope, maxCacheSizeM
     }
 
     await fs.promises.rm(item.dataPath, { force: true }).catch(() => undefined);
-    await removeCachedDataAndMeta(scope, item.cacheKey, item.record);
+    await removeCachedDataAndMeta(scope, item.cacheKey, item.record, params);
     totalBytes -= item.sizeBytes;
   }
 };
@@ -332,6 +356,7 @@ export const buildResourceProxyUrl = (params: { scope: ResourceProxyScope; cache
 
 export const cacheRemoteResource = async (params: {
   scope: ResourceProxyScope;
+  userId?: string;
   sourceUrl: string;
   maxCacheSizeMb: number;
   requestProxyUrl?: string;
@@ -347,10 +372,11 @@ export const cacheRemoteResource = async (params: {
 
   const cacheKey = crypto.createHash('sha256').update(normalizedSourceUrl).digest('hex');
 
-  await ensureScopeDir(params.scope);
+  await ensureScopeDir(params.scope, { userId: params.userId });
 
-  const existed = await readCacheRecord(params.scope, cacheKey);
-  const existedData = existed ? await resolveCachedDataPath(params.scope, cacheKey, existed) : null;
+  const scopeParams = { userId: params.userId };
+  const existed = await readCacheRecord(params.scope, cacheKey, scopeParams);
+  const existedData = existed ? await resolveCachedDataPath(params.scope, cacheKey, existed, scopeParams) : null;
   if (existed && existedData) {
     const now = Date.now();
     const resolvedDataFileName = sanitizeDataFileName(path.basename(existedData.filePath));
@@ -360,7 +386,7 @@ export const cacheRemoteResource = async (params: {
       updatedAtMs: now,
       sizeBytes: Number(existed.sizeBytes || existedData.stat.size || 0),
     };
-    await writeCacheRecord(params.scope, touched);
+    await writeCacheRecord(params.scope, touched, scopeParams);
 
     return {
       ...touched,
@@ -383,7 +409,7 @@ export const cacheRemoteResource = async (params: {
     .trim();
   const fileName = buildFileName(normalizedSourceUrl, contentType, cacheKey, params.preferredFileName);
   const dataFileName = buildDataFileName(cacheKey, fileName);
-  const dataPath = getDataPathByFileName(params.scope, dataFileName);
+  const dataPath = getDataPathByFileName(params.scope, dataFileName, scopeParams);
 
   await fs.promises.writeFile(dataPath, buffer);
   const record: ResourceProxyCacheRecord = {
@@ -395,8 +421,8 @@ export const cacheRemoteResource = async (params: {
     sizeBytes: buffer.length,
     updatedAtMs: Date.now(),
   };
-  await writeCacheRecord(params.scope, record);
-  await cleanupScopeCacheByLimit(params.scope, params.maxCacheSizeMb);
+  await writeCacheRecord(params.scope, record, scopeParams);
+  await cleanupScopeCacheByLimit(params.scope, params.maxCacheSizeMb, scopeParams);
 
   return {
     ...record,
@@ -404,18 +430,23 @@ export const cacheRemoteResource = async (params: {
   };
 };
 
-export const getCachedResourceByKey = async (params: { scope: ResourceProxyScope; cacheKey: string }) => {
+export const getCachedResourceByKey = async (params: {
+  scope: ResourceProxyScope;
+  cacheKey: string;
+  userId?: string;
+}) => {
   const cacheKey = normalizeCacheKey(params.cacheKey);
   if (!cacheKey) {
     return null;
   }
 
-  const record = await readCacheRecord(params.scope, cacheKey);
+  const scopeParams = { userId: params.userId };
+  const record = await readCacheRecord(params.scope, cacheKey, scopeParams);
   if (!record) {
     return null;
   }
 
-  const data = await resolveCachedDataPath(params.scope, cacheKey, record);
+  const data = await resolveCachedDataPath(params.scope, cacheKey, record, scopeParams);
   if (!data) {
     return null;
   }
@@ -426,7 +457,7 @@ export const getCachedResourceByKey = async (params: { scope: ResourceProxyScope
     updatedAtMs: Date.now(),
     sizeBytes: Number(record.sizeBytes || data.stat.size || 0),
   };
-  await writeCacheRecord(params.scope, touched);
+  await writeCacheRecord(params.scope, touched, scopeParams);
 
   return {
     ...touched,
@@ -434,7 +465,11 @@ export const getCachedResourceByKey = async (params: { scope: ResourceProxyScope
   };
 };
 
-export const getCachedResourceBySourceUrl = async (params: { scope: ResourceProxyScope; sourceUrl: string }) => {
+export const getCachedResourceBySourceUrl = async (params: {
+  scope: ResourceProxyScope;
+  sourceUrl: string;
+  userId?: string;
+}) => {
   const normalizedSourceUrl = normalizeHttpUrl(params.sourceUrl);
   if (!normalizedSourceUrl) {
     return null;
@@ -444,6 +479,7 @@ export const getCachedResourceBySourceUrl = async (params: { scope: ResourceProx
   return getCachedResourceByKey({
     scope: params.scope,
     cacheKey,
+    userId: params.userId,
   });
 };
 

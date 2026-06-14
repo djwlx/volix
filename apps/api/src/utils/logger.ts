@@ -3,7 +3,7 @@ import { format } from 'node:util';
 import log4js from 'log4js';
 import { formatTime } from '@volix/utils';
 import { PATH } from './path';
-import { LOG_MAX_SIZE_BYTES, startLogMaintenance } from './log-maintenance';
+import { startLogMaintenance } from './log-maintenance';
 const { NODE_ENV } = process.env;
 
 const isProd = NODE_ENV === 'production';
@@ -11,6 +11,14 @@ const getNormalAppenders = () => (isProd ? ['normal'] : ['normal', 'console']);
 const getDatabaseAppenders = () => ['database'];
 
 const LOCAL_TIME_LAYOUT = { type: 'localTime' } as const;
+
+export const createDateFileAppender = (filename: string) => ({
+  type: 'dateFile' as const,
+  alwaysIncludePattern: true,
+  pattern: 'yyyy-MM-dd.log',
+  filename,
+  layout: LOCAL_TIME_LAYOUT,
+});
 
 log4js.addLayout('localTime', () => logEvent => {
   const time = formatTime(logEvent.startTime);
@@ -25,24 +33,8 @@ log4js.configure({
       type: 'console',
       layout: LOCAL_TIME_LAYOUT,
     },
-    normal: {
-      type: 'dateFile',
-      alwaysIncludePattern: true,
-      maxLogSize: LOG_MAX_SIZE_BYTES,
-      pattern: 'yyyy-MM-dd.log',
-      filename: path.join(`${PATH.log}/normal`, 'normal'), //生成文件名
-      numBackups: 5,
-      layout: LOCAL_TIME_LAYOUT,
-    },
-    database: {
-      type: 'dateFile',
-      alwaysIncludePattern: true,
-      maxLogSize: LOG_MAX_SIZE_BYTES,
-      pattern: 'yyyy-MM-dd.log',
-      filename: path.join(`${PATH.log}/databse`, 'database'), //生成文件名
-      numBackups: 5,
-      layout: LOCAL_TIME_LAYOUT,
-    },
+    normal: createDateFileAppender(path.join(`${PATH.log}/normal`, 'normal')),
+    database: createDateFileAppender(path.join(`${PATH.log}/databse`, 'database')),
   },
   categories: {
     normal: {

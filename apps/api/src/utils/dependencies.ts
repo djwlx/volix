@@ -5,17 +5,15 @@ import { setLogRetentionProvider } from './log-maintenance';
 import { getLogRetentionDays } from '../modules/user/service/system-setting.service';
 import { ensureFormatConvertTaskSchema } from '../modules/format-convert/model/format-convert-task.model';
 
+export const getBootstrapPathList = () => [
+  { filePath: PATH.data, type: 'dir' as const },
+  { filePath: PATH.log, type: 'dir' as const },
+  { filePath: PATH.usersRoot, type: 'dir' as const },
+];
+
 const initApp = async () => {
   // 创建必要的目录
-  const pathList = [
-    { filePath: PATH.log, type: 'dir' },
-    { filePath: PATH.data, type: 'dir' },
-    { filePath: PATH.cache, type: 'dir' },
-    { filePath: PATH.cacheMedia, type: 'dir' },
-    { filePath: PATH.cacheMediaFormatConvert, type: 'dir' },
-    { filePath: PATH.upload, type: 'dir' },
-    { filePath: PATH.uploadFormatConvert, type: 'dir' },
-  ];
+  const pathList = getBootstrapPathList();
 
   for (const { filePath, type } of pathList) {
     if (type === 'dir' && !fs.existsSync(filePath)) {

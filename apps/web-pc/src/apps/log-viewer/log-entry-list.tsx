@@ -41,11 +41,15 @@ export function LogEntryList({ entries, emptyDescription }: LogEntryListProps) {
       {entries.map((entry, index) => (
         <div className={styles.entry} key={`${entry.timestamp}-${index}`}>
           <span className={styles.bar} style={{ background: LEVEL_BAR_COLOR[entry.level] }} />
-          <Tag color={LEVEL_TAG_COLOR[entry.level]} size="small">
-            {t({ id: `logViewer.level.${entry.level}`, defaultMessage: entry.level.toUpperCase() })}
-          </Tag>
-          <span className={styles.timestamp}>{entry.timestamp}</span>
-          <pre className={styles.message}>{entry.message}</pre>
+          <div className={styles.entryMain}>
+            <div className={styles.entryMeta}>
+              <Tag color={LEVEL_TAG_COLOR[entry.level]} size="small">
+                {t({ id: `logViewer.level.${entry.level}`, defaultMessage: entry.level.toUpperCase() })}
+              </Tag>
+              <span className={styles.timestamp}>{entry.timestamp}</span>
+            </div>
+            <pre className={styles.message}>{entry.message}</pre>
+          </div>
         </div>
       ))}
     </div>

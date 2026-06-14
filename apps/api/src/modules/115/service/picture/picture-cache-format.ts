@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
-import { getLikedPicCacheDir } from './picture-cache-random-core';
 import { configureSharpRuntime } from '../../../../utils/sharp-runtime';
+import { get115FormatCacheDir } from './picture-cache-path';
 
 configureSharpRuntime(sharp);
 
@@ -55,7 +55,7 @@ export const normalizePicCacheFormatOptions = (params?: {
   };
 };
 
-const getWebpCacheDir = () => path.join(getLikedPicCacheDir(), 'webp');
+const getWebpCacheDir = () => get115FormatCacheDir();
 
 const getWebpCachePathByPc = (pc: string, options: PicCacheFormatOptions) => {
   const widthPart = options.width ? `w${options.width}` : 'w0';

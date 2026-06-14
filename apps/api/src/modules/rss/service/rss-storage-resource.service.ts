@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import mime from 'mime-types';
 import path from 'path';
 import request from '../../../utils/request';
-import { buildRssItemHtmlFileKey, writeRssItemResourceFileByKey } from './rss-feed-item-html-file.service';
+import { buildRssItemHtmlFileKey, writeRssItemResourceFile } from './rss-feed-item-html-file.service';
 import type { RssFeedItem } from '../types/rss.types';
 
 const ATTRIBUTE_QUOTE_PATTERN = `(?:"|'|&quot;|&#34;|&apos;|&#39;)`;
@@ -166,6 +166,7 @@ const resolveResourceFileName = (sourceUrl: string, contentType: string) => {
 };
 
 const cacheRssItemResourceFileWithRetry = async (params: {
+  userId: string;
   sourceUrl: string;
   requestProxyUrl: string;
   fileKey: string;
@@ -187,7 +188,8 @@ const cacheRssItemResourceFileWithRetry = async (params: {
         .split(';')[0]
         .trim();
       const fileName = resolveResourceFileName(params.sourceUrl, contentType);
-      const publicUrl = await writeRssItemResourceFileByKey({
+      const publicUrl = await writeRssItemResourceFile({
+        userId: params.userId,
         key: params.fileKey,
         fileName,
         content: buffer,
@@ -229,6 +231,7 @@ export const rewriteRssItemResourcesStrict = async (
 
   const mappings = await mapWithConcurrency(urls, 6, async sourceUrl => {
     const cached = await cacheRssItemResourceFileWithRetry({
+      userId: params.userId,
       sourceUrl,
       requestProxyUrl: params.requestProxyUrl,
       fileKey,

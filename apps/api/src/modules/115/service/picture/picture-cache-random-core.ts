@@ -3,20 +3,18 @@ import fs from 'fs';
 import path from 'path';
 import mime from 'mime-types';
 import { generateRandomNumber } from '../../../../utils/number';
-import { PATH } from '../../../../utils/path';
-import { getRequestActingUserId } from '../../../../utils/request-context';
 import { PicRandomCacheConfig, PicRandomCacheStats } from '../../types/115.types';
+import { get115OriginalCacheDir, get115RandomMetaFilePath } from './picture-cache-path';
 export * from './picture-cache-random-config';
 
 export type Cloud115FileListItem = FileListDataItem & {
   class?: string;
 };
 
-const get115ScopeDirName = () => String(getRequestActingUserId() || 'public').replace(/[^\w.-]/g, '_');
-export const getFilePicCacheDir = () => path.join(PATH.cache, '115-file', get115ScopeDirName());
+export const getFilePicCacheDir = () => get115OriginalCacheDir();
 export const getLikedPicCacheDir = () => getFilePicCacheDir();
 export const getRandomPicCacheDir = () => getFilePicCacheDir();
-export const getRandomPicCacheMetaFile = () => path.join(getRandomPicCacheDir(), 'meta.random-picture.json');
+export const getRandomPicCacheMetaFile = () => get115RandomMetaFilePath();
 export const DEFAULT_FILE_NAME = 'unknown.jpg';
 export const DEFAULT_MIME_TYPE = 'application/octet-stream';
 export const DEFAULT_115_DOWNLOAD_UA =

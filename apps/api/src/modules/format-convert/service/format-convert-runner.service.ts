@@ -1,3 +1,4 @@
+import fs from 'fs';
 import path from 'path';
 import {
   FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS,
@@ -23,6 +24,7 @@ import {
 } from './format-convert-option.service';
 import { updateFormatConvertTaskStatus } from './format-convert-task-db.service';
 import {
+  getFormatConvertCloudSourcePath,
   ensureFormatConvertWorkspace,
   getFormatConvertLogPath,
   getFormatConvertWorkspaceDir,
@@ -32,6 +34,7 @@ import {
 import type { FormatConvertTaskItem } from '../types/format-convert.types';
 import { log } from '../../../utils/logger';
 import { t } from '../../../utils/i18n';
+import { resolveUserDirKeyOrThrow } from '../../user/service/user-dir.service';
 
 const AUDIO_ONLY_OUTPUT_FORMATS = new Set(FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS);
 
@@ -66,31 +69,37 @@ const resolveStatusByStage = (stage: 'download' | 'convert' | 'upload') => {
 };
 
 export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: FormatConvertRunnerHooks) => {
+  const userDirKey = await resolveUserDirKeyOrThrow(task.userId);
   if (task.engine === FormatConvertEngine.IMAGE) {
-    return runImageConvertTask(task, hooks);
+    return runImageConvertTask(task, userDirKey, hooks);
   }
 
   const sourceWorkspaceName = `source${path.extname(task.source.fileName || '') || '.bin'}`;
-  const logWorkspacePath = getFormatConvertLogPath(task.id);
+  const logWorkspacePath = getFormatConvertLogPath(userDirKey, task.id);
   let currentStage: 'download' | 'convert' | 'upload' = 'convert';
 
-  await ensureFormatConvertWorkspace(task.id);
-  const sourceWorkspacePath = getFormatConvertWorkspaceFilePath(task.id, sourceWorkspaceName);
+  await ensureFormatConvertWorkspace(userDirKey, task.id);
 
   try {
     let inputPath = '';
     let sourceMediaInfo: FormatConvertMediaInfo | undefined = task.sourceMediaInfo;
 
     if (task.source.type === FormatConvertSourceType.OPENLIST) {
+      const cloudSourcePath = getFormatConvertCloudSourcePath(
+        userDirKey,
+        task.source.fileName || sourceWorkspaceName,
+        String(task.id)
+      );
       currentStage = 'download';
       hooks?.onStatusChange?.(FormatConvertTaskStatus.DOWNLOADING);
       await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.DOWNLOADING, {
         last_stage: FormatConvertTaskStage.DOWNLOAD,
-        workspace_dir: getFormatConvertWorkspaceDir(task.id),
-        source_local_path: sourceWorkspacePath,
+        workspace_dir: getFormatConvertWorkspaceDir(userDirKey, task.id),
+        source_local_path: cloudSourcePath,
       });
-      await downloadFormatConvertOpenlistSource(task.userId, task.source, sourceWorkspacePath, task.requestUserAgent);
-      inputPath = sourceWorkspacePath;
+      await fs.promises.mkdir(path.dirname(cloudSourcePath), { recursive: true });
+      await downloadFormatConvertOpenlistSource(task.userId, task.source, cloudSourcePath, task.requestUserAgent);
+      inputPath = cloudSourcePath;
     } else {
       inputPath = resolveLocalSourcePath(task);
     }
@@ -134,13 +143,17 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
       option: normalizedOption,
     });
     const outputFilename = buildOutputFilename(task, executionPlan.outputExtension);
-    const outputWorkspacePath = getFormatConvertWorkspaceFilePath(task.id, `output.${executionPlan.outputExtension}`);
+    const outputWorkspacePath = getFormatConvertWorkspaceFilePath(
+      userDirKey,
+      task.id,
+      `output.${executionPlan.outputExtension}`
+    );
 
     currentStage = 'convert';
     hooks?.onStatusChange?.(FormatConvertTaskStatus.CONVERTING);
     await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.CONVERTING, {
       last_stage: FormatConvertTaskStage.CONVERT,
-      workspace_dir: getFormatConvertWorkspaceDir(task.id),
+      workspace_dir: getFormatConvertWorkspaceDir(userDirKey, task.id),
       source_local_path: inputPath,
       output_local_path: outputWorkspacePath,
       log_local_path: logWorkspacePath,
@@ -192,7 +205,12 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
         logLocalPath: logWorkspacePath,
       });
     } else {
-      const resultLocalPath = await persistFormatConvertResult(task.id, outputWorkspacePath, outputFilename);
+      const resultLocalPath = await persistFormatConvertResult(
+        userDirKey,
+        task.id,
+        outputWorkspacePath,
+        outputFilename
+      );
       await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.COMPLETED, {
         result_local_path: resultLocalPath,
         result_media_info_json: JSON.stringify(resultMediaInfo || {}),
@@ -229,21 +247,25 @@ const buildImageOutputFilename = (task: FormatConvertTaskItem, extension: string
   return `${baseName}.${extension}`;
 };
 
-export const runImageConvertTask = async (task: FormatConvertTaskItem, hooks?: FormatConvertRunnerHooks) => {
+export const runImageConvertTask = async (
+  task: FormatConvertTaskItem,
+  userDirKey: string,
+  hooks?: FormatConvertRunnerHooks
+) => {
   const option = normalizeFormatConvertImageOption((task.imageOption || {}) as FormatConvertImageOption);
   const extension = resolveImageOutputExtension(option.outputFormat);
   const outputWorkspaceName = `output.${extension}`;
   const outputFilename = buildImageOutputFilename(task, extension);
 
-  await ensureFormatConvertWorkspace(task.id);
-  const outputWorkspacePath = getFormatConvertWorkspaceFilePath(task.id, outputWorkspaceName);
+  await ensureFormatConvertWorkspace(userDirKey, task.id);
+  const outputWorkspacePath = getFormatConvertWorkspaceFilePath(userDirKey, task.id, outputWorkspaceName);
   const inputPath = resolveLocalSourcePath(task);
 
   try {
     hooks?.onStatusChange?.(FormatConvertTaskStatus.CONVERTING);
     await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.CONVERTING, {
       last_stage: FormatConvertTaskStage.CONVERT,
-      workspace_dir: getFormatConvertWorkspaceDir(task.id),
+      workspace_dir: getFormatConvertWorkspaceDir(userDirKey, task.id),
       source_local_path: inputPath,
       output_local_path: outputWorkspacePath,
       started_at: new Date(),
@@ -251,7 +273,7 @@ export const runImageConvertTask = async (task: FormatConvertTaskItem, hooks?: F
 
     await convertImageFile(inputPath, outputWorkspacePath, option);
     const resultImageInfo = await probeImageFile(outputWorkspacePath);
-    const resultLocalPath = await persistFormatConvertResult(task.id, outputWorkspacePath, outputFilename);
+    const resultLocalPath = await persistFormatConvertResult(userDirKey, task.id, outputWorkspacePath, outputFilename);
 
     await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.COMPLETED, {
       result_local_path: resultLocalPath,

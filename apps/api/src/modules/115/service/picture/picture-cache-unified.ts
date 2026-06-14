@@ -2,15 +2,11 @@ import fs from 'fs';
 import path from 'path';
 import { getFile115CachePolicyByPcList, setFile115LocalCacheFileNameByPc } from '../file-db.service';
 import { getRequestActingUserId } from '../../../../utils/request-context';
-import {
-  clearLocalRandomPicCacheByPc,
-  getRandomPicCacheDir,
-  parsePcFromLocalCacheFileName,
-} from './picture-cache-random-core';
+import { clearLocalRandomPicCacheByPc, parsePcFromLocalCacheFileName } from './picture-cache-random-core';
 import { clearWebpCacheByPc } from './picture-cache-format';
+import { get115FormatCacheDir, get115OriginalCacheDir } from './picture-cache-path';
 
 const RANDOM_META_FILE_NAME = 'meta.random-picture.json';
-const WEBP_CACHE_DIR_NAME = 'webp';
 
 type RootCacheFile = {
   type: 'origin';
@@ -44,8 +40,8 @@ export type UnifiedPicCacheUsage = {
 const unifiedCacheEvictionJobMap = new Map<string, Promise<UnifiedPicCacheUsage>>();
 const getUnifiedCacheScopeKey = () => String(getRequestActingUserId() || 'public').replace(/[^\w.-]/g, '_');
 
-const resolveCacheDir = (cacheDir?: string) => cacheDir || getRandomPicCacheDir();
-const getWebpCacheDir = (cacheDir?: string) => path.join(resolveCacheDir(cacheDir), WEBP_CACHE_DIR_NAME);
+const resolveCacheDir = (cacheDir?: string) => cacheDir || get115OriginalCacheDir();
+const getWebpCacheDir = (cacheDir?: string) => cacheDir || get115FormatCacheDir();
 
 const getFileStat = async (filePath: string) => {
   try {

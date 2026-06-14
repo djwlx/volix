@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { PATH } from '../../../utils/path';
+import { getRssFeedResponseCacheDirByUserId } from './rss-storage-path.service';
 
 export type CachedRssFeedRecord = {
   feedUrl: string;
@@ -11,10 +11,8 @@ export type CachedRssFeedRecord = {
   updatedAtMs: number;
 };
 
-const RSS_FEED_CACHE_DIR = path.join(PATH.cache, 'rss-feed-response');
-
-const ensureCacheDir = async () => {
-  await fs.promises.mkdir(RSS_FEED_CACHE_DIR, { recursive: true });
+const ensureCacheDir = async (userId: string) => {
+  await fs.promises.mkdir(getRssFeedResponseCacheDirByUserId(userId), { recursive: true });
 };
 
 const getCacheKey = (feedUrl: string) => {
@@ -24,17 +22,20 @@ const getCacheKey = (feedUrl: string) => {
     .digest('hex');
 };
 
-const getCacheFilePath = (feedUrl: string) => {
-  return path.join(RSS_FEED_CACHE_DIR, `${getCacheKey(feedUrl)}.json`);
+const getCacheFilePath = (userId: string, feedUrl: string) => {
+  return path.join(getRssFeedResponseCacheDirByUserId(userId), `${getCacheKey(feedUrl)}.json`);
 };
 
-export const readCachedRssFeed = async (feedUrl: string): Promise<CachedRssFeedRecord | null> => {
-  const normalizedFeedUrl = String(feedUrl || '').trim();
+export const readCachedRssFeed = async (params: {
+  userId: string;
+  feedUrl: string;
+}): Promise<CachedRssFeedRecord | null> => {
+  const normalizedFeedUrl = String(params.feedUrl || '').trim();
   if (!normalizedFeedUrl) {
     return null;
   }
 
-  const filePath = getCacheFilePath(normalizedFeedUrl);
+  const filePath = getCacheFilePath(params.userId, normalizedFeedUrl);
   try {
     const raw = await fs.promises.readFile(filePath, 'utf-8');
     const parsed = JSON.parse(raw) as Partial<CachedRssFeedRecord>;
@@ -59,23 +60,26 @@ export const readCachedRssFeed = async (feedUrl: string): Promise<CachedRssFeedR
   }
 };
 
-export const writeCachedRssFeed = async (record: Omit<CachedRssFeedRecord, 'updatedAtMs'>) => {
-  const feedUrl = String(record.feedUrl || '').trim();
+export const writeCachedRssFeed = async (params: {
+  userId: string;
+  record: Omit<CachedRssFeedRecord, 'updatedAtMs'>;
+}) => {
+  const feedUrl = String(params.record.feedUrl || '').trim();
   if (!feedUrl) {
     return;
   }
 
-  await ensureCacheDir();
+  await ensureCacheDir(params.userId);
 
   const payload: CachedRssFeedRecord = {
     feedUrl,
-    contentType: String(record.contentType || 'application/xml'),
-    xml: String(record.xml || ''),
-    fetchedAt: String(record.fetchedAt || new Date().toISOString()),
+    contentType: String(params.record.contentType || 'application/xml'),
+    xml: String(params.record.xml || ''),
+    fetchedAt: String(params.record.fetchedAt || new Date().toISOString()),
     updatedAtMs: Date.now(),
   };
 
-  const filePath = getCacheFilePath(feedUrl);
+  const filePath = getCacheFilePath(params.userId, feedUrl);
   await fs.promises.writeFile(filePath, JSON.stringify(payload), 'utf-8');
 };
 

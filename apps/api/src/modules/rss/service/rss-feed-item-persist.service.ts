@@ -80,12 +80,15 @@ export const buildFeedItemPersistPayload = (
   };
 };
 
-export const mapFeedItemRow = async (row: { dataValues: Record<string, any> }): Promise<RssFeedItem> => {
+export const mapFeedItemRow = async (
+  row: { dataValues: Record<string, any> },
+  userId: string
+): Promise<RssFeedItem> => {
   const imageUrls = safeJsonParse<string[]>(String(row.dataValues.image_urls || '[]'), []);
   const category = safeJsonParse<string[]>(String(row.dataValues.category || '[]'), []);
   const media = safeJsonParse<Record<string, unknown> | null>(String(row.dataValues.media_json || 'null'), null);
   const htmlFileKey = String(row.dataValues.description_html_file_key || '').trim();
-  const fileHtml = htmlFileKey ? await readRssItemHtmlFileByKey(htmlFileKey) : '';
+  const fileHtml = htmlFileKey ? await readRssItemHtmlFileByKey({ userId, key: htmlFileKey }) : '';
   const descriptionHtml = fileHtml || String(row.dataValues.description_html || '');
   return {
     id: String(row.dataValues.item_id || ''),

@@ -361,7 +361,7 @@ export const listUserRssFeedItems = async (userId: string, route: string, limit 
     ],
     limit: Math.max(1, Math.min(2000, Math.floor(Number(limit || 0)) || 300)),
   });
-  return Promise.all(rows.map(row => mapFeedItemRow(row)));
+  return Promise.all(rows.map(row => mapFeedItemRow(row, String(userId || '').trim())));
 };
 
 export const countUserRssFeedItemsByRoutes = async (
@@ -478,7 +478,7 @@ export const listUserRssResourceCacheKeysByRoute = async (userId: string, route:
   const keySet = new Set<string>();
   for (const row of rows) {
     const htmlFileKey = String(row.dataValues.description_html_file_key || '').trim();
-    const fileHtml = htmlFileKey ? await readRssItemHtmlFileByKey(htmlFileKey) : '';
+    const fileHtml = htmlFileKey ? await readRssItemHtmlFileByKey({ userId: normalizedUserId, key: htmlFileKey }) : '';
     extractCacheKeys(fileHtml || String(row.dataValues.description_html || '')).forEach(key => keySet.add(key));
     extractCacheKeys(String(row.dataValues.image_urls || '')).forEach(key => keySet.add(key));
   }

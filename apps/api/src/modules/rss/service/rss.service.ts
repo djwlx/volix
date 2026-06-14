@@ -475,8 +475,10 @@ export async function clearRssStorageData(
   return clearRssStorage(getCurrentUserId(userId), payload);
 }
 export async function getRssCachedResourceData(
+  userId: string | number | undefined,
   cacheKey: string
 ): Promise<NonNullable<Awaited<ReturnType<typeof getCachedResourceByKey>>>> {
+  const normalizedUserId = getCurrentUserId(userId);
   const normalizedCacheKey = String(cacheKey || '').trim();
   if (!normalizedCacheKey) {
     badRequest(t('rssApi.cacheKeyRequired'));
@@ -484,6 +486,7 @@ export async function getRssCachedResourceData(
   const cached = await getCachedResourceByKey({
     scope: 'rss',
     cacheKey: normalizedCacheKey,
+    userId: normalizedUserId,
   });
   if (!cached) {
     badRequest(t('rssApi.resourceNotFound'));

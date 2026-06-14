@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { PATH } from '../../../utils/path';
 import { badRequest } from '../../shared/http-handler';
 import type { ClearRssStoragePayload } from '../types/rss.types';
 import {
@@ -12,8 +11,8 @@ import {
   clearRssItemFilesByRouteItemKeys,
   clearRssItemHtmlFilesByRoute,
   clearRssItemHtmlFilesByUser,
-  RSS_FEED_ROOT_DIR,
 } from './rss-feed-item-html-file.service';
+import { getRssFeedRootDirByUserId, getRssTaskRootDirByUserId } from './rss-storage-path.service';
 import { countUserRssFeedItemsByRoute, trimUserRssFeedItemsByRoute } from './rss-feed-retention.service';
 
 interface PendingFeedTaskMeta {
@@ -21,18 +20,10 @@ interface PendingFeedTaskMeta {
   route: string;
 }
 
-const RSS_PENDING_DIR = path.join(RSS_FEED_ROOT_DIR, '.pending');
-const RSS_LEGACY_RESOURCE_PROXY_DIR = path.join(PATH.cache, 'rss-resource-proxy');
-const RSS_LEGACY_STORAGE_DIR = path.join(PATH.cache, 'rss-storage');
-const RSS_LEGACY_RESPONSE_DIR = path.join(PATH.cache, 'rss-feed-response');
-const RSS_LEGACY_INCREMENTAL_DIR = path.join(PATH.cache, 'rss-feed-incremental');
-const RSS_LEGACY_ARCHIVE_DIR = path.join(PATH.cache, 'rss-feed-archive');
-const RSS_LEGACY_ITEM_HTML_DIR = path.join(PATH.cache, 'rss-feed-item-html');
-
 const normalizeText = (value: string) => String(value || '').trim();
 
-const ensureStorageDirs = async () => {
-  await fs.promises.mkdir(RSS_PENDING_DIR, { recursive: true });
+const ensureStorageDirs = async (userId: string) => {
+  await fs.promises.mkdir(getRssTaskRootDirByUserId(userId), { recursive: true });
 };
 
 const listTaskFileNames = async (targetDir: string) => {
@@ -103,7 +94,7 @@ const clearRssRouteHistory = async (params: {
   if (!normalizedUserId || !normalizedRoute) {
     return;
   }
-  await removeQueueFilesByRoute(RSS_PENDING_DIR, normalizedUserId, normalizedRoute);
+  await removeQueueFilesByRoute(getRssTaskRootDirByUserId(normalizedUserId), normalizedUserId, normalizedRoute);
   if (keepLatestItems > 0) {
     const total = await countUserRssFeedItemsByRoute(normalizedUserId, normalizedRoute);
     if (keepLatestItems >= total) {
@@ -137,18 +128,18 @@ const normalizeRouteListFromPayload = (payload?: ClearRssStoragePayload) => {
 };
 
 export const clearRssSubscriptionStorageInternal = async (userId: string, route: string) => {
-  await ensureStorageDirs();
+  await ensureStorageDirs(userId);
   await clearRssRouteHistory({ userId, route, keepState: false, keepLatestItems: 0 });
 };
 
 export const clearRssStorageInternal = async (userId: string, payload?: ClearRssStoragePayload) => {
   const normalizedUserId = normalizeText(userId);
-  await ensureStorageDirs();
+  await ensureStorageDirs(normalizedUserId);
   const keepLatestItems = parseKeepLatestItems(payload);
 
   const scope = String(payload?.scope || 'all');
   if (scope === 'resource-cache' || scope === 'all') {
-    await Promise.all([clearDirContents(RSS_FEED_ROOT_DIR), clearDirIfExists(RSS_LEGACY_RESOURCE_PROXY_DIR)]);
+    await clearDirContents(getRssFeedRootDirByUserId(normalizedUserId));
   }
   if (scope === 'history' || scope === 'all') {
     const inputRoutes = normalizeRouteListFromPayload(payload);
@@ -171,13 +162,5 @@ export const clearRssStorageInternal = async (userId: string, payload?: ClearRss
     if (routes.length === 0) {
       await Promise.all([clearAllUserRssFeedData(normalizedUserId), clearRssItemHtmlFilesByUser(normalizedUserId)]);
     }
-    await Promise.all([
-      clearDirIfExists(RSS_LEGACY_RESOURCE_PROXY_DIR),
-      clearDirIfExists(RSS_LEGACY_STORAGE_DIR),
-      clearDirIfExists(RSS_LEGACY_RESPONSE_DIR),
-      clearDirIfExists(RSS_LEGACY_INCREMENTAL_DIR),
-      clearDirIfExists(RSS_LEGACY_ARCHIVE_DIR),
-      clearDirIfExists(RSS_LEGACY_ITEM_HTML_DIR),
-    ]);
   }
 };

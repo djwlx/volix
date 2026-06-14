@@ -23,13 +23,15 @@ import {
   countUserRssFeedItemsByRoutes,
   getUserRssFeedState,
   isUserRssSubscriptionEnabled,
+  listAllRssSubscriptionStates,
   listUserRssSubscriptionStates,
   listUserRssFeedItems,
   mergeUserRssFeedItems,
   upsertUserRssFeedState,
 } from './rss-feed-db.service';
-import { getRssSubscriptionDirPath, RSS_FEED_ROOT_DIR } from './rss-feed-item-html-file.service';
+import { getRssSubscriptionDirPath } from './rss-feed-item-html-file.service';
 import { readRssFeedSubscriptionMeta, writeRssFeedSubscriptionMeta } from './rss-feed-subscription-meta.service';
+import { getRssFeedRootDirByUserId, getRssTaskRootDirByUserId } from './rss-storage-path.service';
 import {
   addMinutesToIsoTime,
   getPathUsage,
@@ -58,11 +60,11 @@ interface PendingFeedTaskEnqueueInput {
   payload: RssFeedPayload;
   setting: Pick<UserRssSettingPayload, 'resourceProxyBaseUrl'>;
 }
-const RSS_PENDING_DIR = path.join(RSS_FEED_ROOT_DIR, '.pending');
 const TASK_MAX_RETRY = 10;
 let queueRunning = false;
 let queueJob: Promise<void> | null = null;
-const ensureStorageDirs = async () => fs.promises.mkdir(RSS_PENDING_DIR, { recursive: true });
+const getPendingDir = (userId: string) => getRssTaskRootDirByUserId(userId);
+const ensureStorageDirs = async (userId: string) => fs.promises.mkdir(getPendingDir(userId), { recursive: true });
 const normalizeText = (value: string) => String(value || '').trim();
 const getFeedTaskKey = (userId: string, route: string, feedUrl: string) => {
   return crypto
@@ -71,7 +73,7 @@ const getFeedTaskKey = (userId: string, route: string, feedUrl: string) => {
     .digest('hex');
 };
 const enqueueTaskFilePath = (task: { userId: string; route: string; feedUrl: string }) =>
-  path.join(RSS_PENDING_DIR, `${Date.now()}-${getFeedTaskKey(task.userId, task.route, task.feedUrl)}.json`);
+  path.join(getPendingDir(task.userId), `${Date.now()}-${getFeedTaskKey(task.userId, task.route, task.feedUrl)}.json`);
 const readPendingTask = async (filePath: string): Promise<PendingFeedTask | null> => {
   try {
     const raw = await fs.promises.readFile(filePath, 'utf-8');
@@ -201,14 +203,21 @@ const listTaskFileNames = async (targetDir: string) => {
 };
 
 const runPendingQueue = async () => {
-  await ensureStorageDirs();
-  const rawTaskFileNames = await listTaskFileNames(RSS_PENDING_DIR);
-  const taskFileNames = await prunePendingTasksBySubscriptions({
-    dirPath: RSS_PENDING_DIR,
-    taskFileNames: rawTaskFileNames,
-  });
-  for (const taskFileName of taskFileNames) {
-    await processSingleTask(path.join(RSS_PENDING_DIR, taskFileName));
+  const subscriptions = await listAllRssSubscriptionStates();
+  const userIdList = Array.from(
+    new Set(subscriptions.map(item => normalizeText(String(item.userId || ''))).filter(Boolean))
+  );
+  for (const userId of userIdList) {
+    await ensureStorageDirs(userId);
+    const pendingDir = getPendingDir(userId);
+    const rawTaskFileNames = await listTaskFileNames(pendingDir);
+    const taskFileNames = await prunePendingTasksBySubscriptions({
+      dirPath: pendingDir,
+      taskFileNames: rawTaskFileNames,
+    });
+    for (const taskFileName of taskFileNames) {
+      await processSingleTask(path.join(pendingDir, taskFileName));
+    }
   }
 };
 export const startRssPendingQueue = () => {
@@ -238,14 +247,15 @@ export const enqueueRssFeedProcessingTask = async (params: PendingFeedTaskEnqueu
     return;
   }
 
-  await ensureStorageDirs();
+  await ensureStorageDirs(userId);
   const taskKeySuffix = `-${getFeedTaskKey(userId, route, feedUrl)}.json`;
-  const existing = await listTaskFileNames(RSS_PENDING_DIR);
+  const pendingDir = getPendingDir(userId);
+  const existing = await listTaskFileNames(pendingDir);
   const sameKeyFiles = existing.filter(name => name.endsWith(taskKeySuffix));
   if (sameKeyFiles.length > 0) {
     await Promise.all(
       sameKeyFiles.map(fileName =>
-        fs.promises.rm(path.join(RSS_PENDING_DIR, fileName), { force: true }).catch(() => undefined)
+        fs.promises.rm(path.join(pendingDir, fileName), { force: true }).catch(() => undefined)
       )
     );
   }
@@ -275,9 +285,9 @@ export const hasPendingRssFeedTask = async (params: { userId: string; route: str
   if (!userId || !route || !feedUrl) {
     return false;
   }
-  await ensureStorageDirs();
+  await ensureStorageDirs(userId);
   const taskKeySuffix = `-${getFeedTaskKey(userId, route, feedUrl)}.json`;
-  const taskFileNames = await listTaskFileNames(RSS_PENDING_DIR);
+  const taskFileNames = await listTaskFileNames(getPendingDir(userId));
   return taskFileNames.some(name => name.endsWith(taskKeySuffix));
 };
 
@@ -379,10 +389,10 @@ export const getRssStorageStatus = async (userId: string): Promise<RssStorageSta
     badRequest('缺少用户信息');
   }
 
-  await ensureStorageDirs();
+  await ensureStorageDirs(normalizedUserId);
   const pathList: Array<{ key: string; label: string; path: string }> = [
     { key: 'sqlite', label: 'SQLite 数据库', path: PATH.database },
-    { key: 'rssFeed', label: 'RSS 缓存目录', path: RSS_FEED_ROOT_DIR },
+    { key: 'rssFeed', label: 'RSS 缓存目录', path: getRssFeedRootDirByUserId(normalizedUserId) },
   ];
 
   const [pathStats, subscriptions, pendingRouteMeta, userSetting] = await Promise.all([
@@ -396,7 +406,7 @@ export const getRssStorageStatus = async (userId: string): Promise<RssStorageSta
       })
     ),
     listUserRssSubscriptionStates(normalizedUserId),
-    readTaskRouteMeta(RSS_PENDING_DIR, normalizedUserId),
+    readTaskRouteMeta(getPendingDir(normalizedUserId), normalizedUserId),
     queryUser({
       id: normalizedUserId,
     }),

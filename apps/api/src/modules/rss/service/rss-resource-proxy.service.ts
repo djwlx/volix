@@ -94,6 +94,7 @@ const replaceSrcsetValue = (srcset: string, resolver: (url: string) => string) =
 };
 
 const ensureResourceCachedInBackground = (params: {
+  userId: string;
   sourceUrl: string;
   cacheSizeMb: number;
   requestProxyUrl: string;
@@ -114,6 +115,7 @@ const ensureResourceCachedInBackground = (params: {
 
   const job = cacheRemoteResource({
     scope: 'rss',
+    userId: params.userId,
     sourceUrl: normalizedUrl,
     maxCacheSizeMb: params.cacheSizeMb,
     requestProxyUrl: params.requestProxyUrl,
@@ -132,6 +134,7 @@ const ensureResourceCachedInBackground = (params: {
 };
 
 export const rewriteRssXmlResourceUrls = async (params: {
+  userId: string;
   xml: string;
   requestProxyUrl: string;
   cacheSizeMb: number;
@@ -149,6 +152,7 @@ export const rewriteRssXmlResourceUrls = async (params: {
   const mapped = await mapWithConcurrency(urls, 8, async url => {
     const cached = await getCachedResourceBySourceUrl({
       scope: 'rss',
+      userId: params.userId,
       sourceUrl: url,
     });
     if (cached) {
@@ -163,6 +167,7 @@ export const rewriteRssXmlResourceUrls = async (params: {
     }
 
     ensureResourceCachedInBackground({
+      userId: params.userId,
       sourceUrl: url,
       cacheSizeMb: params.cacheSizeMb,
       requestProxyUrl: params.requestProxyUrl,

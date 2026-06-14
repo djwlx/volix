@@ -34,10 +34,29 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .spacer {
   flex: 1;
+}
+
+.filterControl {
+  flex: 0 1 auto;
+}
+
+.searchControl {
+  flex: 0 1 auto;
+}
+
+.toggleControl {
+  flex: 0 0 auto;
+}
+
+.actionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .list {
@@ -50,7 +69,7 @@
 
 .entry {
   display: grid;
-  grid-template-columns: 4px 72px 196px minmax(0, 1fr);
+  grid-template-columns: 4px minmax(0, 1fr);
   gap: 10px;
   align-items: start;
   padding: 8px 12px;
@@ -65,11 +84,26 @@
   border-radius: 4px;
 }
 
+.entryMain {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.entryMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .timestamp {
   color: var(--semi-color-text-2);
   font-size: 12px;
   font-family: var(--semi-font-family, monospace);
   white-space: nowrap;
+  min-width: 0;
 }
 
 .message {
@@ -86,4 +120,85 @@
   display: flex;
   justify-content: center;
   padding-top: 16px;
+}
+
+@media (max-width: 767px) {
+  .content {
+    padding: 16px 12px 24px;
+  }
+
+  .card {
+    border-radius: 20px;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .toolbarItem,
+  .filterControl,
+  .searchControl,
+  .toggleControl,
+  .actionButtons {
+    width: 100%;
+  }
+
+  .toolbarItem {
+    justify-content: space-between;
+  }
+
+  .filterControl,
+  .searchControl {
+    display: block;
+  }
+
+  .filterControl :global(.semi-select),
+  .searchControl :global(.semi-input-wrapper) {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .spacer {
+    display: none;
+  }
+
+  .actionButtons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .actionButtons :global(.semi-button) {
+    width: 100%;
+  }
+
+  .list {
+    max-height: none;
+  }
+
+  .entry {
+    grid-template-columns: 4px minmax(0, 1fr);
+    padding: 10px 12px;
+  }
+
+  .entryMain {
+    gap: 10px;
+  }
+
+  .entryMeta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .timestamp {
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .message {
+    font-size: 12px;
+    line-height: 1.6;
+  }
 }

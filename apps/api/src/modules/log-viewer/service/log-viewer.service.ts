@@ -9,6 +9,13 @@ import { parseLogContent, queryEntries } from './log-viewer.parser';
 const TAIL_CAP_BYTES = 5 * 1024 * 1024;
 const DATE_REGEXP = /^\d{4}-\d{2}-\d{2}$/;
 
+type ResolvedLogFile = {
+  date: string;
+  fileName: string;
+  filePath: string;
+  rotationIndex: number;
+};
+
 const resolveTarget = (type: LogViewerType): { dir: string; base: string } => {
   if (type === 'normal') {
     return { dir: path.join(PATH.log, 'normal'), base: 'normal' };
@@ -25,6 +32,50 @@ const assertValidDate = (date: string): string => {
   }
   return date;
 };
+
+const parseLogFile = (base: string, dir: string, fileName: string): ResolvedLogFile | null => {
+  const fileRegexp = new RegExp(`^${base}\\.(\\d{4}-\\d{2}-\\d{2})\\.log(?:\\.(\\d+))?$`);
+  const matched = fileName.match(fileRegexp);
+  if (!matched?.[1]) {
+    return null;
+  }
+
+  return {
+    date: matched[1],
+    fileName,
+    filePath: path.join(dir, fileName),
+    rotationIndex: Number(matched[2] || 0),
+  };
+};
+
+const listResolvedLogFiles = async (dir: string, base: string): Promise<ResolvedLogFile[]> => {
+  const entries = await fs.promises.readdir(dir).catch(() => [] as string[]);
+  return entries
+    .map(fileName => parseLogFile(base, dir, fileName))
+    .filter((item): item is ResolvedLogFile => item !== null);
+};
+
+const sortByRotationForRead = (files: ResolvedLogFile[]) =>
+  files.slice().sort((left, right) => {
+    if (left.rotationIndex === right.rotationIndex) {
+      return left.fileName.localeCompare(right.fileName);
+    }
+    if (left.rotationIndex === 0) {
+      return 1;
+    }
+    if (right.rotationIndex === 0) {
+      return -1;
+    }
+    return right.rotationIndex - left.rotationIndex;
+  });
+
+const sortByRotationForPreferredFile = (files: ResolvedLogFile[]) =>
+  files.slice().sort((left, right) => {
+    if (left.rotationIndex === right.rotationIndex) {
+      return left.fileName.localeCompare(right.fileName);
+    }
+    return left.rotationIndex - right.rotationIndex;
+  });
 
 const readBoundedTail = async (filePath: string): Promise<string> => {
   const stat = await fs.promises.stat(filePath);
@@ -46,14 +97,10 @@ const readBoundedTail = async (filePath: string): Promise<string> => {
 
 export const listLogDates = async (type: LogViewerType): Promise<string[]> => {
   const { dir, base } = resolveTarget(type);
-  const fileRegexp = new RegExp(`^${base}\\.(\\d{4}-\\d{2}-\\d{2})\\.log$`);
-  const entries = await fs.promises.readdir(dir).catch(() => [] as string[]);
   const dates = new Set<string>();
-  for (const name of entries) {
-    const matched = name.match(fileRegexp);
-    if (matched?.[1]) {
-      dates.add(matched[1]);
-    }
+  const files = await listResolvedLogFiles(dir, base);
+  for (const file of files) {
+    dates.add(file.date);
   }
   return Array.from(dates).sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
 };
@@ -61,8 +108,16 @@ export const listLogDates = async (type: LogViewerType): Promise<string[]> => {
 export const getLogFilePath = (type: LogViewerType, date: string): { filePath: string; fileName: string } => {
   const { dir, base } = resolveTarget(type);
   const safeDate = assertValidDate(date);
-  const fileName = `${base}.${safeDate}.log`;
-  return { filePath: path.join(dir, fileName), fileName };
+  const fallbackFileName = `${base}.${safeDate}.log`;
+  const files = fs
+    .readdirSync(dir)
+    .map(fileName => parseLogFile(base, dir, fileName))
+    .filter((item): item is ResolvedLogFile => item !== null);
+  const matchedFiles = sortByRotationForPreferredFile(files.filter(file => file.date === safeDate));
+  if (!matchedFiles[0]) {
+    return { filePath: path.join(dir, fallbackFileName), fileName: fallbackFileName };
+  }
+  return { filePath: matchedFiles[0].filePath, fileName: matchedFiles[0].fileName };
 };
 
 export const readLogEntries = async (
@@ -70,15 +125,16 @@ export const readLogEntries = async (
   date: string,
   options: { levels?: LogViewerLevel[]; keyword?: string; page?: number; pageSize?: number }
 ): Promise<LogViewerEntriesResponse> => {
-  const { filePath } = getLogFilePath(type, date);
-  const exists = await fs.promises
-    .access(filePath, fs.constants.F_OK)
-    .then(() => true)
-    .catch(() => false);
-  if (!exists) {
+  const { dir, base } = resolveTarget(type);
+  const safeDate = assertValidDate(date);
+  const matchedFiles = sortByRotationForRead(
+    (await listResolvedLogFiles(dir, base)).filter(file => file.date === safeDate)
+  );
+  if (!matchedFiles.length) {
     return { items: [], total: 0 };
   }
-  const content = await readBoundedTail(filePath);
+  const contents = await Promise.all(matchedFiles.map(file => readBoundedTail(file.filePath)));
+  const content = contents.filter(Boolean).join('\n');
   const entries = parseLogContent(content);
   return queryEntries(entries, options);
 };

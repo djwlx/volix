@@ -169,7 +169,7 @@ function LogViewerApp() {
           </Tabs>
 
           <div className={styles.toolbar}>
-            <div className={styles.toolbarItem}>
+            <div className={`${styles.toolbarItem} ${styles.filterControl}`}>
               <SelectAny
                 style={{ width: 160 }}
                 placeholder={t({ id: 'logViewer.filter.date', defaultMessage: '选择日期' })}
@@ -179,7 +179,7 @@ function LogViewerApp() {
                 emptyContent={t({ id: 'logViewer.empty.noDate', defaultMessage: '暂无日志文件' })}
               />
             </div>
-            <div className={styles.toolbarItem}>
+            <div className={`${styles.toolbarItem} ${styles.filterControl}`}>
               <SelectAny
                 multiple
                 style={{ minWidth: 220 }}
@@ -190,7 +190,7 @@ function LogViewerApp() {
                 maxTagCount={3}
               />
             </div>
-            <div className={styles.toolbarItem}>
+            <div className={`${styles.toolbarItem} ${styles.searchControl}`}>
               <Input
                 style={{ width: 220 }}
                 placeholder={t({ id: 'logViewer.filter.keyword', defaultMessage: '搜索日志内容' })}
@@ -202,20 +202,22 @@ function LogViewerApp() {
               />
             </div>
             <div className={styles.spacer} />
-            <div className={styles.toolbarItem}>
+            <div className={`${styles.toolbarItem} ${styles.toggleControl}`}>
               <span>{t({ id: 'logViewer.action.autoRefresh', defaultMessage: '自动刷新' })}</span>
               <Switch checked={autoRefresh} onChange={setAutoRefresh} />
             </div>
-            <Button
-              icon={<IconRefresh />}
-              loading={fetching}
-              onClick={() => loadEntries(1, true).catch(() => undefined)}
-            >
-              {t({ id: 'logViewer.action.refresh', defaultMessage: '刷新' })}
-            </Button>
-            <Button icon={<IconDownload />} onClick={() => handleDownload().catch(() => undefined)} disabled={!date}>
-              {t({ id: 'logViewer.action.download', defaultMessage: '下载' })}
-            </Button>
+            <div className={styles.actionButtons}>
+              <Button
+                icon={<IconRefresh />}
+                loading={fetching}
+                onClick={() => loadEntries(1, true).catch(() => undefined)}
+              >
+                {t({ id: 'logViewer.action.refresh', defaultMessage: '刷新' })}
+              </Button>
+              <Button icon={<IconDownload />} onClick={() => handleDownload().catch(() => undefined)} disabled={!date}>
+                {t({ id: 'logViewer.action.download', defaultMessage: '下载' })}
+              </Button>
+            </div>
           </div>
 
           <Spin spinning={fetching && entries.length === 0}>

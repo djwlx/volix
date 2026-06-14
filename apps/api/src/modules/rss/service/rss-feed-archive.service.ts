@@ -1,10 +1,9 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { PATH } from '../../../utils/path';
 import type { RssFeedPayload } from '../types/rss.types';
+import { getRssFeedArchiveDirByUserId } from './rss-storage-path.service';
 
-const RSS_FEED_ARCHIVE_DIR = path.join(PATH.cache, 'rss-feed-archive');
 const RSS_FEED_ARCHIVE_MAX_SNAPSHOTS = 40;
 
 export interface RssFeedArchiveSnapshot {
@@ -21,8 +20,8 @@ interface RssFeedArchiveRecord {
   updatedAtMs: number;
 }
 
-const ensureArchiveDir = async () => {
-  await fs.promises.mkdir(RSS_FEED_ARCHIVE_DIR, { recursive: true });
+const ensureArchiveDir = async (userId: string) => {
+  await fs.promises.mkdir(getRssFeedArchiveDirByUserId(userId), { recursive: true });
 };
 
 const getFeedKey = (feedUrl: string) => {
@@ -32,8 +31,8 @@ const getFeedKey = (feedUrl: string) => {
     .digest('hex');
 };
 
-const getArchiveFilePath = (feedUrl: string) => {
-  return path.join(RSS_FEED_ARCHIVE_DIR, `${getFeedKey(feedUrl)}.json`);
+const getArchiveFilePath = (userId: string, feedUrl: string) => {
+  return path.join(getRssFeedArchiveDirByUserId(userId), `${getFeedKey(feedUrl)}.json`);
 };
 
 const normalizeSnapshot = (payload: RssFeedPayload): RssFeedArchiveSnapshot | null => {
@@ -55,13 +54,13 @@ const normalizeSnapshot = (payload: RssFeedPayload): RssFeedArchiveSnapshot | nu
   };
 };
 
-const readArchiveRecord = async (feedUrl: string): Promise<RssFeedArchiveRecord | null> => {
+const readArchiveRecord = async (userId: string, feedUrl: string): Promise<RssFeedArchiveRecord | null> => {
   const normalizedFeedUrl = String(feedUrl || '').trim();
   if (!normalizedFeedUrl) {
     return null;
   }
 
-  const filePath = getArchiveFilePath(normalizedFeedUrl);
+  const filePath = getArchiveFilePath(userId, normalizedFeedUrl);
   try {
     const raw = await fs.promises.readFile(filePath, 'utf-8');
     const parsed = JSON.parse(raw) as Partial<RssFeedArchiveRecord>;
@@ -97,24 +96,24 @@ const readArchiveRecord = async (feedUrl: string): Promise<RssFeedArchiveRecord 
   }
 };
 
-const writeArchiveRecord = async (record: RssFeedArchiveRecord) => {
-  await ensureArchiveDir();
-  const filePath = getArchiveFilePath(record.feedUrl);
+const writeArchiveRecord = async (userId: string, record: RssFeedArchiveRecord) => {
+  await ensureArchiveDir(userId);
+  const filePath = getArchiveFilePath(userId, record.feedUrl);
   await fs.promises.writeFile(filePath, JSON.stringify(record), 'utf-8');
 };
 
-export const appendRssFeedArchiveSnapshot = async (payload: RssFeedPayload) => {
-  const feedUrl = String(payload.feedUrl || '').trim();
+export const appendRssFeedArchiveSnapshot = async (params: { userId: string; payload: RssFeedPayload }) => {
+  const feedUrl = String(params.payload.feedUrl || '').trim();
   if (!feedUrl) {
     return;
   }
 
-  const snapshot = normalizeSnapshot(payload);
+  const snapshot = normalizeSnapshot(params.payload);
   if (!snapshot) {
     return;
   }
 
-  const current = (await readArchiveRecord(feedUrl)) || {
+  const current = (await readArchiveRecord(params.userId, feedUrl)) || {
     feedUrl,
     snapshots: [],
     updatedAtMs: 0,
@@ -129,10 +128,11 @@ export const appendRssFeedArchiveSnapshot = async (payload: RssFeedPayload) => {
 
   current.snapshots = filtered.slice(0, RSS_FEED_ARCHIVE_MAX_SNAPSHOTS);
   current.updatedAtMs = Date.now();
-  await writeArchiveRecord(current);
+  await writeArchiveRecord(params.userId, current);
 };
 
 export const getRssFeedArchiveSnapshotPage = async (params: {
+  userId: string;
   feedUrl: string;
   offset: number;
   limit: number;
@@ -144,7 +144,7 @@ export const getRssFeedArchiveSnapshotPage = async (params: {
 
   const offset = Math.max(0, Math.floor(Number(params.offset || 0)));
   const limit = Math.max(1, Math.floor(Number(params.limit || 1)));
-  const current = await readArchiveRecord(normalizedFeedUrl);
+  const current = await readArchiveRecord(params.userId, normalizedFeedUrl);
   if (!current || current.snapshots.length === 0) {
     return [];
   }
@@ -157,7 +157,7 @@ export const getRssFeedArchiveSnapshotPage = async (params: {
   }));
 };
 
-export const getRssFeedArchiveSnapshotCount = async (feedUrl: string): Promise<number> => {
-  const current = await readArchiveRecord(feedUrl);
+export const getRssFeedArchiveSnapshotCount = async (params: { userId: string; feedUrl: string }): Promise<number> => {
+  const current = await readArchiveRecord(params.userId, params.feedUrl);
   return current?.snapshots.length || 0;
 };

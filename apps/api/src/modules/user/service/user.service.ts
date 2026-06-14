@@ -1,15 +1,27 @@
 import type { WhereOptions } from 'sequelize';
 import { Op } from 'sequelize';
+import crypto from 'crypto';
 import { UserModel } from '../model/user.model';
 import { SystemSettingModel } from '../model/system-setting.model';
 import { CreateUserParams, SystemSettingEntity, UserEntity } from '../types/user.types';
+
+export const buildUserDirKey = (seed?: string) => {
+  const normalizedSeed = String(seed || '').trim();
+  if (normalizedSeed) {
+    return crypto.createHash('sha256').update(normalizedSeed).digest('hex').slice(0, 24);
+  }
+  return crypto.randomBytes(12).toString('hex');
+};
 
 export const queryUser = async (param: WhereOptions<UserEntity>) => {
   return UserModel.findOne({ where: param });
 };
 
 export const addUser = async (param: CreateUserParams) => {
-  return UserModel.create(param);
+  return UserModel.create({
+    ...param,
+    dir_key: param.dir_key || buildUserDirKey(),
+  });
 };
 
 export const countUsers = async () => {

@@ -4,6 +4,7 @@ import { DataTypes, Model } from 'sequelize';
 
 export type UserType = Model<{
   id?: string | number;
+  dir_key?: string;
   email: string;
   email_verified?: boolean;
   nickname?: string;
@@ -18,6 +19,11 @@ export type UserType = Model<{
 
 export const UserModel = sequelize.define<UserType>('volix_user', {
   email: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    unique: true,
+  },
+  dir_key: {
     type: DataTypes.STRING,
     allowNull: false,
     unique: true,
