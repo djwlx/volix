@@ -1,5 +1,57 @@
 # Changelog
 
+## [1.1.15] - 2026-06-14
+
+### 中文
+#### Added
+- 新增用户目录键（user-dir-key）支持，为后续用户数据隔离奠定基础
+- 新增图片缓存路径管理模块，优化缓存路径生成逻辑
+- 新增 RSS 存储路径服务，统一管理 RSS 资源存储路径
+- 新增用户目录服务，提供用户目录管理功能
+- 新增多项单元测试，覆盖图片缓存、格式转换、日志查看、RSS 存储路径、用户目录键、用户目录、依赖、日志、路径等模块
+#### Changed
+- 重构图片缓存随机核心、启动同步、统一缓存等模块，使用新的路径服务
+- 重构格式转换工作区服务与运行器，优化工作区管理逻辑
+- 重构日志查看器服务，改进日志查询与展示
+- 重构 RSS 相关服务（归档、缓存、增量缓存、HTML 文件、持久化、清理、存储、资源代理等），统一使用新的存储路径服务
+- 重构资源代理缓存服务，优化缓存策略
+- 更新用户服务，集成用户目录键功能
+- 更新前端日志查看器界面，改进样式与交互
+- 更新前端首页应用卡片样式
+- 更新多个包版本号（api、web-pc、i18n、types、utils）
+#### Fixed
+- 修复图片缓存启动同步中的路径处理问题
+- 修复格式转换控制器中的参数校验问题
+- 修复 RSS 控制器中的路由处理问题
+- 修复 RSS 存储清理服务中的路径清理逻辑
+- 修复日志工具中的日志级别处理问题
+- 修复依赖工具中的依赖解析问题
+
+### English
+#### Added
+- Added user-dir-key support, laying foundation for user data isolation
+- Added picture cache path management module, optimizing cache path generation
+- Added RSS storage path service, unifying RSS resource storage path management
+- Added user directory service for user directory management
+- Added multiple unit tests covering picture cache, format conversion, log viewer, RSS storage path, user-dir-key, user directory, dependencies, logger, and path modules
+#### Changed
+- Refactored picture cache random core, startup sync, and unified cache modules to use new path service
+- Refactored format conversion workspace service and runner, optimizing workspace management logic
+- Refactored log viewer service, improving log query and display
+- Refactored RSS-related services (archive, cache, incremental cache, HTML file, persist, cleanup, storage, resource proxy) to use new storage path service
+- Refactored resource proxy cache service, optimizing caching strategy
+- Updated user service to integrate user-dir-key functionality
+- Updated frontend log viewer UI, improving styles and interaction
+- Updated frontend home app card styles
+- Updated package versions for api, web-pc, i18n, types, utils
+#### Fixed
+- Fixed path handling issue in picture cache startup sync
+- Fixed parameter validation issue in format conversion controller
+- Fixed route handling issue in RSS controller
+- Fixed path cleanup logic in RSS storage cleanup service
+- Fixed log level handling issue in logger utility
+- Fixed dependency resolution issue in dependencies utility
+
 ## [1.1.14] - 2026-06-13
 
 ### 中文
