@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.1.17] - 2026-06-16
+
+### 中文
+#### Added
+- 新增 RSS 条目资源服务，用于管理 RSS 条目中的远程资源
+- 新增远程资源获取服务，替代旧的资源代理缓存服务
+#### Changed
+- 重构 RSS 存储相关服务，移除旧的公共资源路径服务
+- 更新 RSS 控制器和路由以支持新的资源处理逻辑
+- 更新多个依赖包的版本号
+
+### English
+#### Added
+- Added RSS item resource service to manage remote resources in RSS items
+- Added remote resource fetch service to replace the old resource proxy cache service
+#### Changed
+- Refactored RSS storage services, removed old public resource path service
+- Updated RSS controller and routes to support new resource handling logic
+- Updated version numbers of multiple dependency packages
+
 ## [1.1.16] - 2026-06-14
 
 ### 中文
