@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.1.18] - 2026-06-16
+
+### 中文
+#### Added
+- 新增 RSS 持久化条目资源回填服务及测试
+- 新增 RSS 存储资源服务及测试
+- 新增 RSS 存储路由元数据服务
+#### Changed
+- 优化 RSS 存储服务逻辑
+- 更新 RSS Feed 数据库服务
+- 更新 RSS Feed 条目持久化服务
+- 更新依赖项
+
+### English
+#### Added
+- Added RSS persisted item resource backfill service and tests
+- Added RSS storage resource service and tests
+- Added RSS storage route metadata service
+#### Changed
+- Optimized RSS storage service logic
+- Updated RSS feed database service
+- Updated RSS feed item persistence service
+- Updated dependencies
+
 ## [1.1.17] - 2026-06-16
 
 ### 中文
