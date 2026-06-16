@@ -3,13 +3,13 @@ import {
   createUserRssSubscription,
   fetchRssFeed,
   getRssStorageData,
-  getRssCachedResourceData,
   getUserRssSetting,
   listUserRssSubscriptions,
   removeUserRssSubscription,
   setUserRssSubscriptionEnabled,
   updateUserRssSetting,
 } from '../service/rss.service';
+import { readRssItemResourceFileByLocator } from '../service/rss-item-resource.service';
 import fs from 'fs';
 import type {
   ClearRssStoragePayload,
@@ -61,11 +61,19 @@ export const clearCurrentUserRssStorage: MyMiddleware = async ctx => {
   return clearRssStorageData(ctx.state.userInfo?.id, body);
 };
 
-export const getRssCachedResource: MyMiddleware = async ctx => {
-  const cacheKey = String(ctx.params?.cacheKey || '');
-  const cached = await getRssCachedResourceData(ctx.state.userInfo?.id, cacheKey);
-  ctx.set('Content-Type', cached.contentType || 'application/octet-stream');
-  ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(cached.fileName || 'resource.bin')}"`);
-  ctx.set('Cache-Control', 'public, max-age=31536000, immutable');
-  ctx.body = fs.createReadStream(cached.filePath);
+export const getRssItemResourceFile: MyMiddleware = async ctx => {
+  const resource = await readRssItemResourceFileByLocator({
+    dirKey: String(ctx.params?.dirKey || ''),
+    subscriptionKey: String(ctx.params?.subscriptionKey || ''),
+    itemSeg: String(ctx.params?.itemSeg || ''),
+    resourceId: String(ctx.params?.resourceId || ''),
+  });
+  if (!resource) {
+    ctx.status = 404;
+    return;
+  }
+  ctx.set('Content-Type', resource.contentType || 'application/octet-stream');
+  ctx.set('Content-Disposition', `inline; filename="${encodeURIComponent(resource.fileName || 'resource.bin')}"`);
+  ctx.set('Cache-Control', 'private, max-age=31536000, immutable');
+  ctx.body = fs.createReadStream(resource.filePath);
 };

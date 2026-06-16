@@ -9,7 +9,6 @@ import {
   getRssFeedIncrementalCacheDirByUserId,
   getRssFeedResponseCacheDirByUserId,
   getRssFeedRootDirByUserId,
-  getRssResourceProxyCacheDirByUserId,
   getRssSubscriptionDirPath,
   getRssTaskRootDirByUserId,
 } from '../rss-storage-path.service';
@@ -26,9 +25,6 @@ describe('rss storage path helpers', () => {
       path.join(getUserRssHistoryDir(dirKey), 'feed-incremental')
     );
     expect(getRssFeedResponseCacheDirByUserId('rss-user')).toBe(path.join(getUserRssCacheDir(dirKey), 'feed-response'));
-    expect(getRssResourceProxyCacheDirByUserId('rss-user')).toBe(
-      path.join(getUserRssCacheDir(dirKey), 'resource-proxy')
-    );
   });
 
   it('builds stable subscription directories inside the user feed root', () => {

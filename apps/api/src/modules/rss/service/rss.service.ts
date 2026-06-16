@@ -2,10 +2,9 @@ import request from '../../../utils/request';
 import { log } from '../../../utils/logger';
 import { badRequest } from '../../shared/http-handler';
 import {
-  getCachedResourceByKey,
   parseResourceCacheSizeMb,
   parseResourceProxyBaseUrl,
-} from '../../shared/service/resource-proxy-cache.service';
+} from '../../shared/service/remote-resource-fetch.service';
 import { queryUser, updateUser } from '../../user/service/user.service';
 import { parseRssFeedItemsFromXml } from './rss-feed-item-parser.service';
 import {
@@ -473,23 +472,4 @@ export async function clearRssStorageData(
   payload?: ClearRssStoragePayload
 ): Promise<RssStorageStatusPayload> {
   return clearRssStorage(getCurrentUserId(userId), payload);
-}
-export async function getRssCachedResourceData(
-  userId: string | number | undefined,
-  cacheKey: string
-): Promise<NonNullable<Awaited<ReturnType<typeof getCachedResourceByKey>>>> {
-  const normalizedUserId = getCurrentUserId(userId);
-  const normalizedCacheKey = String(cacheKey || '').trim();
-  if (!normalizedCacheKey) {
-    badRequest(t('rssApi.cacheKeyRequired'));
-  }
-  const cached = await getCachedResourceByKey({
-    scope: 'rss',
-    cacheKey: normalizedCacheKey,
-    userId: normalizedUserId,
-  });
-  if (!cached) {
-    badRequest(t('rssApi.resourceNotFound'));
-  }
-  return cached!;
 }

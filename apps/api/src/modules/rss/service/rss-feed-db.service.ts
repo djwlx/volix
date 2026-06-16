@@ -3,7 +3,7 @@ import { Op, fn, col } from 'sequelize';
 import { UserRssFeedItemModel } from '../model/rss-feed-item.model';
 import { UserRssFeedStateModel } from '../model/rss-feed-state.model';
 import type { RssFeedItem } from '../types/rss.types';
-import { readRssItemHtmlFileByKey, writeRssItemHtmlFile } from './rss-feed-item-html-file.service';
+import { writeRssItemHtmlFile } from './rss-feed-item-html-file.service';
 import { buildFeedItemPersistPayload, buildItemSourceHash, mapFeedItemRow } from './rss-feed-item-persist.service';
 
 interface MergeUserRssFeedItemsParams {
@@ -442,45 +442,4 @@ export const clearAllUserRssFeedData = async (userId: string) => {
       user_id: normalizedUserId,
     },
   });
-};
-
-const CACHE_KEY_REGEX = /\/api\/rss\/resource-cache\/([a-f0-9]{64})/gi;
-
-const extractCacheKeys = (value: string) => {
-  const keys: string[] = [];
-  const text = String(value || '');
-  for (const match of text.matchAll(CACHE_KEY_REGEX)) {
-    const key = String(match[1] || '')
-      .trim()
-      .toLowerCase();
-    if (key) {
-      keys.push(key);
-    }
-  }
-  return keys;
-};
-
-export const listUserRssResourceCacheKeysByRoute = async (userId: string, route: string): Promise<string[]> => {
-  const normalizedUserId = String(userId || '').trim();
-  const normalizedRoute = String(route || '').trim();
-  if (!normalizedUserId || !normalizedRoute) {
-    return [];
-  }
-
-  const rows = await UserRssFeedItemModel.findAll({
-    attributes: ['description_html', 'description_html_file_key', 'image_urls'],
-    where: {
-      user_id: normalizedUserId,
-      route: normalizedRoute,
-    },
-  });
-
-  const keySet = new Set<string>();
-  for (const row of rows) {
-    const htmlFileKey = String(row.dataValues.description_html_file_key || '').trim();
-    const fileHtml = htmlFileKey ? await readRssItemHtmlFileByKey({ userId: normalizedUserId, key: htmlFileKey }) : '';
-    extractCacheKeys(fileHtml || String(row.dataValues.description_html || '')).forEach(key => keySet.add(key));
-    extractCacheKeys(String(row.dataValues.image_urls || '')).forEach(key => keySet.add(key));
-  }
-  return Array.from(keySet);
 };

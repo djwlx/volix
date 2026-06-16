@@ -1,4 +1,4 @@
-import { buildResourceProxyUrl, cacheRemoteResource } from '../../shared/service/resource-proxy-cache.service';
+import { downloadRssItemResource } from './rss-item-resource.service';
 import type { RssFeedItem } from '../types/rss.types';
 
 const ATTRIBUTE_QUOTE_PATTERN = `(?:"|'|&quot;|&#34;|&apos;|&#39;)`;
@@ -95,30 +95,29 @@ const mapWithConcurrency = async <T, R>(list: T[], concurrency: number, worker: 
 
 export const mapWithConcurrencyLimited = mapWithConcurrency;
 
-const cacheRssItemResourceWithRetry = async (params: {
+const downloadRssItemResourceWithRetry = async (params: {
   userId: string;
+  route: string;
+  itemKey: string;
   sourceUrl: string;
   requestProxyUrl: string;
-  cacheSizeMb: number;
 }) => {
   let attempt = 0;
   while (attempt < RETRY_LIMIT) {
     attempt += 1;
     try {
-      const cached = await cacheRemoteResource({
-        scope: 'rss',
+      const downloaded = await downloadRssItemResource({
         userId: params.userId,
+        route: params.route,
+        itemKey: params.itemKey,
         sourceUrl: params.sourceUrl,
-        maxCacheSizeMb: params.cacheSizeMb,
         requestProxyUrl: params.requestProxyUrl,
         requestTimeoutMs: 12000,
-        silentOnError: true,
       });
-      const replacement = buildResourceProxyUrl({ scope: 'rss', cacheKey: cached.cacheKey });
-      if (replacement) {
+      if (downloaded.ok && downloaded.url) {
         return {
           ok: true,
-          replacement,
+          replacement: downloaded.url,
         } as const;
       }
     } catch {
@@ -133,7 +132,7 @@ const cacheRssItemResourceWithRetry = async (params: {
 
 export const rewriteRssItemResourcesStrict = async (
   item: RssFeedItem,
-  params: { requestProxyUrl: string; userId: string; cacheSizeMb: number }
+  params: { requestProxyUrl: string; userId: string; route: string; itemKey: string }
 ) => {
   const urls = collectHtmlResourceUrls(item.descriptionHtml, item.imageUrls);
   if (urls.length === 0) {
@@ -144,16 +143,17 @@ export const rewriteRssItemResourcesStrict = async (
   }
 
   const mappings = await mapWithConcurrency(urls, 6, async sourceUrl => {
-    const cached = await cacheRssItemResourceWithRetry({
+    const downloaded = await downloadRssItemResourceWithRetry({
       userId: params.userId,
+      route: params.route,
+      itemKey: params.itemKey,
       sourceUrl,
       requestProxyUrl: params.requestProxyUrl,
-      cacheSizeMb: params.cacheSizeMb,
     });
     return {
       sourceUrl,
-      replacement: cached.replacement,
-      cached: cached.ok,
+      replacement: downloaded.replacement,
+      cached: downloaded.ok,
     };
   });
 

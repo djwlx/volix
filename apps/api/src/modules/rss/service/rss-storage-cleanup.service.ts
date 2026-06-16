@@ -12,7 +12,8 @@ import {
   clearRssItemHtmlFilesByRoute,
   clearRssItemHtmlFilesByUser,
 } from './rss-feed-item-html-file.service';
-import { getRssResourceProxyCacheDirByUserId, getRssTaskRootDirByUserId } from './rss-storage-path.service';
+import { getRssFeedRootDirByUserId, getRssTaskRootDirByUserId } from './rss-storage-path.service';
+import { clearRssItemResourcesInFeedDir } from './rss-item-resource.service';
 import { countUserRssFeedItemsByRoute, trimUserRssFeedItemsByRoute } from './rss-feed-retention.service';
 
 interface PendingFeedTaskMeta {
@@ -45,15 +46,6 @@ const readTaskMeta = async (filePath: string): Promise<PendingFeedTaskMeta | nul
   } catch {
     return null;
   }
-};
-
-const clearDirContents = async (targetDir: string) => {
-  const stat = await fs.promises.stat(targetDir).catch(() => null);
-  if (!stat?.isDirectory()) {
-    return;
-  }
-  const entries = await fs.promises.readdir(targetDir).catch(() => []);
-  await Promise.all(entries.map(name => fs.promises.rm(path.join(targetDir, name), { recursive: true, force: true })));
 };
 
 const clearDirIfExists = async (targetDir: string) => {
@@ -139,7 +131,7 @@ export const clearRssStorageInternal = async (userId: string, payload?: ClearRss
 
   const scope = String(payload?.scope || 'all');
   if (scope === 'resource-cache' || scope === 'all') {
-    await clearDirContents(getRssResourceProxyCacheDirByUserId(normalizedUserId));
+    await clearRssItemResourcesInFeedDir(getRssFeedRootDirByUserId(normalizedUserId));
   }
   if (scope === 'history' || scope === 'all') {
     const inputRoutes = normalizeRouteListFromPayload(payload);

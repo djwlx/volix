@@ -35,10 +35,6 @@ export const getRssFeedResponseCacheDirByUserId = (userId: string) => {
   return path.join(getRssCacheRootDirByUserId(userId), 'feed-response');
 };
 
-export const getRssResourceProxyCacheDirByUserId = (userId: string) => {
-  return path.join(getRssCacheRootDirByUserId(userId), 'resource-proxy');
-};
-
 export const getRssFeedArchiveDirByUserId = (userId: string) => {
   return path.join(getRssHistoryRootDirByUserId(userId), 'feed-archive');
 };

@@ -39,7 +39,6 @@ import {
   parseRefreshIntervalMinutes,
 } from './rss-storage-status-utils.service';
 import { parseUserRssConfig } from './rss-user-config.service';
-import { parseResourceCacheSizeMb } from '../../shared/service/resource-proxy-cache.service';
 interface PendingFeedTask {
   userId: string;
   route: string;
@@ -137,16 +136,14 @@ const processSingleTask = async (taskFilePath: string) => {
           });
     const existingKeySet = new Set(existingRows.map(item => String(item.dataValues.item_key || '')));
     const newItems = keyedItems.filter(item => !existingKeySet.has(String(item.id || '')));
-    const taskUser = await queryUser({ id: task.userId });
-    const taskUserRssConfig = parseUserRssConfig(taskUser?.dataValues?.rss_config);
-    const resourceCacheSizeMb = parseResourceCacheSizeMb(Number(taskUserRssConfig.resourceCacheMaxSizeMb || 0), 0);
     let insertedCount = 0;
     await mapWithConcurrencyLimited(newItems, 3, async item => {
       const originalItemId = String(item.itemId || item.id || '');
       const rewritten = await rewriteRssItemResourcesStrict(item, {
         requestProxyUrl: task.requestProxyUrl,
         userId: task.userId,
-        cacheSizeMb: resourceCacheSizeMb,
+        route: task.route,
+        itemKey: String(item.id || ''),
       });
       const upsertItem: RssFeedItem & { resourceCount: number; itemId?: string } = {
         ...rewritten.item,
