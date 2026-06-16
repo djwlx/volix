@@ -59,6 +59,7 @@ describe('rss storage resource rewrite', () => {
     expect(result.item.descriptionHtml).toContain('https://cdn.example.com/fail.png');
     expect(result.item.imageUrls).toEqual(['/api/rss/dir/sub/item/ok.png', 'https://cdn.example.com/fail.png']);
     expect(result.resourceCount).toBe(1);
+    expect(result.resourcesLocalized).toBe(false);
   });
 
   it('backfills only remote resources for persisted items and returns the total localized count', async () => {
@@ -91,5 +92,6 @@ describe('rss storage resource rewrite', () => {
     expect(result.item.descriptionHtml).toContain('/api/rss/dir/sub/item/new.png');
     expect(result.item.imageUrls).toEqual(['/api/rss/dir/sub/item/cached.png', '/api/rss/dir/sub/item/new.png']);
     expect(result.resourceCount).toBe(2);
+    expect(result.resourcesLocalized).toBe(true);
   });
 });

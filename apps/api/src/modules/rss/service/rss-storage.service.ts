@@ -146,11 +146,12 @@ const processSingleTask = async (taskFilePath: string) => {
         route: task.route,
         itemKey: String(item.id || ''),
       });
-      const upsertItem: RssFeedItem & { resourceCount: number; itemId?: string } = {
+      const upsertItem: RssFeedItem & { resourceCount: number; itemId?: string; resourcesLocalized?: boolean } = {
         ...rewritten.item,
         id: String(item.id || ''),
         itemId: originalItemId,
         resourceCount: rewritten.resourceCount,
+        resourcesLocalized: rewritten.resourcesLocalized,
       };
       const merged = await mergeUserRssFeedItems({
         userId: task.userId,

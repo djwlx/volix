@@ -2,7 +2,11 @@ import crypto from 'crypto';
 import type { RssFeedItem } from '../types/rss.types';
 import { readRssItemHtmlFileByKey } from './rss-feed-item-html-file.service';
 
-type RssFeedItemPersistInput = RssFeedItem & { resourceCount?: number; itemId?: string };
+type RssFeedItemPersistInput = RssFeedItem & {
+  resourceCount?: number;
+  itemId?: string;
+  resourcesLocalized?: boolean;
+};
 
 const safeJsonParse = <T>(value: string, fallback: T): T => {
   try {
@@ -76,6 +80,7 @@ export const buildFeedItemPersistPayload = (
     doi: item.doi || undefined,
     source_hash: sourceHash,
     resource_count: Math.max(0, Number(item.resourceCount || 0)),
+    resources_localized: item.resourcesLocalized === true,
     fetched_at: fetchedAt,
   };
 };

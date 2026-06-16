@@ -169,6 +169,7 @@ export const rewriteRssItemResourcesStrict = async (
     return {
       item,
       resourceCount: 0,
+      resourcesLocalized: true,
     };
   }
 
@@ -195,6 +196,7 @@ export const rewriteRssItemResourcesStrict = async (
 
   const rewrittenHtml = rewriteHtmlWithUrlMap(item.descriptionHtml, urlMap);
   const rewrittenImageUrls = (item.imageUrls || []).map(url => urlMap.get(url) || url);
+  const remainingRemoteCount = collectHtmlResourceUrls(rewrittenHtml, rewrittenImageUrls).length;
   return {
     item: {
       ...item,
@@ -202,5 +204,6 @@ export const rewriteRssItemResourcesStrict = async (
       imageUrls: rewrittenImageUrls,
     },
     resourceCount: collectLocalizedResourceUrls(rewrittenHtml, rewrittenImageUrls).length,
+    resourcesLocalized: remainingRemoteCount === 0,
   };
 };

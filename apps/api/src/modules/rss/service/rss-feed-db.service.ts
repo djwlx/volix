@@ -10,7 +10,7 @@ interface MergeUserRssFeedItemsParams {
   userId: string;
   route: string;
   fetchedAt: string;
-  items: Array<RssFeedItem & { resourceCount: number; itemId?: string }>;
+  items: Array<RssFeedItem & { resourceCount: number; itemId?: string; resourcesLocalized?: boolean }>;
 }
 
 interface UpsertUserRssFeedStateParams {

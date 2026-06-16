@@ -28,7 +28,7 @@ export const backfillPersistedRssItemResources = async (params: {
 
   await mapWithConcurrencyLimited(params.rows, 3, async row => {
     const itemKey = String(row.dataValues.item_key || '').trim();
-    if (!itemKey) {
+    if (!itemKey || row.dataValues.resources_localized === true) {
       return;
     }
 
@@ -54,6 +54,7 @@ export const backfillPersistedRssItemResources = async (params: {
           id: itemKey,
           itemId: storedItem.id || itemKey,
           resourceCount: rewritten.resourceCount,
+          resourcesLocalized: rewritten.resourcesLocalized,
         },
       ],
     });

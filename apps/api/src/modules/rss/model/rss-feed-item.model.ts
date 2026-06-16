@@ -28,6 +28,7 @@ export interface UserRssFeedItemEntity {
   doi?: string;
   source_hash?: string;
   resource_count?: number;
+  resources_localized?: boolean;
   is_read?: boolean;
   tags?: string;
   fetched_at?: string;
@@ -139,6 +140,11 @@ export const UserRssFeedItemModel = sequelize.define<UserRssFeedItemModelType>('
     allowNull: false,
     defaultValue: 0,
   },
+  resources_localized: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
   is_read: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
@@ -154,3 +160,17 @@ export const UserRssFeedItemModel = sequelize.define<UserRssFeedItemModelType>('
     allowNull: true,
   },
 });
+
+export const ensureRssFeedItemSchema = async () => {
+  await UserRssFeedItemModel.sync();
+  const queryInterface = sequelize.getQueryInterface();
+  const columns = await queryInterface.describeTable('volix_user_rss_feed_item');
+
+  if (!columns.resources_localized) {
+    await queryInterface.addColumn('volix_user_rss_feed_item', 'resources_localized', {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    });
+  }
+};

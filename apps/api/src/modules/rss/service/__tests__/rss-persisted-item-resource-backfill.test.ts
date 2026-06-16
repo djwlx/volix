@@ -58,6 +58,7 @@ describe('persisted rss item resource backfill', () => {
         imageUrls: ['/api/rss/dir/sub/item/a.png'],
       }),
       resourceCount: 1,
+      resourcesLocalized: true,
     });
     mergeUserRssFeedItems.mockResolvedValue({ inserted: 0, updated: 1, total: 1 });
 
@@ -85,6 +86,7 @@ describe('persisted rss item resource backfill', () => {
           id: 'stable-item-key',
           itemId: 'origin-item-id',
           resourceCount: 1,
+          resourcesLocalized: true,
           imageUrls: ['/api/rss/dir/sub/item/a.png'],
         }),
       ],
@@ -102,6 +104,7 @@ describe('persisted rss item resource backfill', () => {
     rewriteRssItemResourcesStrict.mockResolvedValue({
       item: storedItem,
       resourceCount: 1,
+      resourcesLocalized: true,
     });
 
     const result = await backfillPersistedRssItemResources({
@@ -119,6 +122,28 @@ describe('persisted rss item resource backfill', () => {
     });
 
     expect(result.updatedCount).toBe(0);
+    expect(mergeUserRssFeedItems).not.toHaveBeenCalled();
+  });
+
+  it('skips rows already marked as fully localized before loading html content', async () => {
+    const result = await backfillPersistedRssItemResources({
+      rows: [
+        {
+          dataValues: {
+            item_key: 'stable-item-key',
+            resources_localized: true,
+          },
+        },
+      ],
+      userId: 'user-1',
+      route: '/tech',
+      fetchedAt: '2026-06-16T01:00:00.000Z',
+      requestProxyUrl: 'https://proxy.example.com',
+    });
+
+    expect(result.updatedCount).toBe(0);
+    expect(mapFeedItemRow).not.toHaveBeenCalled();
+    expect(rewriteRssItemResourcesStrict).not.toHaveBeenCalled();
     expect(mergeUserRssFeedItems).not.toHaveBeenCalled();
   });
 });
