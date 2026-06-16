@@ -3,12 +3,13 @@ import type { RssFeedItem } from '../types/rss.types';
 
 const ATTRIBUTE_QUOTE_PATTERN = `(?:"|'|&quot;|&#34;|&apos;|&#39;)`;
 const SRC_ATTR_REGEX = new RegExp(
-  `\\b(src|poster|data-src)\\s*=\\s*(${ATTRIBUTE_QUOTE_PATTERN})(https?:\\/\\/[^"'<>\\s]+)\\2`,
+  `\\b(src|poster|data-src)\\s*=\\s*(${ATTRIBUTE_QUOTE_PATTERN})([^"'<>\\s]+)\\2`,
   'gi'
 );
 const SRCSET_ATTR_REGEX = new RegExp(`\\bsrcset\\s*=\\s*(${ATTRIBUTE_QUOTE_PATTERN})([\\s\\S]*?)\\1`, 'gi');
 const RSS_RESOURCE_REWRITE_MAX_URLS = 120;
 const RETRY_LIMIT = 3;
+const LOCAL_RESOURCE_URL_PREFIX = '/api/rss/';
 
 const decodeHtmlUrl = (value: string) => String(value || '').replace(/&amp;/gi, '&');
 const encodeHtmlUrl = (value: string) => String(value || '').replace(/&/g, '&amp;');
@@ -31,6 +32,35 @@ const collectHtmlResourceUrls = (html: string, itemImageUrls?: string[]) => {
   const pushUrl = (value: string) => {
     const normalized = decodeHtmlUrl(String(value || '').trim());
     if (!/^https?:\/\//i.test(normalized)) {
+      return;
+    }
+    urls.add(normalized);
+  };
+
+  const normalizedHtml = String(html || '');
+  for (const match of normalizedHtml.matchAll(SRC_ATTR_REGEX)) {
+    pushUrl(match[3] || '');
+  }
+  for (const match of normalizedHtml.matchAll(SRCSET_ATTR_REGEX)) {
+    String(match[2] || '')
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean)
+      .forEach(item => {
+        const [url] = item.split(/\s+/, 1);
+        pushUrl(url || '');
+      });
+  }
+
+  (itemImageUrls || []).forEach(pushUrl);
+  return Array.from(urls).slice(0, RSS_RESOURCE_REWRITE_MAX_URLS);
+};
+
+const collectLocalizedResourceUrls = (html: string, itemImageUrls?: string[]) => {
+  const urls = new Set<string>();
+  const pushUrl = (value: string) => {
+    const normalized = decodeHtmlUrl(String(value || '').trim());
+    if (!normalized.startsWith(LOCAL_RESOURCE_URL_PREFIX)) {
       return;
     }
     urls.add(normalized);
@@ -171,6 +201,6 @@ export const rewriteRssItemResourcesStrict = async (
       descriptionHtml: rewrittenHtml,
       imageUrls: rewrittenImageUrls,
     },
-    resourceCount: mappings.filter(item => item.cached).length,
+    resourceCount: collectLocalizedResourceUrls(rewrittenHtml, rewrittenImageUrls).length,
   };
 };

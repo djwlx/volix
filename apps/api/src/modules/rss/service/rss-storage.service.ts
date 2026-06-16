@@ -39,6 +39,8 @@ import {
   parseRefreshIntervalMinutes,
 } from './rss-storage-status-utils.service';
 import { parseUserRssConfig } from './rss-user-config.service';
+import { backfillPersistedRssItemResources } from './rss-persisted-item-resource-backfill.service';
+import { readTaskRouteMeta } from './rss-storage-route-meta.service';
 interface PendingFeedTask {
   userId: string;
   route: string;
@@ -131,7 +133,6 @@ const processSingleTask = async (taskFilePath: string) => {
       itemKeys.length === 0
         ? []
         : await UserRssFeedItemModel.findAll({
-            attributes: ['item_key'],
             where: { user_id: task.userId, route: task.route, item_key: { [Op.in]: itemKeys } },
           });
     const existingKeySet = new Set(existingRows.map(item => String(item.dataValues.item_key || '')));
@@ -158,6 +159,13 @@ const processSingleTask = async (taskFilePath: string) => {
         items: [upsertItem],
       });
       insertedCount += Number(merged.inserted || 0);
+    });
+    await backfillPersistedRssItemResources({
+      rows: existingRows,
+      userId: task.userId,
+      route: task.route,
+      fetchedAt: task.fetchedAt,
+      requestProxyUrl: task.requestProxyUrl,
     });
     await upsertUserRssFeedState({
       userId: task.userId,
@@ -335,54 +343,6 @@ export const getRssPendingFeedPlaceholder = (feedUrl: string): RssFeedPayload =>
   };
 };
 
-interface RouteQueueMetaItem {
-  route: string;
-  routeName: string;
-  itemCount: number;
-}
-
-const countTaskItems = (xml: string) => {
-  try {
-    const parsed = parseRssFeedItemsFromXml(String(xml || ''));
-    return Math.max(0, parsed.items.length || 0);
-  } catch {
-    return 0;
-  }
-};
-
-const readTaskRouteMeta = async (targetDir: string, userId: string): Promise<RouteQueueMetaItem[]> => {
-  const files = await listTaskFileNames(targetDir);
-  const records = (
-    await Promise.all(
-      files.map(async name => {
-        const task = await readPendingTask(path.join(targetDir, name));
-        if (!task || task.userId !== userId) {
-          return null;
-        }
-        return {
-          route: task.route,
-          routeName: task.routeName || task.route,
-          itemCount: countTaskItems(task.xml),
-        };
-      })
-    )
-  ).filter(Boolean) as RouteQueueMetaItem[];
-
-  const routeMap = new Map<string, RouteQueueMetaItem>();
-  records.forEach(item => {
-    const current = routeMap.get(item.route);
-    if (!current) {
-      routeMap.set(item.route, { ...item });
-      return;
-    }
-    routeMap.set(item.route, {
-      ...current,
-      itemCount: current.itemCount + item.itemCount,
-    });
-  });
-  return Array.from(routeMap.values());
-};
-
 export const getRssStorageStatus = async (userId: string): Promise<RssStorageStatusPayload> => {
   const normalizedUserId = normalizeText(userId);
   if (!normalizedUserId) {
@@ -406,7 +366,12 @@ export const getRssStorageStatus = async (userId: string): Promise<RssStorageSta
       })
     ),
     listUserRssSubscriptionStates(normalizedUserId),
-    readTaskRouteMeta(getPendingDir(normalizedUserId), normalizedUserId),
+    readTaskRouteMeta({
+      targetDir: getPendingDir(normalizedUserId),
+      userId: normalizedUserId,
+      listTaskFileNames,
+      readPendingTask,
+    }),
     queryUser({
       id: normalizedUserId,
     }),
