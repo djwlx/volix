@@ -25,6 +25,7 @@ export interface RssReaderItem {
   downvotes?: number;
   media?: Record<string, unknown>;
   doi?: string;
+  resourcesLocalized?: boolean;
 }
 
 export interface RssReaderRawFeed {

@@ -11,7 +11,7 @@ interface AuthenticateParam {
   notInclude?: string[];
 }
 
-const AUTH_BYPASS_PATHS = ['/api/rss/:dirKey/:subscriptionKey/:itemSeg/:resourceId'];
+const AUTH_BYPASS_PATHS = ['/api/rss/:dirKey/:subscriptionKey/:itemSeg/:resourceId', '/api/file/:dirKey/:fileName'];
 
 const testArray = (array: string[], key: string) => {
   return array.some(item => {

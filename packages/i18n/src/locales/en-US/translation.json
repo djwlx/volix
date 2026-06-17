@@ -313,6 +313,7 @@
   "rss.action.openAttachment": "Open attachment",
   "rss.action.openOriginal": "Open original",
   "rss.action.refresh": "Refresh",
+  "rss.badge.cached": "Cached",
   "rss.empty.content.description": "Check whether the subscription is available or try refreshing later.",
   "rss.empty.content.title": "No content",
   "rss.empty.description": "This item does not have a summary.",

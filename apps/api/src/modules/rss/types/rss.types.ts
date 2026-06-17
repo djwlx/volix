@@ -25,6 +25,7 @@ export interface RssFeedItem {
   downvotes?: number;
   media?: Record<string, unknown>;
   doi?: string;
+  resourcesLocalized?: boolean;
 }
 
 export interface RssFeedPayload {

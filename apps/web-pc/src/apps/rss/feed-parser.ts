@@ -22,6 +22,7 @@ export interface ReaderItem {
   downvotes?: number;
   media?: Record<string, unknown>;
   doi?: string;
+  resourcesLocalized?: boolean;
 }
 
 export interface ReaderFeed {
@@ -299,6 +300,7 @@ export const parseFeed = (rawFeed: RssReaderRawFeed): ReaderFeed => {
           downvotes: Number.isFinite(Number(item.downvotes)) ? Number(item.downvotes) : undefined,
           media: item.media && typeof item.media === 'object' ? item.media : undefined,
           doi: String(item.doi || '').trim() || undefined,
+          resourcesLocalized: item.resourcesLocalized === true,
         };
       }),
     };

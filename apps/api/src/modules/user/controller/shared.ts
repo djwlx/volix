@@ -1,7 +1,7 @@
 import { AppFeature, UserRole } from '@volix/types';
 
 export const EMAIL_REGEXP = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-export const AVATAR_URL_REGEXP = /^(https?:\/\/|\/file\/)/;
+export const AVATAR_URL_REGEXP = /^(https?:\/\/|\/api\/file\/|\/file\/)/;
 export const DEFAULT_USER_FEATURES: AppFeature[] = [AppFeature.RANDOM_PIC];
 
 type UserSettingsJson = Record<string, unknown>;

@@ -115,5 +115,6 @@ export const mapFeedItemRow = async (
     downvotes: normalizeInt(row.dataValues.downvotes_count),
     media: media || undefined,
     doi: String(row.dataValues.doi || '').trim() || undefined,
+    resourcesLocalized: row.dataValues.resources_localized === true,
   };
 };

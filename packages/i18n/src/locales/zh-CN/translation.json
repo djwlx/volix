@@ -314,6 +314,7 @@
   "rss.action.openAttachment": "打开附件",
   "rss.action.openOriginal": "打开原文",
   "rss.action.refresh": "刷新",
+  "rss.badge.cached": "已缓存",
   "rss.empty.content.description": "请先检查订阅是否可用，或稍后刷新重试。",
   "rss.empty.content.title": "暂无内容",
   "rss.empty.description": "该条目没有摘要内容。",

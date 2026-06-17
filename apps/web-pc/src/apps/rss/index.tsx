@@ -352,7 +352,12 @@ function RssApp() {
                           }
                         }}
                       >
-                        <div className={styles.itemTitle}>{item.title}</div>
+                        <div className={styles.itemTitle}>
+                          <span className={styles.itemTitleText}>{item.title}</span>
+                          {item.resourcesLocalized ? (
+                            <span className={styles.cachedBadge}>{t('rss.badge.cached')}</span>
+                          ) : null}
+                        </div>
                         <div className={styles.itemMeta}>
                           {formatFeedDate(item.publishedAt) || t('rss.time.unknown')}
                         </div>
