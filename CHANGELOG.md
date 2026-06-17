@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.1.19] - 2026-06-17
+
+### 中文
+#### Added
+- 新增数据库迁移脚本，移除文件表
+#### Changed
+- 重构文件模块，移除文件模型和服务层
+- 更新 RSS 模块，支持文件附件类型
+- 更新前端 RSS 页面，优化样式和解析逻辑
+- 更新国际化翻译文件
+
+### English
+#### Added
+- Added database migration to drop file table
+#### Changed
+- Refactored file module, removed file model and service layer
+- Updated RSS module to support file attachment type
+- Updated frontend RSS page with improved styles and parsing logic
+- Updated i18n translation files
+
 ## [1.1.18] - 2026-06-16
 
 ### 中文
