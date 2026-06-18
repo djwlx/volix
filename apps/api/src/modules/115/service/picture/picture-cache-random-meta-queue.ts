@@ -19,6 +19,7 @@ import {
 } from './picture-cache-random-core';
 import {
   getCacheQueueRunner,
+  get115ScopeUserId,
   getPicCacheFolders,
   nowIso,
   parse115FileMeta,
@@ -28,6 +29,7 @@ import {
   withFolderConfigLock,
 } from './picture-cache-fs-folder';
 import { resolve115CloudImageUrl } from './picture-cloud-proxy';
+import { emitPic115InfoChanged } from './picture-realtime.service';
 
 export const mergeNotice = (...items: Array<string | undefined>) => {
   const list = items.map(item => String(item || '').trim()).filter(Boolean);
@@ -189,6 +191,7 @@ export const ensure115PicQueueRunning = async () => {
           lightLocks.is115PictureCaching = true;
           return nextItem.cid;
         });
+        emitPic115InfoChanged(get115ScopeUserId(), { source: 'queue' });
 
         if (!nextCid) {
           return;
@@ -206,6 +209,7 @@ export const ensure115PicQueueRunning = async () => {
               await savePicCacheFolders(folders);
             }
           });
+          emitPic115InfoChanged(get115ScopeUserId(), { source: 'queue' });
         } catch (error) {
           const message = error instanceof Error ? error.message : '缓存失败';
           log.error('缓存 115 图片目录失败', nextCid, error);
@@ -219,12 +223,14 @@ export const ensure115PicQueueRunning = async () => {
               await savePicCacheFolders(folders);
             }
           });
+          emitPic115InfoChanged(get115ScopeUserId(), { source: 'queue' });
         }
       }
     } finally {
       setCacheQueueRunner(null);
       lightLocks.is115PictureCaching = false;
       await clearConfig(AppConfigEnum.is_115_picture_caching);
+      emitPic115InfoChanged(get115ScopeUserId(), { source: 'queue' });
     }
   })();
 

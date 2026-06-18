@@ -4,6 +4,7 @@ import { Button, Empty, Input, InputNumber, Modal, Space, Toast, Typography } fr
 import { PageCard } from '@/components';
 import { AppForm } from '@/components';
 import { useI18n } from '@/i18n';
+import { websocketEventBus } from '@/services/websocket-event-bus';
 import {
   addUserRssSubscription,
   clearRssStorage,
@@ -20,6 +21,7 @@ import { parseFeed } from '@/apps/rss/feed-parser';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 import type { RssStorageStatus, UserRssSubscriptionItem } from '@volix/types';
 import { RssSubscriptionTable } from './config-rsshub-subscription-table';
+import { subscribeToRssStorageEvents } from './config-rsshub-realtime';
 
 const DEFAULT_HOST = 'https://rsshub.app';
 const DEFAULT_REFRESH_INTERVAL_MINUTES = 5;
@@ -158,17 +160,26 @@ function SettingConfigRsshubApp() {
 
   useEffect(() => {
     loadData().catch(() => undefined);
+    const unsubscribe = subscribeToRssStorageEvents({
+      onChanged: () => {
+        refreshStorage().catch(() => undefined);
+      },
+      onReconnect: () => {
+        refreshStorage().catch(() => undefined);
+      },
+    });
+    void websocketEventBus.connect();
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
     const hasPending = (storageStatus?.routes || []).some(item => Number(item.pendingCount || 0) > 0);
-    if (!hasPending) {
-      return;
-    }
-    const timer = window.setInterval(() => {
+    if (hasPending) {
       refreshStorage().catch(() => undefined);
-    }, 5000);
-    return () => window.clearInterval(timer);
+    }
   }, [storageStatus?.routes]);
 
   const onSaveSetting = async (values: unknown) => {
@@ -221,7 +232,6 @@ function SettingConfigRsshubApp() {
     try {
       await removeUserRssSubscription(route);
       setSubscriptions(prev => prev.filter(item => item.route !== route));
-      await refreshStorage();
       Toast.success(t({ id: 'setting.rss.subscriptionRemoved', defaultMessage: '订阅已移除' }));
     } catch (error) {
       Toast.error(
@@ -235,7 +245,6 @@ function SettingConfigRsshubApp() {
     try {
       const res = await updateUserRssSubscriptionEnabled({ route, enabled });
       setSubscriptions(prev => prev.map(item => (item.route === route ? res.data : item)));
-      await refreshStorage();
       Toast.success(
         t({
           id: enabled ? 'setting.rss.subscriptionEnabled' : 'setting.rss.subscriptionDisabled',

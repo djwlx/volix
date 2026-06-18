@@ -50,22 +50,30 @@ const stringifyEditorValue = (value: unknown) => {
   }
 };
 
-const parseEditorValue = (value: string) => {
+const parseEditorValue = (value: string, columnType?: string) => {
   const trimmed = value.trim();
+  const normalizedType = String(columnType || '').toLowerCase();
+  const isNumericType =
+    normalizedType.includes('int') ||
+    normalizedType.includes('real') ||
+    normalizedType.includes('float') ||
+    normalizedType.includes('double') ||
+    normalizedType.includes('decimal') ||
+    normalizedType.includes('numeric');
+  const isBooleanType = normalizedType.includes('bool') || normalizedType.includes('tinyint(1)');
   if (trimmed === 'null') {
     return null;
   }
-  if (trimmed === 'true') {
-    return true;
+  if (isBooleanType) {
+    if (trimmed === 'true' || trimmed === '1') {
+      return 1;
+    }
+    if (trimmed === 'false' || trimmed === '0') {
+      return 0;
+    }
   }
-  if (trimmed === 'false') {
-    return false;
-  }
-  if (trimmed !== '' && /^-?\d+(\.\d+)?$/.test(trimmed)) {
+  if (isNumericType && trimmed !== '' && /^-?\d+(\.\d+)?$/.test(trimmed)) {
     return Number(trimmed);
-  }
-  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-    return JSON.parse(trimmed);
   }
   return value;
 };
@@ -242,8 +250,9 @@ function SqliteAdminApp() {
 
     setSaving(true);
     try {
+      const columnMap = new Map(columns.map(column => [column.name, column.type]));
       const parsedValues = Object.entries(editor.values).reduce<Record<string, unknown>>((acc, [key, value]) => {
-        acc[key] = parseEditorValue(value);
+        acc[key] = parseEditorValue(value, columnMap.get(key));
         return acc;
       }, {});
 

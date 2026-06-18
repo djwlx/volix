@@ -30,6 +30,7 @@ import {
 } from './picture-cache-random-core';
 import { ensureUnifiedPicCacheWithinLimit, getUnifiedPicCacheUsage } from './picture-cache-unified';
 import {
+  get115ScopeUserId,
   getPicCacheFolders,
   normalizeFolderPaths,
   normalizePaths,
@@ -39,6 +40,7 @@ import {
 } from './picture-cache-fs-folder';
 import { ensure115PicQueueRunning } from './picture-cache-random-meta-queue';
 import { t } from '../../../../utils/i18n';
+import { emitPic115InfoChanged } from './picture-realtime.service';
 
 export async function get115PicInfoData() {
   const [picConfig, folders, cidCountMap, count, cachedCids, cachedFolderPaths, likedCount, randomCacheConfig] =
@@ -116,12 +118,16 @@ export async function set115PicInfoData(params: PicInfoParams) {
   });
 
   void ensure115PicQueueRunning();
-  return get115PicInfoData();
+  const info = await get115PicInfoData();
+  emitPic115InfoChanged(get115ScopeUserId(), { source: 'action' });
+  return info;
 }
 
 export async function set115PicRandomCacheConfigData(params: SetPicRandomCacheConfigParams) {
   await setRandomCacheConfig(params);
-  return get115PicInfoData();
+  const info = await get115PicInfoData();
+  emitPic115InfoChanged(get115ScopeUserId(), { source: 'action' });
+  return info;
 }
 
 export async function clear115PicData(params?: ClearPicInfoParams) {
@@ -143,7 +149,9 @@ export async function clear115PicData(params?: ClearPicInfoParams) {
       'picture_115_cids' as AppConfigEnum,
     ]);
     lightLocks.is115PictureCaching = false;
-    return 'success';
+    const info = await get115PicInfoData();
+    emitPic115InfoChanged(get115ScopeUserId(), { source: 'action' });
+    return info;
   }
 
   const [affectedRootCidListByCid, affectedRootCidListByFolderPath] = await Promise.all([
@@ -187,7 +195,9 @@ export async function clear115PicData(params?: ClearPicInfoParams) {
     await savePicCacheFolders(remainFolders);
   });
 
-  return get115PicInfoData();
+  const info = await get115PicInfoData();
+  emitPic115InfoChanged(get115ScopeUserId(), { source: 'action' });
+  return info;
 }
 
 export async function retry115PicData(params: RetryPicInfoParams) {
@@ -217,5 +227,7 @@ export async function retry115PicData(params: RetryPicInfoParams) {
   });
 
   void ensure115PicQueueRunning();
-  return get115PicInfoData();
+  const info = await get115PicInfoData();
+  emitPic115InfoChanged(get115ScopeUserId(), { source: 'action' });
+  return info;
 }

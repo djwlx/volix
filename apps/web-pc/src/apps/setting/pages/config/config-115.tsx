@@ -2,7 +2,7 @@ import { Skeleton, Space, Typography } from '@douyinfe/semi-ui';
 import { Login } from '@/apps/115/login';
 import { UserInfo } from '@/apps/115/user-info';
 import { PicSetting } from '@/apps/115/pic-setting';
-import { FileTree } from '@/apps/115/file-tree';
+import { FileTable } from '@/apps/115/file-table';
 import { useUserInfo } from '@/apps/115/hooks/useUserInfo';
 import { PageCard } from '@/components';
 import { useI18n } from '@/i18n';
@@ -19,7 +19,9 @@ function SettingConfig115App() {
             <Typography.Text type="secondary">{t('pic115.setting.boundAccount')}</Typography.Text>
             <UserInfo info={data} />
             <PicSetting />
-            <FileTree />
+            <div style={{ width: '100%' }}>
+              <FileTable />
+            </div>
           </Space>
         ) : (
           <Space vertical spacing={12} style={{ width: '100%' }}>

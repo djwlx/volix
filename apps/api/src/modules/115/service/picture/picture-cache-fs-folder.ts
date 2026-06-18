@@ -199,7 +199,7 @@ export const saveFile115List = async (dataList: Cloud115FileListItem[], cid: str
 
 const cacheQueueRunnerMap = new Map<string, Promise<void>>();
 const folderConfigLockMap = new Map<string, Promise<void>>();
-const get115ScopeUserId = () => getRequestActingUserId() || 'public';
+export const get115ScopeUserId = () => getRequestActingUserId() || 'public';
 export const getCacheQueueRunner = () => {
   return cacheQueueRunnerMap.get(get115ScopeUserId()) || null;
 };

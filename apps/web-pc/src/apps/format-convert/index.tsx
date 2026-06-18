@@ -72,6 +72,7 @@ function FormatConvertApp() {
         onBatchDelete={async taskIds => {
           try {
             const response = await deleteFormatConvertTasks(taskIds);
+            setTasks(current => current.filter(task => !taskIds.includes(task.id)));
             Toast.success(
               t('formatConvert.record.batchDeleteSuccess', {
                 count: response.data?.deletedCount ?? taskIds.length,
@@ -85,6 +86,7 @@ function FormatConvertApp() {
         onDelete={async task => {
           try {
             await deleteFormatConvertTask(task.id);
+            setTasks(current => current.filter(item => item.id !== task.id));
             Toast.success(t('formatConvert.record.deleteSuccess'));
             syncTasksWhenSocketOffline();
           } catch (error) {

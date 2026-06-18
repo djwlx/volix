@@ -41,6 +41,7 @@ import {
 import { parseUserRssConfig } from './rss-user-config.service';
 import { backfillPersistedRssItemResources } from './rss-persisted-item-resource-backfill.service';
 import { readTaskRouteMeta } from './rss-storage-route-meta.service';
+import { emitRssStorageChanged } from './rss-realtime.service';
 interface PendingFeedTask {
   userId: string;
   route: string;
@@ -183,6 +184,7 @@ const processSingleTask = async (taskFilePath: string) => {
       { lastUpdatedAt: new Date().toISOString(), lastFetchedAt: task.fetchedAt, lastNewCount: insertedCount }
     );
     await fs.promises.rm(taskFilePath, { force: true }).catch(() => undefined);
+    emitRssStorageChanged(task.userId, { source: 'queue' });
   } catch (error) {
     const retries = task.retries + 1;
     const message = error instanceof Error ? error.message : String(error);
@@ -203,6 +205,7 @@ const processSingleTask = async (taskFilePath: string) => {
       lastError: message.slice(0, 500),
       updatedAtMs: Date.now(),
     });
+    emitRssStorageChanged(task.userId, { source: 'queue' });
   }
 };
 const listTaskFileNames = async (targetDir: string) => {
@@ -284,6 +287,7 @@ export const enqueueRssFeedProcessingTask = async (params: PendingFeedTaskEnqueu
     updatedAtMs: Date.now(),
   };
   await writePendingTask(filePath, task);
+  emitRssStorageChanged(userId, { source: 'queue' });
   void startRssPendingQueue();
 };
 
@@ -452,7 +456,9 @@ export const getRssStorageStatus = async (userId: string): Promise<RssStorageSta
 
 export const clearRssSubscriptionStorage = async (userId: string, route: string) => {
   await clearRssSubscriptionStorageInternal(normalizeText(userId), normalizeText(route));
-  return getRssStorageStatus(userId);
+  const status = await getRssStorageStatus(userId);
+  emitRssStorageChanged(normalizeText(userId), { source: 'action' });
+  return status;
 };
 export const clearRssStorage = async (userId: string, payload?: ClearRssStoragePayload) => {
   const scope = String(payload?.scope || 'all');
@@ -470,5 +476,7 @@ export const clearRssStorage = async (userId: string, payload?: ClearRssStorageP
     badRequest('缺少用户信息');
   }
   await clearRssStorageInternal(normalizedUserId, payload);
-  return getRssStorageStatus(normalizedUserId);
+  const status = await getRssStorageStatus(normalizedUserId);
+  emitRssStorageChanged(normalizedUserId, { source: 'action' });
+  return status;
 };

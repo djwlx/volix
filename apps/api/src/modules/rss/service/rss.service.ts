@@ -39,6 +39,7 @@ import type { AxiosError, AxiosResponse } from 'axios';
 import { parseUserRssConfig } from './rss-user-config.service';
 import { t } from '../../../utils/i18n';
 import { getCurrentUserId, mapSubscriptionItem, normalizeSubscriptionName } from './rss-subscription-utils.service';
+import { emitRssStorageChanged } from './rss-realtime.service';
 const DEFAULT_RSS_HUB = 'https://rsshub.app';
 const DEFAULT_RESOURCE_PROXY_BASE_URL = '';
 const DEFAULT_RESOURCE_CACHE_SIZE_MB = 0;
@@ -216,6 +217,7 @@ export async function createUserRssSubscription(
       });
     });
   }
+  emitRssStorageChanged(normalizedUserId, { source: 'action' });
   return mapSubscriptionItem(current);
 }
 export async function removeUserRssSubscription(userId: string | number | undefined, routeValue: string) {
@@ -223,6 +225,7 @@ export async function removeUserRssSubscription(userId: string | number | undefi
   const route = normalizeRoute(routeValue);
   await clearRssSubscriptionStorage(normalizedUserId, route);
   await removeUserRssSubscriptionState(normalizedUserId, route);
+  emitRssStorageChanged(normalizedUserId, { source: 'action' });
   return { route };
 }
 export async function setUserRssSubscriptionEnabled(
@@ -241,6 +244,7 @@ export async function setUserRssSubscriptionEnabled(
   if (!current) {
     badRequest(t('rssApi.subscriptionNotFound'));
   }
+  emitRssStorageChanged(normalizedUserId, { source: 'action' });
   return mapSubscriptionItem(current!);
 }
 const resolveFeedUrl = async (
@@ -471,5 +475,8 @@ export async function clearRssStorageData(
   userId: string | number | undefined,
   payload?: ClearRssStoragePayload
 ): Promise<RssStorageStatusPayload> {
-  return clearRssStorage(getCurrentUserId(userId), payload);
+  const normalizedUserId = getCurrentUserId(userId);
+  const status = await clearRssStorage(normalizedUserId, payload);
+  emitRssStorageChanged(normalizedUserId, { source: 'action' });
+  return status;
 }

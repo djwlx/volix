@@ -2,10 +2,13 @@ import Router from '@koa/router';
 import authenticate from '../../middleware/authenticate';
 import { http } from '../shared/http-handler';
 import { downloadLogAction, getLogDatesAction, getLogEntriesAction } from './controller/log-viewer.controller';
+import { startLogViewerRealtimeWatcher } from './service/log-viewer-realtime.service';
 
 const router = new Router({
   prefix: '/log-viewer',
 });
+
+startLogViewerRealtimeWatcher();
 
 router.use(authenticate());
 router.get('/dates', http(getLogDatesAction));

@@ -6,12 +6,12 @@ import type { LogViewerEntry, LogViewerLevel, LogViewerType } from '@volix/types
 import { useUser } from '@/hooks';
 import { useI18n } from '@/i18n';
 import { getHttpErrorMessage } from '@/utils';
+import { websocketEventBus } from '@/services/websocket-event-bus';
 import { downloadLogFile, getLogDates, getLogEntries } from '@/services/log-viewer';
 import { LogEntryList } from './log-entry-list';
 import styles from './index.module.scss';
 
 const PAGE_SIZE = 50;
-const AUTO_REFRESH_INTERVAL_MS = 4000;
 const LEVELS: LogViewerLevel[] = ['trace', 'debug', 'info', 'warn', 'error', 'fatal'];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -89,13 +89,27 @@ function LogViewerApp() {
   }, [isAdmin, date, levels, appliedKeyword, type, loadEntries]);
 
   useEffect(() => {
-    if (!autoRefresh || !isAdmin || !date) {
-      return undefined;
+    if (!isAdmin) {
+      return;
     }
-    const timer = setInterval(() => {
+    const unsubscribeUpdated = websocketEventBus.subscribe('log-viewer.updated', () => {
+      if (!autoRefresh || !date) {
+        return;
+      }
       loadEntries(1, true).catch(() => undefined);
-    }, AUTO_REFRESH_INTERVAL_MS);
-    return () => clearInterval(timer);
+    });
+    const unsubscribeReconnected = websocketEventBus.subscribe('ws.connection.changed', state => {
+      if (state !== 'connected' || !autoRefresh || !date) {
+        return;
+      }
+      loadEntries(1, true).catch(() => undefined);
+    });
+    void websocketEventBus.connect();
+
+    return () => {
+      unsubscribeUpdated();
+      unsubscribeReconnected();
+    };
   }, [autoRefresh, isAdmin, date, loadEntries]);
 
   const handleSearch = () => {

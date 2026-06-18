@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Empty, Spin, Table, Toast, Typography } from '@douyinfe/semi-ui';
-import { IconArrowLeft, IconRefresh } from '@douyinfe/semi-icons';
-import type { ColumnProps } from '@douyinfe/semi-ui/lib/es/table';
+import { Toast } from '@douyinfe/semi-ui';
 import type { FormatConvertOpenlistBrowserItem, FormatConvertOpenlistBrowserResult } from '@volix/types';
+import { FileTableBrowser, type FileTableColumn } from '@/components/file-table-browser';
 import { useI18n } from '@/i18n';
 import { browseFormatConvertOpenlist } from '@/services/format-convert';
 import { getHttpErrorMessage } from '@/utils/error';
-import styles from './workbench.module.scss';
 
 const OPENLIST_BROWSER_PAGE_SIZE = 20;
 const OPENLIST_DIR_BROWSER_FETCH_SIZE = 500;
@@ -27,16 +25,6 @@ interface OpenlistTableBrowserProps {
   onFileSelectionChange?: (items: OpenlistSelectedFile[]) => void;
 }
 
-const getParentPath = (currentPath: string) => {
-  if (currentPath === '/') {
-    return '/';
-  }
-
-  const segments = currentPath.split('/').filter(Boolean);
-  segments.pop();
-  return segments.length ? `/${segments.join('/')}` : '/';
-};
-
 const getPathName = (targetPath: string) => {
   const segments = targetPath.split('/').filter(Boolean);
   return segments[segments.length - 1] || targetPath || '/';
@@ -45,26 +33,12 @@ const getPathName = (targetPath: string) => {
 const getPathSegments = (targetPath: string) => {
   const segments = targetPath.split('/').filter(Boolean);
   return [
-    { label: '/', path: '/' },
+    { label: '/', value: '/' },
     ...segments.map((segment, index) => ({
       label: segment,
-      path: `/${segments.slice(0, index + 1).join('/')}`,
+      value: `/${segments.slice(0, index + 1).join('/')}`,
     })),
   ];
-};
-
-const getCompactPathSegmentLabel = (label: string) => {
-  if (label === '/') {
-    return label;
-  }
-
-  const chars = Array.from(label);
-
-  if (chars.length <= 4) {
-    return label;
-  }
-
-  return `${chars[0]}...${chars[chars.length - 1]}`;
 };
 
 const formatFileSize = (size?: number) => {
@@ -226,155 +200,61 @@ export function OpenlistTableBrowser(props: OpenlistTableBrowserProps) {
   const rows = (result?.content || []).filter(item => (selectMode === 'dir' ? item.isDir : true));
   const currentBrowsePath = result?.path || currentPath;
   const displayPath = selectMode === 'dir' ? selectedDirPath || currentBrowsePath : currentBrowsePath;
-  const canGoParent = currentBrowsePath !== '/';
 
-  const columns: ColumnProps<FormatConvertOpenlistBrowserItem>[] = [
+  const columns: FileTableColumn<FormatConvertOpenlistBrowserItem>[] = [
     {
-      title: t('formatConvert.browser.name'),
-      dataIndex: 'name',
-      render: (_text, record) =>
-        record.isDir ? (
-          <Typography.Text
-            data-dir-link={record.path}
-            data-name-cell={record.path}
-            link={!disabled}
-            title={record.name}
-            style={{
-              display: 'block',
-              maxWidth: `${OPENLIST_NAME_MAX_WIDTH}px`,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-            onClick={disabled ? undefined : () => void load({ path: record.path, page: 1 })}
-          >
-            {record.name}
-          </Typography.Text>
-        ) : (
-          <Typography.Text
-            data-name-cell={record.path}
-            title={record.name}
-            style={{
-              display: 'block',
-              maxWidth: `${OPENLIST_NAME_MAX_WIDTH}px`,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {record.name}
-          </Typography.Text>
-        ),
-    },
-    {
+      key: 'size',
       title: t('formatConvert.browser.size'),
-      dataIndex: 'size',
       width: 96,
-      render: (_text, record) => (
+      render: record => (
         <span data-size-cell={record.path}>{record.isDir ? '-' : formatFileSize(record.size) || '-'}</span>
       ),
     },
   ];
 
   return (
-    <div className={styles.treePanel} data-testid="openlist-table-browser">
-      <div className={styles.treeToolbar} style={{ display: 'block' }}>
-        <div className={styles.browserCurrentPath}>
-          <Typography.Text strong>{t('formatConvert.browser.currentPath')}</Typography.Text>
-        </div>
-        <div
-          className={styles.browserPathValue}
-          data-path-strip="true"
-          title={displayPath}
-          style={{
-            display: 'flex',
-            overflowX: 'auto',
-            overflowY: 'hidden',
-            whiteSpace: 'nowrap',
-            wordBreak: 'normal',
-          }}
-        >
-          {getPathSegments(displayPath).map((segment, index) => (
-            <span key={segment.path} style={{ display: 'inline-flex', minWidth: 0, flex: '0 0 auto' }}>
-              {index > 1 ? <span>/</span> : null}
-              <Typography.Text
-                data-path-segment={segment.path}
-                link={!disabled}
-                title={segment.label}
-                style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                onClick={disabled ? undefined : () => void load({ path: segment.path, page: 1 })}
-              >
-                {getCompactPathSegmentLabel(segment.label)}
-              </Typography.Text>
-            </span>
-          ))}
-        </div>
-        <div className={styles.browserToolbarActions} style={{ justifyContent: 'flex-end', marginTop: 8 }}>
-          <Button
-            disabled={disabled || !canGoParent || loading}
-            icon={<IconArrowLeft />}
-            theme="borderless"
-            onClick={() => void load({ path: getParentPath(currentBrowsePath), page: 1 })}
-          />
-          <Button
-            disabled={disabled || loading}
-            icon={<IconRefresh />}
-            theme="borderless"
-            onClick={() => void load({ path: currentBrowsePath, page })}
-          >
-            {t('formatConvert.browser.refresh')}
-          </Button>
-        </div>
-      </div>
-
-      <div className={styles.treeSurface}>
-        {loading && !rows.length ? (
-          <div className={styles.treeLoadingState}>
-            <Spin spinning />
-            <div className={styles.treeLoadingText}>{t('formatConvert.browser.treeLoading')}</div>
-          </div>
-        ) : rows.length ? (
-          <Spin spinning={loading}>
-            <Table<FormatConvertOpenlistBrowserItem>
-              dataSource={rows}
-              rowKey="path"
-              size="small"
-              tableLayout="fixed"
-              columns={columns}
-              pagination={{
-                currentPage: result?.page || page,
-                pageSize: result?.perPage || OPENLIST_BROWSER_PAGE_SIZE,
-                total: result?.total || 0,
-                size: 'small',
-                hoverShowPageSelect: true,
-                formatPageText: pageInfo =>
-                  t('formatConvert.browser.paginationSummary', {
-                    start: pageInfo?.currentStart ?? 0,
-                    end: pageInfo?.currentEnd ?? 0,
-                    total: pageInfo?.total ?? 0,
-                  }),
-                onPageChange: nextPage => void load({ path: currentBrowsePath, page: nextPage }),
-              }}
-              rowSelection={
-                selectMode === 'file'
-                  ? {
-                      selectedRowKeys: selectedPaths,
-                      onChange: (nextSelectedRowKeys?: Array<string | number>) =>
-                        onFileSelectionChange?.(
-                          toSelectedItems(selectionMode, selectedPaths, rows, nextSelectedRowKeys)
-                        ),
-                      getCheckboxProps: (record: FormatConvertOpenlistBrowserItem) => ({
-                        disabled: disabled || record.isDir,
-                      }),
-                    }
-                  : undefined
-              }
-            />
-          </Spin>
-        ) : (
-          <Empty image={null} title={t('formatConvert.browser.treeEmpty')} />
-        )}
-      </div>
-    </div>
+    <FileTableBrowser<FormatConvertOpenlistBrowserItem>
+      testId="openlist-table-browser"
+      rows={rows}
+      loading={loading}
+      disabled={disabled}
+      rowKey={record => record.path}
+      isDir={record => record.isDir}
+      getName={record => record.name}
+      nameTitle={t('formatConvert.browser.name')}
+      nameMaxWidth={OPENLIST_NAME_MAX_WIDTH}
+      columns={columns}
+      breadcrumb={getPathSegments(displayPath)}
+      pathLabel={t('formatConvert.browser.currentPath')}
+      pathTitle={displayPath}
+      refreshLabel={t('formatConvert.browser.refresh')}
+      emptyText={t('formatConvert.browser.treeEmpty')}
+      loadingText={t('formatConvert.browser.treeLoading')}
+      onNavigate={value => void load({ path: value, page: 1 })}
+      onEnterDir={record => void load({ path: record.path, page: 1 })}
+      onRefresh={() => void load({ path: currentBrowsePath, page })}
+      pagination={{
+        currentPage: result?.page || page,
+        pageSize: result?.perPage || OPENLIST_BROWSER_PAGE_SIZE,
+        total: result?.total || 0,
+        onPageChange: nextPage => void load({ path: currentBrowsePath, page: nextPage }),
+        formatPageText: pageInfo =>
+          t('formatConvert.browser.paginationSummary', {
+            start: pageInfo?.currentStart ?? 0,
+            end: pageInfo?.currentEnd ?? 0,
+            total: pageInfo?.total ?? 0,
+          }),
+      }}
+      selection={
+        selectMode === 'file'
+          ? {
+              selectedKeys: selectedPaths,
+              onChange: nextSelectedRowKeys =>
+                onFileSelectionChange?.(toSelectedItems(selectionMode, selectedPaths, rows, nextSelectedRowKeys)),
+              getDisabled: record => record.isDir,
+            }
+          : undefined
+      }
+    />
   );
 }

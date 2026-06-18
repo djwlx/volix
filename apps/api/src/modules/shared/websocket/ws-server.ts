@@ -42,21 +42,70 @@ export const createWebsocketConnectionRegistry = () => {
   };
 
   const list = (userId: string) => Array.from(userSockets.get(userId) || []);
+  const listAll = () => {
+    const result: RegistrySocket[] = [];
+    userSockets.forEach(sockets => {
+      result.push(...Array.from(sockets));
+    });
+    return result;
+  };
 
   return {
     add,
     remove,
     list,
+    listAll,
   };
 };
 
 const registry = createWebsocketConnectionRegistry();
+const debouncedEventState = new Map<
+  string,
+  {
+    timer: ReturnType<typeof setTimeout>;
+    flush: () => void;
+  }
+>();
 
 export const emitWsMessage = <T>(targetRegistry: ConnectionRegistry, userId: string, event: string, data: T) => {
   const payload = JSON.stringify(createWsMessage(event, data));
 
   targetRegistry.list(userId).forEach(socket => {
     socket.send(payload);
+  });
+};
+
+export const emitWsBroadcastMessage = <T>(targetRegistry: ConnectionRegistry, event: string, data: T) => {
+  const payload = JSON.stringify(createWsMessage(event, data));
+
+  targetRegistry.listAll().forEach(socket => {
+    socket.send(payload);
+  });
+};
+
+const scheduleDebouncedEvent = (key: string, delayMs: number, flush: () => void) => {
+  const normalizedDelay = Math.max(0, Number(delayMs || 0));
+  if (normalizedDelay === 0) {
+    flush();
+    return;
+  }
+
+  const current = debouncedEventState.get(key);
+  if (current) {
+    clearTimeout(current.timer);
+  }
+
+  const timer = setTimeout(() => {
+    const latest = debouncedEventState.get(key);
+    if (!latest) {
+      return;
+    }
+    debouncedEventState.delete(key);
+    latest.flush();
+  }, normalizedDelay);
+  debouncedEventState.set(key, {
+    timer,
+    flush,
   });
 };
 
@@ -164,4 +213,41 @@ export const attachWebsocketServer = (server: Server) => {
 
 export const emitWebsocketEventToUser = <T>(userId: string, event: string, data: T) => {
   emitWsMessage(registry, userId, event, data);
+};
+
+export const emitWebsocketEventToAllUsers = <T>(event: string, data: T) => {
+  emitWsBroadcastMessage(registry, event, data);
+};
+
+export const emitWebsocketEventToUserDebounced = <T>(
+  userId: string,
+  event: string,
+  data: T,
+  options?: {
+    delayMs?: number;
+    key?: string;
+  }
+) => {
+  const normalizedUserId = String(userId || '').trim();
+  if (!normalizedUserId) {
+    return;
+  }
+  const key = String(options?.key || `user:${normalizedUserId}:${event}`);
+  scheduleDebouncedEvent(key, Number(options?.delayMs || 0), () => {
+    emitWebsocketEventToUser(normalizedUserId, event, data);
+  });
+};
+
+export const emitWebsocketEventToAllUsersDebounced = <T>(
+  event: string,
+  data: T,
+  options?: {
+    delayMs?: number;
+    key?: string;
+  }
+) => {
+  const key = String(options?.key || `broadcast:${event}`);
+  scheduleDebouncedEvent(key, Number(options?.delayMs || 0), () => {
+    emitWebsocketEventToAllUsers(event, data);
+  });
 };

@@ -53,7 +53,7 @@ export function get115PicInfo() {
 }
 
 export function set115PicInfo(data: PicInfoParams) {
-  return http.put('/115/pic/info', data);
+  return http.put<PicInfo115>('/115/pic/info', data);
 }
 export function clear115Pic(data?: ClearPicInfoParams) {
   const queryParams: Record<string, string> = {};
@@ -64,18 +64,18 @@ export function clear115Pic(data?: ClearPicInfoParams) {
     queryParams.folderPaths = data.folderPaths.join(',');
   }
 
-  return http.delete('/115/pic/info', {
+  return http.delete<PicInfo115>('/115/pic/info', {
     data,
     params: Object.keys(queryParams).length > 0 ? queryParams : undefined,
   });
 }
 
 export function retry115Pic(data: RetryPicInfoParams) {
-  return http.post('/115/pic/info/retry', data);
+  return http.post<PicInfo115>('/115/pic/info/retry', data);
 }
 
 export function set115PicRandomCacheConfig(data: SetPicRandomCacheConfigParams) {
-  return http.put('/115/pic/random-cache-config', data);
+  return http.put<PicInfo115>('/115/pic/random-cache-config', data);
 }
 
 export function like115Pic(data: Like115PicParams) {

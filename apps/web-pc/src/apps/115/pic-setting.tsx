@@ -6,9 +6,11 @@ import type { PicCacheFolderItem } from '@volix/types';
 import { clear115Pic, get115PicInfo, retry115Pic, set115PicRandomCacheConfig } from '@/services/115';
 import { getHttpErrorMessage } from '@/utils/error';
 import { useI18n } from '@/i18n';
+import { websocketEventBus } from '@/services/websocket-event-bus';
 import { FilePath } from './components';
 import { picCacheStatusOrder, renderPicCacheStatusTag } from './pic-cache-status';
 import { buildPicSettingStatsData } from './pic-setting-stats';
+import { subscribeToPic115InfoEvents } from './pic-realtime';
 
 const { Text } = Typography;
 
@@ -58,6 +60,49 @@ export function PicSetting() {
   const [savingRandomCacheConfig, setSavingRandomCacheConfig] = useState(false);
   const randomCacheFormApiRef = useRef<FormApi<RandomCacheFormValues>>();
 
+  const applyPicInfo = (
+    data:
+      | {
+          count?: number;
+          loading?: boolean;
+          folders?: PicCacheFolderItem[];
+          randomCacheConfig?: {
+            sourceWeights?: { local?: number; cloud?: number };
+            localMaxSizeMb?: number;
+            randomNoRepeatWindowMinutes?: number;
+            randomNoRepeatMaxCount?: number;
+            cloudProxyUrl?: string;
+            autoPlayIntervalSeconds?: number;
+          };
+          randomCacheStats?: {
+            localFileCount?: number;
+            localTotalSizeMb?: number;
+            localLimitExceeded?: boolean;
+          };
+        }
+      | undefined,
+    forceSyncRandomConfig = false
+  ) => {
+    if (!data) {
+      return;
+    }
+    setCount(Number(data.count || 0));
+    setIsCaching(Boolean(data.loading));
+    if (forceSyncRandomConfig || !hasRandomConfigTouched()) {
+      syncRandomCacheFormValues(data.randomCacheConfig, forceSyncRandomConfig);
+    }
+    setLocalCacheFileCount(data.randomCacheStats?.localFileCount ?? 0);
+    setLocalCacheTotalSizeMb(data.randomCacheStats?.localTotalSizeMb ?? 0);
+    setLocalCacheLimitExceeded(Boolean(data.randomCacheStats?.localLimitExceeded));
+    setFolders(
+      [...(data.folders || [])].sort((a, b) => {
+        const left = picCacheStatusOrder[a.status];
+        const right = picCacheStatusOrder[b.status];
+        return left - right || a.cid.localeCompare(b.cid);
+      })
+    );
+  };
+
   const hasRandomConfigTouched = () => {
     return RANDOM_CACHE_FIELDS.some(field => Boolean(randomCacheFormApiRef.current?.getTouched(field)));
   };
@@ -105,37 +150,33 @@ export function PicSetting() {
   const fetch = async (forceSyncRandomConfig = false) => {
     const result = await get115PicInfo();
     if (result.code === 0) {
-      setCount(result.data.count);
-      setIsCaching(result.data.loading);
-      if (forceSyncRandomConfig || !hasRandomConfigTouched()) {
-        syncRandomCacheFormValues(result.data.randomCacheConfig, forceSyncRandomConfig);
-      }
-      setLocalCacheFileCount(result.data.randomCacheStats?.localFileCount ?? 0);
-      setLocalCacheTotalSizeMb(result.data.randomCacheStats?.localTotalSizeMb ?? 0);
-      setLocalCacheLimitExceeded(Boolean(result.data.randomCacheStats?.localLimitExceeded));
-      setFolders(
-        [...result.data.folders].sort((a, b) => {
-          const left = picCacheStatusOrder[a.status];
-          const right = picCacheStatusOrder[b.status];
-          return left - right || a.cid.localeCompare(b.cid);
-        })
-      );
+      applyPicInfo(result.data, forceSyncRandomConfig);
     }
   };
 
   useEffect(() => {
     fetch(true).catch(() => undefined);
-    const timer = window.setInterval(() => {
-      fetch().catch(() => undefined);
-    }, 3000);
+    const unsubscribe = subscribeToPic115InfoEvents({
+      onChanged: () => {
+        fetch().catch(() => undefined);
+      },
+      onReconnect: () => {
+        fetch(true).catch(() => undefined);
+      },
+    });
+    void websocketEventBus.connect();
 
-    return () => window.clearInterval(timer);
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const onDelete = async () => {
     try {
-      await clear115Pic();
-      await fetch();
+      const response = await clear115Pic();
+      if (response.code === 0 && response.data && typeof response.data === 'object') {
+        applyPicInfo(response.data as Parameters<typeof applyPicInfo>[0]);
+      }
       Toast.success(t('pic115.cache.clearSuccess'));
     } catch (error) {
       Toast.error(getHttpErrorMessage(error, t('pic115.cache.clearFailed')));
@@ -144,10 +185,12 @@ export function PicSetting() {
 
   const onDeleteByPath = async (path: string) => {
     try {
-      await clear115Pic({
+      const response = await clear115Pic({
         paths: [path],
       });
-      await fetch();
+      if (response.code === 0 && response.data && typeof response.data === 'object') {
+        applyPicInfo(response.data as Parameters<typeof applyPicInfo>[0]);
+      }
       Toast.success(t('pic115.cache.deleteSuccess'));
     } catch (error) {
       Toast.error(getHttpErrorMessage(error, t('pic115.cache.deleteFailed')));
@@ -156,10 +199,12 @@ export function PicSetting() {
 
   const onRetryByPath = async (path: string) => {
     try {
-      await retry115Pic({
+      const response = await retry115Pic({
         paths: [path],
       });
-      await fetch();
+      if (response.code === 0) {
+        applyPicInfo(response.data as Parameters<typeof applyPicInfo>[0]);
+      }
       Toast.success(t('pic115.cache.retrySuccess'));
     } catch (error) {
       Toast.error(getHttpErrorMessage(error, t('pic115.cache.retryFailed')));
@@ -195,7 +240,10 @@ export function PicSetting() {
         cloudProxyUrl: payload.cloudProxyUrl,
         autoPlayIntervalSeconds: payload.autoPlayIntervalSeconds,
       });
-      await fetch(true);
+      const latest = await get115PicInfo();
+      if (latest.code === 0) {
+        applyPicInfo(latest.data, true);
+      }
       Toast.success(t('pic115.form.saveSuccess'));
     } catch (error) {
       Toast.error(getHttpErrorMessage(error, t('pic115.form.saveFailed')));

@@ -15,6 +15,7 @@ import {
 } from '@volix/types';
 import { PATH } from '../../../utils/path';
 import { t } from '../../../utils/i18n';
+import { log } from '../../../utils/logger';
 import { badRequest, unauthorized } from '../../shared/http-handler';
 import { UploadedFileFormData } from '../../file/types/file.types';
 import {
@@ -331,9 +332,15 @@ export const deleteFormatConvertTask: MyMiddleware = async ctx => {
     return;
   }
 
-  await cleanupFormatConvertTaskLocalArtifacts(task);
   await deleteFormatConvertTaskByIdAndUserId(taskId, userId);
   emitFormatConvertTaskDeleted(userId, taskId);
+  void cleanupFormatConvertTaskLocalArtifacts(task).catch(error => {
+    log.warn('[format-convert] 后台清理任务产物失败', {
+      userId,
+      taskId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
   return {
     success: true,
   };
@@ -359,10 +366,6 @@ export const deleteFormatConvertTasks: MyMiddleware = async ctx => {
   const tasks = await listFormatConvertTasksByIdsAndUserId(taskIds, userId);
   const deletableTasks = tasks.filter(task => isFormatConvertTaskDeletable(task.status));
 
-  for (const task of deletableTasks) {
-    await cleanupFormatConvertTaskLocalArtifacts(task);
-  }
-
   const deletedCount = deletableTasks.length
     ? await deleteFormatConvertTasksByIdsAndUserId(
         deletableTasks.map(task => task.id),
@@ -372,6 +375,13 @@ export const deleteFormatConvertTasks: MyMiddleware = async ctx => {
 
   deletableTasks.forEach(task => {
     emitFormatConvertTaskDeleted(userId, task.id);
+    void cleanupFormatConvertTaskLocalArtifacts(task).catch(error => {
+      log.warn('[format-convert] 后台清理任务产物失败', {
+        userId,
+        taskId: task.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
   });
 
   return {
