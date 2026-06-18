@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.1.20] - 2026-06-18
+
+### 中文
+#### Added
+- 新增图片实时服务，支持实时查看图片更新
+- 新增日志查看器实时服务，支持实时日志流
+- 新增 RSS 实时服务，支持实时推送 RSS 更新
+- 新增文件表格浏览器组件，替代旧的文件树组件
+- 新增 115 文件表格视图，优化文件浏览体验
+- 新增 RSSHub 实时配置页面
+#### Changed
+- 优化图片设置页面，增加实时相关配置
+- 优化格式转换页面，使用新的文件表格浏览器
+- 优化日志查看器页面，集成实时日志功能
+- 优化 SQLite 管理页面，改进界面交互
+- 更新国际化翻译文件，新增实时功能相关文本
+#### Fixed
+- 修复图片缓存相关逻辑中的潜在问题
+
+### English
+#### Added
+- Added picture realtime service for live picture updates
+- Added log viewer realtime service for real-time log streaming
+- Added RSS realtime service for instant RSS updates
+- Added file table browser component to replace the old file tree
+- Added 115 file table view for improved file browsing
+- Added RSSHub realtime configuration page
+#### Changed
+- Enhanced picture settings page with realtime configuration options
+- Updated format conversion page to use the new file table browser
+- Improved log viewer page with integrated real-time logs
+- Refined SQLite admin page for better interaction
+- Updated i18n translations with realtime feature texts
+#### Fixed
+- Fixed potential issues in picture cache logic
+
 ## [1.1.19] - 2026-06-17
 
 ### 中文
