@@ -44,6 +44,7 @@ export interface UserRssSetting {
   resourceProxyBaseUrl: string;
   resourceCacheMaxSizeMb: number;
   refreshIntervalMinutes: number;
+  resourceDownloadMaxRetry: number;
 }
 
 export interface RssPathUsageStat {
@@ -79,6 +80,7 @@ export interface UpdateUserRssSettingPayload {
   resourceProxyBaseUrl?: string;
   resourceCacheMaxSizeMb?: number;
   refreshIntervalMinutes?: number;
+  resourceDownloadMaxRetry?: number;
 }
 
 export interface ClearRssStoragePayload {

@@ -29,6 +29,7 @@ export interface UserRssFeedItemEntity {
   source_hash?: string;
   resource_count?: number;
   resources_localized?: boolean;
+  resource_download_attempts?: number;
   is_read?: boolean;
   tags?: string;
   fetched_at?: string;
@@ -145,6 +146,11 @@ export const UserRssFeedItemModel = sequelize.define<UserRssFeedItemModelType>('
     allowNull: false,
     defaultValue: false,
   },
+  resource_download_attempts: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
   is_read: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
@@ -171,6 +177,14 @@ export const ensureRssFeedItemSchema = async () => {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    });
+  }
+
+  if (!columns.resource_download_attempts) {
+    await queryInterface.addColumn('volix_user_rss_feed_item', 'resource_download_attempts', {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     });
   }
 };

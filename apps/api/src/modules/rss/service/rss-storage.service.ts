@@ -51,6 +51,7 @@ interface PendingFeedTask {
   xml: string;
   fetchedAt: string;
   requestProxyUrl: string;
+  resourceDownloadMaxRetry: number;
   retries: number;
   lastError: string;
   updatedAtMs: number;
@@ -61,9 +62,17 @@ interface PendingFeedTaskEnqueueInput {
   route: string;
   routeName: string;
   payload: RssFeedPayload;
-  setting: Pick<UserRssSettingPayload, 'resourceProxyBaseUrl'>;
+  setting: Pick<UserRssSettingPayload, 'resourceProxyBaseUrl' | 'resourceDownloadMaxRetry'>;
 }
 const TASK_MAX_RETRY = 10;
+const DEFAULT_RESOURCE_DOWNLOAD_MAX_RETRY = 10;
+const normalizeResourceDownloadMaxRetry = (value: unknown) => {
+  const raw = Math.floor(Number(value));
+  if (!Number.isFinite(raw)) {
+    return DEFAULT_RESOURCE_DOWNLOAD_MAX_RETRY;
+  }
+  return Math.min(100, Math.max(0, raw));
+};
 let queueRunning = false;
 let queueJob: Promise<void> | null = null;
 const getPendingDir = (userId: string) => getRssTaskRootDirByUserId(userId);
@@ -97,6 +106,7 @@ const readPendingTask = async (filePath: string): Promise<PendingFeedTask | null
       xml,
       fetchedAt: String(parsed.fetchedAt || new Date().toISOString()),
       requestProxyUrl: String(parsed.requestProxyUrl || ''),
+      resourceDownloadMaxRetry: normalizeResourceDownloadMaxRetry(parsed.resourceDownloadMaxRetry),
       retries: Math.max(0, Math.floor(Number(parsed.retries || 0))),
       lastError: String(parsed.lastError || ''),
       updatedAtMs: Number(parsed.updatedAtMs || Date.now()),
@@ -168,6 +178,7 @@ const processSingleTask = async (taskFilePath: string) => {
       route: task.route,
       fetchedAt: task.fetchedAt,
       requestProxyUrl: task.requestProxyUrl,
+      maxResourceRetry: task.resourceDownloadMaxRetry,
     });
     await upsertUserRssFeedState({
       userId: task.userId,
@@ -282,6 +293,7 @@ export const enqueueRssFeedProcessingTask = async (params: PendingFeedTaskEnqueu
     xml,
     fetchedAt: String(params.payload.fetchedAt || new Date().toISOString()),
     requestProxyUrl: String(params.setting.resourceProxyBaseUrl || ''),
+    resourceDownloadMaxRetry: normalizeResourceDownloadMaxRetry(params.setting.resourceDownloadMaxRetry),
     retries: 0,
     lastError: '',
     updatedAtMs: Date.now(),

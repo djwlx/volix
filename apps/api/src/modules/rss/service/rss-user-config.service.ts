@@ -3,6 +3,7 @@ export interface UserRssConfigEntity {
   resourceProxyBaseUrl?: string;
   resourceCacheMaxSizeMb?: number;
   refreshIntervalMinutes?: number;
+  resourceDownloadMaxRetry?: number;
 }
 
 export const parseUserRssConfig = (raw?: string | null): UserRssConfigEntity => {

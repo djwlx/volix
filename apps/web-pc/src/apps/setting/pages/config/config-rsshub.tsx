@@ -25,11 +25,13 @@ import { subscribeToRssStorageEvents } from './config-rsshub-realtime';
 
 const DEFAULT_HOST = 'https://rsshub.app';
 const DEFAULT_REFRESH_INTERVAL_MINUTES = 5;
+const DEFAULT_RESOURCE_DOWNLOAD_MAX_RETRY = 10;
 
 interface RssSettingFormValues {
   host: string;
   resourceProxyBaseUrl: string;
   refreshIntervalMinutes: number;
+  resourceDownloadMaxRetry: number;
 }
 
 const formatBytes = (value: number) => {
@@ -110,6 +112,9 @@ function SettingConfigRsshubApp() {
         host: settingRes.data?.host || DEFAULT_HOST,
         resourceProxyBaseUrl: String(settingRes.data?.resourceProxyBaseUrl || ''),
         refreshIntervalMinutes: Number(settingRes.data?.refreshIntervalMinutes || DEFAULT_REFRESH_INTERVAL_MINUTES),
+        resourceDownloadMaxRetry: Number(
+          settingRes.data?.resourceDownloadMaxRetry ?? DEFAULT_RESOURCE_DOWNLOAD_MAX_RETRY
+        ),
       });
       const nextSubscriptions = subscriptionRes.data || [];
       setSubscriptions(nextSubscriptions);
@@ -190,11 +195,16 @@ function SettingConfigRsshubApp() {
         host: String(payload.host || ''),
         resourceProxyBaseUrl: String(payload.resourceProxyBaseUrl || ''),
         refreshIntervalMinutes: Math.max(1, Number(payload.refreshIntervalMinutes || DEFAULT_REFRESH_INTERVAL_MINUTES)),
+        resourceDownloadMaxRetry: Math.max(
+          0,
+          Number(payload.resourceDownloadMaxRetry ?? DEFAULT_RESOURCE_DOWNLOAD_MAX_RETRY)
+        ),
       });
       const nextValues: RssSettingFormValues = {
         host: res.data.host || DEFAULT_HOST,
         resourceProxyBaseUrl: String(res.data.resourceProxyBaseUrl || ''),
         refreshIntervalMinutes: Number(res.data.refreshIntervalMinutes || DEFAULT_REFRESH_INTERVAL_MINUTES),
+        resourceDownloadMaxRetry: Number(res.data.resourceDownloadMaxRetry ?? DEFAULT_RESOURCE_DOWNLOAD_MAX_RETRY),
       };
       setFormInitValues(nextValues);
       formApi?.setValues(nextValues as unknown as Partial<Record<string, unknown>>);
@@ -360,6 +370,13 @@ function SettingConfigRsshubApp() {
             <AppForm.Input
               field="refreshIntervalMinutes"
               label={t({ id: 'setting.rss.refreshInterval', defaultMessage: '订阅刷新间隔（分钟）' })}
+            />
+            <AppForm.Input
+              field="resourceDownloadMaxRetry"
+              label={t({
+                id: 'setting.rss.resourceDownloadMaxRetry',
+                defaultMessage: '最大静态资源下载重试次数',
+              })}
             />
           </AppForm>
         ) : null}

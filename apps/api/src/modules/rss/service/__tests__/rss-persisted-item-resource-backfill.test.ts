@@ -125,6 +125,67 @@ describe('persisted rss item resource backfill', () => {
     expect(mergeUserRssFeedItems).not.toHaveBeenCalled();
   });
 
+  it('skips download once attempts reach the configured max retry', async () => {
+    const result = await backfillPersistedRssItemResources({
+      rows: [
+        {
+          dataValues: {
+            item_key: 'stable-item-key',
+            resources_localized: false,
+            resource_download_attempts: 10,
+          },
+        },
+      ],
+      userId: 'user-1',
+      route: '/tech',
+      fetchedAt: '2026-06-16T01:00:00.000Z',
+      requestProxyUrl: 'https://proxy.example.com',
+      maxResourceRetry: 10,
+    });
+
+    expect(result.updatedCount).toBe(0);
+    expect(mapFeedItemRow).not.toHaveBeenCalled();
+    expect(rewriteRssItemResourcesStrict).not.toHaveBeenCalled();
+  });
+
+  it('increments attempts when resources are still not localized', async () => {
+    const storedItem = createItem({
+      id: 'origin-item-id',
+      descriptionHtml: '<img src="https://cdn.example.com/a.png">',
+      imageUrls: ['https://cdn.example.com/a.png'],
+    });
+
+    mapFeedItemRow.mockResolvedValue(storedItem);
+    rewriteRssItemResourcesStrict.mockResolvedValue({
+      item: storedItem,
+      resourceCount: 0,
+      resourcesLocalized: false,
+    });
+
+    const update = vi.fn().mockResolvedValue(undefined);
+    const result = await backfillPersistedRssItemResources({
+      rows: [
+        {
+          dataValues: {
+            item_key: 'stable-item-key',
+            resources_localized: false,
+            resource_download_attempts: 2,
+          },
+          update,
+        },
+      ],
+      userId: 'user-1',
+      route: '/tech',
+      fetchedAt: '2026-06-16T01:00:00.000Z',
+      requestProxyUrl: 'https://proxy.example.com',
+      maxResourceRetry: 10,
+    });
+
+    expect(result.updatedCount).toBe(0);
+    expect(mergeUserRssFeedItems).not.toHaveBeenCalled();
+    expect(update).toHaveBeenCalledWith({ resource_download_attempts: 3 });
+  });
+
   it('skips rows already marked as fully localized before loading html content', async () => {
     const result = await backfillPersistedRssItemResources({
       rows: [

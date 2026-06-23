@@ -46,6 +46,9 @@ const DEFAULT_RESOURCE_CACHE_SIZE_MB = 0;
 const DEFAULT_REFRESH_INTERVAL_MINUTES = 5;
 const MIN_REFRESH_INTERVAL_MINUTES = 1;
 const MAX_REFRESH_INTERVAL_MINUTES = 24 * 60;
+const DEFAULT_RESOURCE_DOWNLOAD_MAX_RETRY = 10;
+const MIN_RESOURCE_DOWNLOAD_MAX_RETRY = 0;
+const MAX_RESOURCE_DOWNLOAD_MAX_RETRY = 100;
 const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 const rssFeedRefreshJobMap = new Map<string, Promise<void>>();
 const parseUrlOrThrow = (value: string, fieldName: string): URL => {
@@ -106,6 +109,13 @@ const normalizeRefreshIntervalMinutes = (value: number | undefined): number => {
   }
   return Math.min(MAX_REFRESH_INTERVAL_MINUTES, Math.max(MIN_REFRESH_INTERVAL_MINUTES, Math.round(raw)));
 };
+const normalizeResourceDownloadMaxRetry = (value: number | undefined): number => {
+  const raw = Number(value);
+  if (!Number.isFinite(raw)) {
+    return DEFAULT_RESOURCE_DOWNLOAD_MAX_RETRY;
+  }
+  return Math.min(MAX_RESOURCE_DOWNLOAD_MAX_RETRY, Math.max(MIN_RESOURCE_DOWNLOAD_MAX_RETRY, Math.round(raw)));
+};
 const parseForceRefreshFlag = (value: unknown): boolean => {
   if (typeof value === 'boolean') {
     return value;
@@ -127,6 +137,7 @@ export async function getUserRssSetting(userId: string | number | undefined): Pr
     ),
     resourceCacheMaxSizeMb: normalizeResourceCacheSizeMb(Number(rssConfig.resourceCacheMaxSizeMb || 0)),
     refreshIntervalMinutes: normalizeRefreshIntervalMinutes(Number(rssConfig.refreshIntervalMinutes || 0)),
+    resourceDownloadMaxRetry: normalizeResourceDownloadMaxRetry(rssConfig.resourceDownloadMaxRetry),
   };
 }
 export async function updateUserRssSetting(
@@ -138,15 +149,17 @@ export async function updateUserRssSetting(
   const resourceProxyBaseUrl = normalizeResourceProxyBaseUrl(payload?.resourceProxyBaseUrl || '');
   const resourceCacheMaxSizeMb = normalizeResourceCacheSizeMb(payload?.resourceCacheMaxSizeMb);
   const refreshIntervalMinutes = normalizeRefreshIntervalMinutes(payload?.refreshIntervalMinutes);
+  const resourceDownloadMaxRetry = normalizeResourceDownloadMaxRetry(payload?.resourceDownloadMaxRetry);
   await updateUser(normalizedUserId, {
     rss_config: JSON.stringify({
       host,
       resourceProxyBaseUrl,
       resourceCacheMaxSizeMb,
       refreshIntervalMinutes,
+      resourceDownloadMaxRetry,
     }),
   });
-  return { host, resourceProxyBaseUrl, resourceCacheMaxSizeMb, refreshIntervalMinutes };
+  return { host, resourceProxyBaseUrl, resourceCacheMaxSizeMb, refreshIntervalMinutes, resourceDownloadMaxRetry };
 }
 export async function listUserRssSubscriptions(
   userId: string | number | undefined
@@ -331,6 +344,7 @@ const fetchAndCacheRssFeed = async (params: {
     payload,
     setting: {
       resourceProxyBaseUrl: params.setting.resourceProxyBaseUrl,
+      resourceDownloadMaxRetry: params.setting.resourceDownloadMaxRetry,
     },
   });
   void startRssPendingQueue();
@@ -396,6 +410,7 @@ const buildDefaultRssSetting = (): UserRssSettingPayload => ({
   resourceProxyBaseUrl: DEFAULT_RESOURCE_PROXY_BASE_URL,
   resourceCacheMaxSizeMb: DEFAULT_RESOURCE_CACHE_SIZE_MB,
   refreshIntervalMinutes: DEFAULT_REFRESH_INTERVAL_MINUTES,
+  resourceDownloadMaxRetry: DEFAULT_RESOURCE_DOWNLOAD_MAX_RETRY,
 });
 export async function fetchRssFeed(params: GetRssFeedParams, userId?: string | number): Promise<RssFeedPayload> {
   if (userId === undefined || userId === null) {

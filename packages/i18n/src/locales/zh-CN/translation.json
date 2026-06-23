@@ -219,6 +219,7 @@
   "setting.rss.keepLatestItemsInvalid": "请输入有效数字，且必须大于 0 并小于等于 {maxKeepLatestItems}",
   "setting.rss.loadFailed": "加载 RSS 配置失败",
   "setting.rss.refreshInterval": "订阅刷新间隔（分钟）",
+  "setting.rss.resourceDownloadMaxRetry": "最大静态资源下载重试次数",
   "setting.rss.resourceProxy": "静态资源代理地址（可空）",
   "setting.rss.route.placeholder": "例如：/zhihu/daily",
   "setting.rss.saveFailed": "保存 RSS 配置失败",

@@ -219,6 +219,7 @@
   "setting.rss.keepLatestItemsInvalid": "Enter a valid number greater than 0 and less than or equal to {maxKeepLatestItems}",
   "setting.rss.loadFailed": "Failed to load RSS settings",
   "setting.rss.refreshInterval": "Refresh interval (minutes)",
+  "setting.rss.resourceDownloadMaxRetry": "Max static resource download retries",
   "setting.rss.resourceProxy": "Static resource proxy URL (optional)",
   "setting.rss.route.placeholder": "Example: /zhihu/daily",
   "setting.rss.saveFailed": "Failed to save RSS settings",
