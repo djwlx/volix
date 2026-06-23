@@ -13,6 +13,7 @@ import SqliteAdminApp from '@/apps/sqlite-admin';
 import LogViewerApp from '@/apps/log-viewer';
 import ColorPickerApp from '@/apps/color-picker';
 import FormatterApp from '@/apps/formatter';
+import AiTranslateApp from '@/apps/ai-translate';
 import PicApp from '@/apps/pic';
 import PicLikedApp from '@/apps/pic-liked';
 import RssApp from '@/apps/rss';
@@ -122,6 +123,22 @@ export const router = createBrowserRouter([
             title: msg('route.colorPicker.title', '取色器'),
             description: msg('route.colorPicker.description', '支持网页取色和图片点击取色，自动生成 HEX、RGB、HSL'),
             logo: <img alt="Color Picker" src={colorPickerIcon} style={{ display: 'block', width: 44, height: 44 }} />,
+          },
+        }),
+      },
+      {
+        path: 'ai-translate',
+        Component: AiTranslateApp,
+        handle: routeHandle({
+          requiresAuth: true,
+          appHeader: {
+            title: msg('route.aiTranslate.title', 'AI 翻译'),
+            description: msg('route.aiTranslate.description', '使用当前账号下的 AI 配置完成单段文本翻译'),
+            logo: (
+              <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #0f766e 0%, #16a34a 100%)' }}>
+                AI
+              </div>
+            ),
           },
         }),
       },

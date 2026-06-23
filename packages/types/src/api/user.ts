@@ -96,6 +96,16 @@ export interface ListAiModelsResponse {
   models: string[];
 }
 
+export interface TranslateTextPayload {
+  text: string;
+  sourceLanguage?: string;
+  targetLanguage: string;
+}
+
+export interface TranslateTextResponse {
+  text: string;
+}
+
 export interface RegisterConfigResponse {
   emailVerificationRequired: boolean;
 }

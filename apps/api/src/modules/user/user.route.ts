@@ -17,6 +17,7 @@ import {
   sendCurrentUserEmailVerifyCode,
   setUserRole,
   testAccountConfig,
+  translateText,
   updateAccountConfig,
   verifyCurrentUserEmail,
   updateCurrentUserProfile,
@@ -41,6 +42,7 @@ router
   .put('/account-configs', http(updateAccountConfig))
   .post('/account-configs/test', http(testAccountConfig))
   .post('/account-configs/ai/models', http(listAiModels))
+  .post('/ai/translate', http(translateText))
   .get('/system-config', http(getSystemConfig))
   .put('/system-config', http(updateSystemConfig))
   .put('/profile', http(updateCurrentUserProfile))

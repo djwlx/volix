@@ -16,6 +16,8 @@ import type {
   SystemConfigResponse,
   TestAccountConfigPayload,
   TestAccountConfigResponse,
+  TranslateTextPayload,
+  TranslateTextResponse,
   UpdateSystemConfigPayload,
   UpdateAccountConfigPayload,
   UpdateUserProfilePayload,
@@ -68,6 +70,10 @@ export const testAccountConfig = (data: TestAccountConfigPayload) => {
 
 export const listAiModels = (data: ListAiModelsPayload) => {
   return http.post<ListAiModelsResponse>('/user/account-configs/ai/models', data);
+};
+
+export const translateText = (data: TranslateTextPayload) => {
+  return http.post<TranslateTextResponse>('/user/ai/translate', data);
 };
 
 export const getSystemConfig = () => {

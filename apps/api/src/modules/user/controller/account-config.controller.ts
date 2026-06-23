@@ -4,6 +4,7 @@ import type {
   ListAiModelsPayload,
   ListAiModelsResponse,
   TestAccountConfigPayload,
+  TranslateTextPayload,
   UpdateAccountConfigPayload,
 } from '@volix/types';
 import { badRequest, unauthorized } from '../../shared/http-handler';
@@ -16,6 +17,7 @@ import {
   normalizeServiceAccountConfig,
   updateUserAccountConfig,
 } from '../service/user-config.service';
+import { translateUserText } from '../service/ai-translate.service';
 
 const ensureLoginUserId = (ctx: any) => {
   const userId = ctx.state.userInfo?.id;
@@ -164,4 +166,10 @@ export const listAiModels: MyMiddleware = async ctx => {
 
     badRequest(t('accountConfig.test.failed', { service: 'AI', message }));
   }
+};
+
+export const translateText: MyMiddleware = async ctx => {
+  const userId = ensureLoginUserId(ctx);
+  const payload = (ctx.request.body || {}) as TranslateTextPayload;
+  return translateUserText(userId, payload);
 };

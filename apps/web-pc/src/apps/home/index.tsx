@@ -75,6 +75,18 @@ function HomeApp() {
             />
             {authed ? (
               <AppCard
+                title={t('home.card.aiTranslate.title')}
+                description={t('home.card.aiTranslate.description')}
+                link="/ai-translate"
+                icon={
+                  <div style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #0f766e 0%, #16a34a 100%)' }}>
+                    AI
+                  </div>
+                }
+              />
+            ) : null}
+            {authed ? (
+              <AppCard
                 title={t('home.card.formatConvert.title')}
                 description={t('home.card.formatConvert.description')}
                 link="/format-convert"
