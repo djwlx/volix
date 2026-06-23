@@ -481,6 +481,7 @@
   "accountConfig.ai.invalidBaseUrl": "AI 服务地址必须是 http/https 地址",
   "accountConfig.ai.missingApiKey": "AI 密钥不能为空",
   "accountConfig.ai.missingModel": "请选择或填写模型",
+  "accountConfig.ai.notConfigured": "尚未配置 AI 账号",
   "accountConfig.platform.invalid": "platform 参数错误",
   "accountConfig.service.default": "服务",
   "accountConfig.smtp.migrated": "SMTP 已迁移到系统配置，不再支持个人账号配置",

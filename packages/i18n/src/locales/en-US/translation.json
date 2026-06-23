@@ -480,6 +480,7 @@
   "accountConfig.ai.invalidBaseUrl": "AI base URL must be an http/https address",
   "accountConfig.ai.missingApiKey": "AI API key is required",
   "accountConfig.ai.missingModel": "Please select or enter a model",
+  "accountConfig.ai.notConfigured": "AI account is not configured yet",
   "accountConfig.platform.invalid": "Invalid platform parameter",
   "accountConfig.service.default": "Service",
   "accountConfig.smtp.migrated": "SMTP has been moved to system settings and is no longer supported in personal account settings",

@@ -9,6 +9,7 @@ import type {
 import { badRequest } from '../../shared/http-handler';
 import { decryptSecret, encryptSecret } from '../../../utils/crypto-store';
 import { t } from '../../../utils/i18n';
+import { createAiSdk, type AiSdk } from '../../../sdk';
 import { queryUser, updateUser } from './user.service';
 
 const EMAIL_REGEXP = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -276,4 +277,25 @@ export async function updateUserAccountConfig(
   });
 
   return normalized;
+}
+
+export async function getUserAiConfig(userId: string | number): Promise<AiAccountConfigItem | null> {
+  const configs = await getUserAccountConfigs(userId);
+  return configs.ai || null;
+}
+
+export async function createUserAiSdk(userId: string | number): Promise<{ sdk: AiSdk; config: AiAccountConfigItem }> {
+  const config = await getUserAiConfig(userId);
+  if (!config) {
+    badRequest(t('accountConfig.ai.notConfigured'));
+    throw new Error('AI account not configured');
+  }
+
+  const sdk = createAiSdk({
+    baseUrl: config.baseUrl,
+    apiKey: config.apiKey,
+    model: config.model,
+  });
+
+  return { sdk, config };
 }
