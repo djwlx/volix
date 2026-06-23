@@ -13,6 +13,14 @@ export enum AccountConfigPlatform {
   OPENLIST = 'openlist',
   SMTP = 'smtp',
   BANGUMI = 'bangumi',
+  AI = 'ai',
+}
+
+export enum AiProvider {
+  OPENAI = 'openai',
+  GEMINI = 'gemini',
+  DEEPSEEK = 'deepseek',
+  CUSTOM = 'custom',
 }
 
 export interface ServiceAccountConfigItem {
@@ -35,6 +43,13 @@ export interface BangumiAccountConfigItem {
   accessToken: string;
 }
 
+export interface AiAccountConfigItem {
+  provider: AiProvider;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+}
+
 export interface UserSettingsJson {
   [key: string]: unknown;
 }
@@ -48,21 +63,37 @@ export interface AccountConfigMap {
   openlist?: ServiceAccountConfigItem;
   smtp?: SmtpAccountConfigItem;
   bangumi?: BangumiAccountConfigItem;
+  ai?: AiAccountConfigItem;
 }
+
+export type AccountConfigItem =
+  | ServiceAccountConfigItem
+  | SmtpAccountConfigItem
+  | BangumiAccountConfigItem
+  | AiAccountConfigItem;
 
 export interface UpdateAccountConfigPayload {
   platform: AccountConfigPlatform;
-  config: ServiceAccountConfigItem | SmtpAccountConfigItem | BangumiAccountConfigItem;
+  config: AccountConfigItem;
 }
 
 export interface TestAccountConfigPayload {
   platform: AccountConfigPlatform;
-  config: ServiceAccountConfigItem | SmtpAccountConfigItem | BangumiAccountConfigItem;
+  config: AccountConfigItem;
 }
 
 export interface TestAccountConfigResponse {
   success: boolean;
   message: string;
+}
+
+export interface ListAiModelsPayload {
+  baseUrl: string;
+  apiKey: string;
+}
+
+export interface ListAiModelsResponse {
+  models: string[];
 }
 
 export interface RegisterConfigResponse {

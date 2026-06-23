@@ -1,12 +1,14 @@
-import { AccountConfigPlatform } from '@volix/types';
+import { AccountConfigPlatform, AiProvider } from '@volix/types';
 import type {
   AccountConfigMap,
+  AiAccountConfigItem,
   BangumiAccountConfigItem,
   SmtpAccountConfigItem,
   ServiceAccountConfigItem,
 } from '@volix/types';
 import { badRequest } from '../../shared/http-handler';
 import { decryptSecret, encryptSecret } from '../../../utils/crypto-store';
+import { t } from '../../../utils/i18n';
 import { queryUser, updateUser } from './user.service';
 
 const EMAIL_REGEXP = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -98,6 +100,45 @@ export const normalizeBangumiAccountConfig = (config: unknown): BangumiAccountCo
   };
 };
 
+export const normalizeAiConnection = (config: unknown): { baseUrl: string; apiKey: string } => {
+  if (!config || typeof config !== 'object') {
+    badRequest(t('accountConfig.ai.invalidConfig'));
+  }
+
+  const raw = config as Partial<AiAccountConfigItem>;
+  const baseUrl = typeof raw.baseUrl === 'string' ? raw.baseUrl.trim() : '';
+  const apiKey = typeof raw.apiKey === 'string' ? raw.apiKey.trim() : '';
+
+  if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
+    badRequest(t('accountConfig.ai.invalidBaseUrl'));
+  }
+  if (!apiKey) {
+    badRequest(t('accountConfig.ai.missingApiKey'));
+  }
+
+  return { baseUrl, apiKey };
+};
+
+export const normalizeAiAccountConfig = (config: unknown): AiAccountConfigItem => {
+  const { baseUrl, apiKey } = normalizeAiConnection(config);
+  const raw = config as Partial<AiAccountConfigItem>;
+  const provider = Object.values(AiProvider).includes(raw.provider as AiProvider)
+    ? (raw.provider as AiProvider)
+    : AiProvider.CUSTOM;
+  const model = typeof raw.model === 'string' ? raw.model.trim() : '';
+
+  if (!model) {
+    badRequest(t('accountConfig.ai.missingModel'));
+  }
+
+  return {
+    provider,
+    baseUrl,
+    apiKey,
+    model,
+  };
+};
+
 export const parseServiceAccountConfig = (raw?: string): ServiceAccountConfigItem | null => {
   if (!raw) {
     return null;
@@ -170,12 +211,26 @@ const parseBangumiAccountConfigFromUnknown = (raw: unknown): BangumiAccountConfi
   }
 };
 
+const parseAiAccountConfigFromUnknown = (raw: unknown): AiAccountConfigItem | null => {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  try {
+    return normalizeAiAccountConfig(raw);
+  } catch {
+    return null;
+  }
+};
+
 const normalizeByPlatform = (platform: AccountConfigPlatform, config: unknown) => {
   if (platform === AccountConfigPlatform.SMTP) {
     return normalizeSmtpAccountConfig(config);
   }
   if (platform === AccountConfigPlatform.BANGUMI) {
     return normalizeBangumiAccountConfig(config);
+  }
+  if (platform === AccountConfigPlatform.AI) {
+    return normalizeAiAccountConfig(config);
   }
   return normalizeServiceAccountConfig(config);
 };
@@ -193,6 +248,7 @@ export async function getUserAccountConfigs(userId: string | number): Promise<Ac
     qbittorrent: parseServiceAccountConfigFromUnknown(accountList[AccountConfigPlatform.QBITTORRENT]) || undefined,
     openlist: parseServiceAccountConfigFromUnknown(accountList[AccountConfigPlatform.OPENLIST]) || undefined,
     bangumi: parseBangumiAccountConfigFromUnknown(accountList[AccountConfigPlatform.BANGUMI]) || undefined,
+    ai: parseAiAccountConfigFromUnknown(accountList[AccountConfigPlatform.AI]) || undefined,
   };
 }
 

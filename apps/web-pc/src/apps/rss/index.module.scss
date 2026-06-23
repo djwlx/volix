@@ -88,9 +88,7 @@
   text-align: left;
   cursor: pointer;
   padding: 10px;
-  transition:
-    transform 0.2s ease,
-    border-color 0.2s ease;
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .itemCard:hover {
@@ -251,7 +249,7 @@
 @media (max-width: 767px) {
   .page {
     padding: 12px;
-    overflow: auto;
+    overflow: visible;
     height: auto;
   }
 
@@ -271,7 +269,27 @@
     overflow: visible;
   }
 
+  .listPane {
+    grid-template-rows: auto auto auto auto;
+    height: auto;
+  }
+
   .itemList {
+    height: auto;
+    overflow: visible;
     gap: 10px;
+  }
+
+  .mobileDetailPane {
+    min-height: 0;
+  }
+
+  .detailWrap {
+    height: auto;
+    grid-template-rows: none;
+  }
+
+  .detailBody {
+    overflow: visible;
   }
 }

@@ -10,6 +10,7 @@ import {
   getUserDetail,
   getSystemConfig,
   getUserList,
+  listAiModels,
   loginUser,
   registerUser,
   sendRegisterCode,
@@ -39,6 +40,7 @@ router
   .get('/account-configs', http(getAccountConfigs))
   .put('/account-configs', http(updateAccountConfig))
   .post('/account-configs/test', http(testAccountConfig))
+  .post('/account-configs/ai/models', http(listAiModels))
   .get('/system-config', http(getSystemConfig))
   .put('/system-config', http(updateSystemConfig))
   .put('/profile', http(updateCurrentUserProfile))

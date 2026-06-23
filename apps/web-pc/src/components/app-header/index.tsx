@@ -1,11 +1,27 @@
 import { Avatar, Dropdown, Nav, Tag, Typography } from '@douyinfe/semi-ui';
-import { IconExit, IconMoon, IconSetting, IconSun } from '@douyinfe/semi-icons';
-import type { ReactNode } from 'react';
+import {
+  IconClose,
+  IconExit,
+  IconMoon,
+  IconSetting,
+  IconSun,
+  IconTick,
+  IconUserAdd,
+  IconUserGroup,
+} from '@douyinfe/semi-icons';
+import { useState, type ReactNode } from 'react';
 import type { Locale } from '@volix/i18n';
 import { useI18n } from '@/i18n';
 import { useNavigate } from 'react-router';
 import { useIsMobile, useUser } from '@/hooks';
-import { clearAuthToken, isAuthenticated } from '@/utils';
+import {
+  clearAuthToken,
+  getSavedAccounts,
+  isAuthenticated,
+  removeSavedAccount,
+  setAuthToken,
+  type SavedAccount,
+} from '@/utils';
 import { useGlobalConfigStore } from '@/stores';
 import { setAppTheme } from '@/utils/theme';
 import { buildHeaderDropdownItems, type HeaderDropdownItem } from './menu-items';
@@ -46,6 +62,7 @@ export function AppHeader(props: AppHeaderProps) {
   const navigate = useNavigate();
   const { locale, setLocale, t } = useI18n();
   const { user } = useUser(false);
+  const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
   const isMobile = useIsMobile();
   const authed = isAuthenticated();
   const theme = useGlobalConfigStore(state => state.config.theme);
@@ -58,6 +75,21 @@ export function AppHeader(props: AppHeaderProps) {
   const nextTheme = theme === 'dark' ? 'light' : 'dark';
 
   const currentUser = userOverride || user;
+  const currentAccountId = user?.id !== undefined ? String(user.id) : undefined;
+
+  const handleSwitchAccount = (account: SavedAccount) => {
+    if (String(account.id) === currentAccountId) {
+      return;
+    }
+    setAuthToken(account.token);
+    window.location.assign('/');
+  };
+
+  const handleRemoveAccount = (event: React.MouseEvent, id: string) => {
+    event.stopPropagation();
+    setSavedAccounts(removeSavedAccount(id));
+  };
+
   const defaultMenuItems: HeaderDropdownItem[] = authed
     ? [
         {
@@ -65,6 +97,12 @@ export function AppHeader(props: AppHeaderProps) {
           label: t({ id: 'header.menu.system', defaultMessage: '系统管理' }),
           icon: <IconSetting />,
           onClick: () => navigate('/setting/info'),
+        },
+        {
+          key: 'switch-account',
+          label: t({ id: 'header.menu.switchAccount', defaultMessage: '切换账号' }),
+          icon: <IconUserGroup />,
+          onClick: () => {},
         },
         {
           key: 'logout',
@@ -104,6 +142,61 @@ export function AppHeader(props: AppHeaderProps) {
     themeItem: themeMenuItem,
     loginItem: loginMenuItem,
   });
+  const switchAccountMenu = (
+    <Dropdown.Menu>
+      {savedAccounts.length === 0 ? (
+        <Dropdown.Item disabled>
+          {t({ id: 'header.switchAccount.empty', defaultMessage: '暂无已保存的账号' })}
+        </Dropdown.Item>
+      ) : (
+        savedAccounts.map(account => {
+          const isCurrent = String(account.id) === currentAccountId;
+          const initial = account.nickname?.slice(0, 1) || account.email?.slice(0, 1)?.toUpperCase() || 'U';
+          return (
+            <Dropdown.Item key={account.id} active={isCurrent} onClick={() => handleSwitchAccount(account)}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 220, maxWidth: 320 }}>
+                <Avatar
+                  size="extra-small"
+                  shape="circle"
+                  color="blue"
+                  src={account.avatar}
+                  imgAttr={{ style: { objectFit: 'cover' } }}
+                  style={{ width: 24, height: 24, flex: '0 0 24px' }}
+                >
+                  {initial}
+                </Avatar>
+                <Typography.Text ellipsis={{ showTooltip: true }} style={{ flex: 1, minWidth: 0 }}>
+                  {account.nickname ? `${account.nickname} (${account.email})` : account.email}
+                </Typography.Text>
+                {isCurrent ? (
+                  <IconTick style={{ color: 'var(--semi-color-primary)', flexShrink: 0 }} />
+                ) : (
+                  <span
+                    role="button"
+                    tabIndex={-1}
+                    aria-label={t({ id: 'header.switchAccount.remove', defaultMessage: '移除账号' })}
+                    onClick={event => handleRemoveAccount(event, account.id)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      color: 'var(--semi-color-text-2)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <IconClose size="small" />
+                  </span>
+                )}
+              </div>
+            </Dropdown.Item>
+          );
+        })
+      )}
+      <Dropdown.Divider />
+      <Dropdown.Item icon={<IconUserAdd />} onClick={() => navigate('/auth')}>
+        {t({ id: 'header.switchAccount.add', defaultMessage: '添加账号' })}
+      </Dropdown.Item>
+    </Dropdown.Menu>
+  );
   const dropdownContent = (
     <div
       style={{
@@ -116,11 +209,23 @@ export function AppHeader(props: AppHeaderProps) {
       }}
     >
       <Dropdown.Menu>
-        {dropdownItems.map(item => (
-          <Dropdown.Item key={item.key} icon={item.icon} type={item.type} onClick={item.onClick}>
-            {item.label}
-          </Dropdown.Item>
-        ))}
+        {dropdownItems.map(item =>
+          item.key === 'switch-account' ? (
+            <Dropdown
+              key={item.key}
+              trigger={isMobile ? 'click' : 'hover'}
+              position={isMobile ? 'bottomLeft' : 'leftTop'}
+              getPopupContainer={() => document.body}
+              render={switchAccountMenu}
+            >
+              <Dropdown.Item icon={item.icon}>{item.label}</Dropdown.Item>
+            </Dropdown>
+          ) : (
+            <Dropdown.Item key={item.key} icon={item.icon} type={item.type} onClick={item.onClick}>
+              {item.label}
+            </Dropdown.Item>
+          )
+        )}
       </Dropdown.Menu>
     </div>
   );
@@ -182,7 +287,16 @@ export function AppHeader(props: AppHeaderProps) {
               </button>
             </>
           ) : null}
-          <Dropdown trigger="click" position="bottomRight" render={dropdownContent}>
+          <Dropdown
+            trigger="click"
+            position="bottomRight"
+            render={dropdownContent}
+            onVisibleChange={visible => {
+              if (visible) {
+                setSavedAccounts(getSavedAccounts());
+              }
+            }}
+          >
             {authed ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 0 }}>
                 <Avatar

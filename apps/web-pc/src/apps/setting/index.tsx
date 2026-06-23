@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Nav, SideSheet, Toast } from '@douyinfe/semi-ui';
+import { Button, Nav, SideSheet, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconCloudStroked, IconConfigStroked, IconDesktop, IconMenu, IconUserList } from '@douyinfe/semi-icons';
 import { IconAvatar } from '@douyinfe/semi-icons-lab';
 import { useLocation, Outlet } from 'react-router';
@@ -188,14 +188,13 @@ function SettingApp() {
   ];
 
   const versionFooter = __APP_VERSION__ ? (
-    <button
-      type="button"
-      className={styles.versionButton}
+    <Typography.Text
+      className={styles.versionText}
       onClick={() => setChangelogVisible(true)}
       title={t({ id: 'setting.changelog.title', defaultMessage: '更新日志' })}
     >
       v{__APP_VERSION__}
-    </button>
+    </Typography.Text>
   ) : null;
 
   return (

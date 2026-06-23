@@ -1,10 +1,17 @@
 import { AccountConfigPlatform } from '@volix/types';
-import type { AccountConfigMap, TestAccountConfigPayload, UpdateAccountConfigPayload } from '@volix/types';
+import type {
+  AccountConfigMap,
+  ListAiModelsPayload,
+  ListAiModelsResponse,
+  TestAccountConfigPayload,
+  UpdateAccountConfigPayload,
+} from '@volix/types';
 import { badRequest, unauthorized } from '../../shared/http-handler';
-import { createBangumiSdk, createOpenlistSdk, createQbittorrentSdk } from '../../../sdk';
+import { createAiSdk, createBangumiSdk, createOpenlistSdk, createQbittorrentSdk } from '../../../sdk';
 import { t } from '../../../utils/i18n';
 import {
   getUserAccountConfigs,
+  normalizeAiConnection,
   normalizeBangumiAccountConfig,
   normalizeServiceAccountConfig,
   updateUserAccountConfig,
@@ -100,6 +107,17 @@ export const testAccountConfig: MyMiddleware = async ctx => {
       };
     }
 
+    if (platform === AccountConfigPlatform.AI) {
+      const { baseUrl, apiKey } = normalizeAiConnection(param.config);
+      const sdk = createAiSdk({ baseUrl, apiKey });
+      const models = await sdk.listModels();
+
+      return {
+        success: true,
+        message: t('accountConfig.test.aiSuccess', { count: models.length }),
+      };
+    }
+
     badRequest(t('accountConfig.test.unsupported'));
   } catch (error) {
     const message =
@@ -114,6 +132,7 @@ export const testAccountConfig: MyMiddleware = async ctx => {
       [AccountConfigPlatform.OPENLIST]: 'OpenList',
       [AccountConfigPlatform.SMTP]: 'SMTP',
       [AccountConfigPlatform.BANGUMI]: 'Bangumi',
+      [AccountConfigPlatform.AI]: 'AI',
     };
 
     badRequest(
@@ -122,5 +141,27 @@ export const testAccountConfig: MyMiddleware = async ctx => {
         message,
       })
     );
+  }
+};
+
+export const listAiModels: MyMiddleware = async ctx => {
+  ensureLoginUserId(ctx);
+  const param = (ctx.request.body || {}) as ListAiModelsPayload;
+  const { baseUrl, apiKey } = normalizeAiConnection(param);
+
+  try {
+    const sdk = createAiSdk({ baseUrl, apiKey });
+    const models = await sdk.listModels();
+    const result: ListAiModelsResponse = { models };
+    return result;
+  } catch (error) {
+    const message =
+      (error as { response?: { data?: { error?: { message?: string }; message?: string } }; message?: string })
+        ?.response?.data?.error?.message ||
+      (error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+      (error as Error)?.message ||
+      t('setting.account.connectionFailed');
+
+    badRequest(t('accountConfig.test.failed', { service: 'AI', message }));
   }
 };

@@ -5,7 +5,13 @@ import { useI18n } from '@/i18n';
 import { getAccountConfigs, testAccountConfig, updateAccountConfig } from '@/services/user';
 import { useAppPageContext } from '@/hooks';
 import { AccountConfigPlatform } from '@volix/types';
-import type { AccountConfigMap, BangumiAccountConfigItem, ServiceAccountConfigItem } from '@volix/types';
+import type {
+  AccountConfigMap,
+  AiAccountConfigItem,
+  BangumiAccountConfigItem,
+  ServiceAccountConfigItem,
+} from '@volix/types';
+import { AiAccountCard } from './ai-account-card';
 
 interface ServiceCardProps {
   title: string;
@@ -258,6 +264,7 @@ function SettingConfigAccountCenterApp() {
           qbittorrent: res.data?.qbittorrent || EMPTY_SERVICE_VALUES,
           openlist: res.data?.openlist || EMPTY_SERVICE_VALUES,
           bangumi: res.data?.bangumi || EMPTY_BANGUMI_VALUES,
+          ai: res.data?.ai,
         });
       })
       .catch(() => {
@@ -314,6 +321,15 @@ function SettingConfigAccountCenterApp() {
                 setAccountConfigs(prev => ({
                   ...prev,
                   bangumi: config,
+                }));
+              }}
+            />
+            <AiAccountCard
+              initialConfig={accountConfigs.ai}
+              onSaved={(config: AiAccountConfigItem) => {
+                setAccountConfigs(prev => ({
+                  ...prev,
+                  ai: config,
                 }));
               }}
             />

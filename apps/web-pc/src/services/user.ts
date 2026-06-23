@@ -4,6 +4,8 @@ import type {
   AdminCreateUserPayload,
   AdminUpdateUserPayload,
   AccountConfigPlatform,
+  ListAiModelsPayload,
+  ListAiModelsResponse,
   LoginUserPayload,
   LoginUserResponse,
   RegisterUserPayload,
@@ -62,6 +64,10 @@ export const updateAccountConfig = (data: UpdateAccountConfigPayload) => {
 
 export const testAccountConfig = (data: TestAccountConfigPayload) => {
   return http.post<TestAccountConfigResponse>('/user/account-configs/test', data);
+};
+
+export const listAiModels = (data: ListAiModelsPayload) => {
+  return http.post<ListAiModelsResponse>('/user/account-configs/ai/models', data);
 };
 
 export const getSystemConfig = () => {

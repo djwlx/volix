@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Empty, Select, Toast } from '@douyinfe/semi-ui';
 import { useNavigate } from 'react-router';
 import { useIsMobile } from '@/hooks';
@@ -26,6 +26,7 @@ function RssApp() {
   const [selectedRoutes, setSelectedRoutes] = useState<string[]>([]);
   const [activeItemKey, setActiveItemKey] = useState('');
   const [mobileOpenedItemKey, setMobileOpenedItemKey] = useState('');
+  const detailBodyRef = useRef<HTMLDivElement>(null);
 
   const routeStates = useMemo(() => {
     return subscriptions.map(item => {
@@ -206,6 +207,10 @@ function RssApp() {
     }
   }, [activeItemKey, aggregatedItems]);
 
+  useEffect(() => {
+    detailBodyRef.current?.scrollTo({ top: 0 });
+  }, [activeItem?.itemKey]);
+
   const summaryText = t('rss.summary', {
     routeCount: filteredRoutes.length,
     itemCount: aggregatedItems.length,
@@ -261,7 +266,7 @@ function RssApp() {
             {typeof activeItem.enclosureLength === 'number' ? ` · ${activeItem.enclosureLength} bytes` : ''}
           </div>
         ) : null}
-        <div className={styles.detailBody}>
+        <div className={styles.detailBody} ref={detailBodyRef}>
           {activeItem.descriptionHtml ? (
             <div dangerouslySetInnerHTML={{ __html: activeItem.descriptionHtml }} />
           ) : (

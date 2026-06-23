@@ -2,7 +2,21 @@ import { create } from 'zustand';
 import { translateClient } from '@/i18n';
 import type { UserInfoResponse } from '@volix/types';
 import { getCurrentUser } from '@/services/user';
-import { clearAuthToken, getAuthToken } from '@/utils';
+import { clearAuthToken, getAuthToken, upsertSavedAccount } from '@/utils';
+
+const rememberAccount = (user: UserInfoResponse | null) => {
+  const token = getAuthToken();
+  if (!token || !user) {
+    return;
+  }
+  upsertSavedAccount({
+    id: String(user.id),
+    token,
+    email: user.email,
+    nickname: user.nickname,
+    avatar: user.avatar,
+  });
+};
 
 interface UserState {
   currentUser: UserInfoResponse | null;
@@ -42,6 +56,7 @@ export const useUserStore = create<UserState>(set => ({
 
     try {
       const res = await getCurrentUser();
+      rememberAccount(res.data);
       set({
         currentUser: res.data,
         userLoading: false,
@@ -71,6 +86,7 @@ export const useUserStore = create<UserState>(set => ({
     set({ userLoading: true, authError: null });
     try {
       const res = await getCurrentUser();
+      rememberAccount(res.data);
       set({
         currentUser: res.data,
         userLoading: false,
