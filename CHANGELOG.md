@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.21] - 2026-06-23
+
+### 中文
+#### Added
+- RSS 资源下载失败时支持自动重试
+#### Changed
+- 优化 RSS 资源回填逻辑，增加重试机制
+
+### English
+#### Added
+- Support automatic retry for RSS resource download failures
+#### Changed
+- Optimized RSS resource backfill logic with retry mechanism
+
 ## [1.1.20] - 2026-06-18
 
 ### 中文
