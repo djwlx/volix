@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.1.22] - 2026-06-23
+
+### 中文
+#### Added
+- 新增 AI 翻译功能，支持多语言互译
+- 新增 AI 账号管理功能，支持配置多个 AI 服务账号
+- 新增 AI 翻译 SDK，封装 OpenAI 等 API 调用
+- 新增 AI 翻译相关测试用例
+#### Changed
+- 优化 RSS 页面样式
+- 优化设置页面布局
+- 更新国际化翻译文件
+
+### English
+#### Added
+- Added AI translation feature supporting multi-language translation
+- Added AI account management for configuring multiple AI service accounts
+- Added AI translation SDK encapsulating OpenAI and other API calls
+- Added test cases for AI translation
+#### Changed
+- Improved RSS page styles
+- Improved settings page layout
+- Updated internationalization translation files
+
 ## [1.1.21] - 2026-06-23
 
 ### 中文
