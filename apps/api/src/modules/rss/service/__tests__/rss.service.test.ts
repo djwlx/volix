@@ -1,17 +1,32 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UserRssSubscriptionStateRow } from '../rss-feed-db.service';
+import { createUserRssSubscription, fetchRssFeed } from '../rss.service';
 
-const requestGet = vi.fn();
-const queryUser = vi.fn();
-const updateUser = vi.fn();
-const listUserRssSubscriptionStates = vi.fn();
-const upsertUserRssSubscriptionState = vi.fn();
-const isUserRssSubscriptionEnabled = vi.fn();
-const hasPendingRssFeedTask = vi.fn();
-const getProcessedRssFeedPayload = vi.fn();
-const enqueueRssFeedProcessingTask = vi.fn();
-const startRssPendingQueue = vi.fn();
-const emitRssStorageChanged = vi.fn();
+const {
+  requestGet,
+  queryUser,
+  updateUser,
+  listUserRssSubscriptionStates,
+  upsertUserRssSubscriptionState,
+  isUserRssSubscriptionEnabled,
+  hasPendingRssFeedTask,
+  getProcessedRssFeedPayload,
+  enqueueRssFeedProcessingTask,
+  startRssPendingQueue,
+  emitRssStorageChanged,
+} = vi.hoisted(() => ({
+  requestGet: vi.fn(),
+  queryUser: vi.fn(),
+  updateUser: vi.fn(),
+  listUserRssSubscriptionStates: vi.fn(),
+  upsertUserRssSubscriptionState: vi.fn(),
+  isUserRssSubscriptionEnabled: vi.fn(),
+  hasPendingRssFeedTask: vi.fn(),
+  getProcessedRssFeedPayload: vi.fn(),
+  enqueueRssFeedProcessingTask: vi.fn(),
+  startRssPendingQueue: vi.fn(),
+  emitRssStorageChanged: vi.fn(),
+}));
 
 vi.mock('../../../../utils/request', () => ({
   default: {
@@ -96,7 +111,6 @@ describe('rss service source resolution', () => {
   it('uses the absolute route as feed source when creating a subscription', async () => {
     const route = 'https://example.com/feed.xml';
     listUserRssSubscriptionStates.mockResolvedValueOnce([]).mockResolvedValueOnce([buildSubscriptionRow(route, route)]);
-    const { createUserRssSubscription } = await import('../rss.service');
 
     const result = await createUserRssSubscription('user-1', {
       route,
@@ -114,7 +128,6 @@ describe('rss service source resolution', () => {
 
   it('fetches an absolute route directly instead of prefixing the RSSHub host', async () => {
     const route = 'https://example.com/feed.xml';
-    const { fetchRssFeed } = await import('../rss.service');
 
     await fetchRssFeed({ route, force: true }, 'user-1');
 
@@ -127,8 +140,6 @@ describe('rss service source resolution', () => {
   });
 
   it('keeps using the configured RSSHub host for relative routes', async () => {
-    const { fetchRssFeed } = await import('../rss.service');
-
     await fetchRssFeed({ route: '/zhihu/daily', force: true }, 'user-1');
 
     expect(requestGet).toHaveBeenCalledWith(
