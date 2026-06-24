@@ -1,5 +1,59 @@
 # Changelog
 
+## [1.1.23] - 2026-06-24
+
+### 中文
+#### Added
+- 新增任务中心模块，支持创建和管理定时任务
+- 新增本地文件管理功能，支持文件注册与ID映射
+- 新增AstrBot SDK，提供机器人、聊天、文件等API
+- 新增AI翻译页面样式文件
+- 新增页面外壳组件（PageShell）
+- 新增账户配置卡片组件
+- 新增数据库迁移：本地文件表和定时任务表
+#### Changed
+- 优化文件模块，重构文件路由和控制器
+- 优化格式转换服务，改进工作区和产物处理
+- 优化日志查看器，调整控制器和服务逻辑
+- 优化RSS服务，改进文件处理和资源管理
+- 优化用户配置服务，扩展账户配置接口
+- 优化AI翻译页面，重构组件逻辑
+- 优化首页和日志查看器页面
+- 更新国际化翻译文件（中英文）
+- 更新类型定义，新增任务中心相关类型
+- 更新依赖和构建配置
+#### Fixed
+- 修复认证中间件中的潜在问题
+- 修复静态文件中间件配置
+- 修复路径工具函数中的问题
+- 修复Dockerfile中的构建问题
+
+### English
+#### Added
+- Added Task Center module for creating and managing scheduled tasks
+- Added local file management with file registration and ID mapping
+- Added AstrBot SDK providing APIs for bots, chat, files, etc.
+- Added AI translation page style file
+- Added PageShell component
+- Added account configuration card component
+- Added database migrations for local files and scheduled tasks
+#### Changed
+- Optimized file module with refactored routes and controller
+- Optimized format conversion service with improved workspace and artifact handling
+- Optimized log viewer with adjusted controller and service logic
+- Optimized RSS service with improved file handling and resource management
+- Optimized user configuration service with extended account config endpoints
+- Optimized AI translation page with refactored component logic
+- Optimized home and log viewer pages
+- Updated i18n translation files (Chinese and English)
+- Updated type definitions with new task center types
+- Updated dependencies and build configuration
+#### Fixed
+- Fixed potential issues in authentication middleware
+- Fixed static file middleware configuration
+- Fixed issues in path utility functions
+- Fixed build issues in Dockerfile
+
 ## [1.1.22] - 2026-06-23
 
 ### 中文
