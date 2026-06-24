@@ -8,8 +8,8 @@ import { getRandom115PicMeta } from '../../../115/service/picture.service';
 import type { RandomPicMeta } from '../../../115/types/115.types';
 import { getSystemRandomPicDefaultUserId } from '../../../user/service/system-setting.service';
 import { createUserAstrbotSdk } from '../../../user/service/user-config.service';
-import { normalizeUmoList } from '../scheduled-task.service';
 import type { TaskLogger } from '../task-logger';
+import { normalizeUmoList } from '../task-param-utils';
 import type { ScheduledTaskExecutorContext } from './index';
 
 const PUSH_USER_AGENT = 'volix-astrbot-push/1.0';

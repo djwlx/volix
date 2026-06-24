@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button, Popconfirm, Space, Switch, Table, Tag, Toast, Typography } from '@douyinfe/semi-ui';
 import { IconPlus } from '@douyinfe/semi-icons';
-import { PageCard } from '@/components';
+import { PageCard, PageShell } from '@/components';
 import { useI18n } from '@/i18n';
 import { getAccountConfigs } from '@/services/user';
 import {
@@ -12,16 +12,16 @@ import {
   updateScheduledTask,
 } from '@/services/task-center';
 import { getHttpErrorMessage } from '@/utils/error';
-import type { AstrbotRandomPicTaskParams, ScheduledTask } from '@volix/types';
+import type { ScheduledTask, ScheduledTaskDefaults } from '@volix/types';
 import { TaskEditModal } from './task-edit-modal';
-import { getTaskTypeLabelKey } from './task-type-meta';
+import { getTaskParamSummary, getTaskTypeLabelKey } from './task-type-meta';
 
 function TaskCenterApp() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
-  const [defaultUmos, setDefaultUmos] = useState<string[]>([]);
+  const [defaults, setDefaults] = useState<ScheduledTaskDefaults>({ taskTypeDefaults: {} });
   const [hasAstrbotConfig, setHasAstrbotConfig] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<ScheduledTask | null>(null);
@@ -30,7 +30,7 @@ function TaskCenterApp() {
     try {
       const [tasksRes, accountRes] = await Promise.all([listScheduledTasks(), getAccountConfigs()]);
       setTasks(tasksRes.data?.tasks || []);
-      setDefaultUmos(tasksRes.data?.defaults?.astrbotUmos || []);
+      setDefaults(tasksRes.data?.defaults || { taskTypeDefaults: {} });
       setHasAstrbotConfig(Boolean(accountRes.data?.astrbot));
     } catch (error) {
       Toast.error(getHttpErrorMessage(error, t('taskCenter.load.failed')));
@@ -109,13 +109,13 @@ function TaskCenterApp() {
       title: t('taskCenter.column.name'),
       dataIndex: 'name',
       render: (_: unknown, task: ScheduledTask) => {
-        const umos = (task.params as AstrbotRandomPicTaskParams)?.umos || [];
+        const summary = getTaskParamSummary(task);
         return (
           <Space vertical align="start" spacing={2}>
             <Typography.Text strong>{task.name}</Typography.Text>
-            {umos.length > 0 ? (
+            {summary.length > 0 ? (
               <Typography.Text type="tertiary" size="small">
-                {umos.join('、')}
+                {summary.join('、')}
               </Typography.Text>
             ) : null}
           </Space>
@@ -169,36 +169,38 @@ function TaskCenterApp() {
   ];
 
   return (
-    <PageCard
-      title={t('route.taskCenter.title')}
-      shadows="hover"
-      style={{ width: '100%' }}
-      headerExtraContent={
-        <Button icon={<IconPlus />} type="primary" onClick={openCreate}>
-          {t('taskCenter.action.create')}
-        </Button>
-      }
-    >
-      <Table
-        columns={columns}
-        dataSource={tasks}
-        loading={loading}
-        rowKey="id"
-        pagination={false}
-        empty={t('taskCenter.empty')}
-      />
-      <TaskEditModal
-        visible={modalVisible}
-        task={editingTask}
-        defaultUmos={defaultUmos}
-        hasAstrbotConfig={hasAstrbotConfig}
-        onClose={() => setModalVisible(false)}
-        onSaved={() => {
-          setModalVisible(false);
-          void loadData();
-        }}
-      />
-    </PageCard>
+    <PageShell>
+      <PageCard
+        title={t('route.taskCenter.title')}
+        shadows="hover"
+        style={{ width: '100%' }}
+        headerExtraContent={
+          <Button icon={<IconPlus />} type="primary" onClick={openCreate}>
+            {t('taskCenter.action.create')}
+          </Button>
+        }
+      >
+        <Table
+          columns={columns}
+          dataSource={tasks}
+          loading={loading}
+          rowKey="id"
+          pagination={false}
+          empty={t('taskCenter.empty')}
+        />
+        <TaskEditModal
+          visible={modalVisible}
+          task={editingTask}
+          defaults={defaults}
+          hasAstrbotConfig={hasAstrbotConfig}
+          onClose={() => setModalVisible(false)}
+          onSaved={() => {
+            setModalVisible(false);
+            void loadData();
+          }}
+        />
+      </PageCard>
+    </PageShell>
   );
 }
 

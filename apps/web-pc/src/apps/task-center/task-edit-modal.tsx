@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Banner, Input, Modal, Space, Switch, TagInput, Typography } from '@douyinfe/semi-ui';
-import { useNavigate } from 'react-router';
+import { Input, Modal, Space, Switch, Typography } from '@douyinfe/semi-ui';
 import { useI18n } from '@/i18n';
 import { createScheduledTask, updateScheduledTask } from '@/services/task-center';
 import { getHttpErrorMessage } from '@/utils/error';
 import { ScheduledTaskType } from '@volix/types';
-import type { AstrbotRandomPicTaskParams, ScheduledTask } from '@volix/types';
+import type { ScheduledTask, ScheduledTaskDefaults, ScheduledTaskParams } from '@volix/types';
 import { Toast } from '@douyinfe/semi-ui';
-import { TASK_TYPE_OPTIONS } from './task-type-meta';
+import { TaskParamFields } from './task-param-fields';
+import { createTaskTypeDraftParams, TASK_TYPE_OPTIONS } from './task-type-meta';
 
 const selectStyle: React.CSSProperties = {
   marginTop: 4,
@@ -25,21 +25,20 @@ const selectStyle: React.CSSProperties = {
 interface TaskEditModalProps {
   visible: boolean;
   task: ScheduledTask | null;
-  defaultUmos: string[];
+  defaults: ScheduledTaskDefaults;
   hasAstrbotConfig: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function TaskEditModal({ visible, task, defaultUmos, hasAstrbotConfig, onClose, onSaved }: TaskEditModalProps) {
+export function TaskEditModal({ visible, task, defaults, hasAstrbotConfig, onClose, onSaved }: TaskEditModalProps) {
   const { t } = useI18n();
-  const navigate = useNavigate();
   const isEdit = Boolean(task);
   const [name, setName] = useState('');
   const [type, setType] = useState<ScheduledTaskType>(ScheduledTaskType.ASTRBOT_RANDOM_PIC);
   const [cron, setCron] = useState('0 9 * * *');
   const [enabled, setEnabled] = useState(true);
-  const [umos, setUmos] = useState<string[]>([]);
+  const [params, setParams] = useState<ScheduledTaskParams>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -51,22 +50,15 @@ export function TaskEditModal({ visible, task, defaultUmos, hasAstrbotConfig, on
       setType(task.type);
       setCron(task.cron || '0 9 * * *');
       setEnabled(task.enabled);
-      setUmos((task.params as AstrbotRandomPicTaskParams)?.umos || []);
+      setParams(task.params || {});
     } else {
       setName('');
       setType(ScheduledTaskType.ASTRBOT_RANDOM_PIC);
       setCron('0 9 * * *');
       setEnabled(true);
-      setUmos(defaultUmos);
+      setParams(createTaskTypeDraftParams(ScheduledTaskType.ASTRBOT_RANDOM_PIC, defaults));
     }
-  }, [visible, task, defaultUmos]);
-
-  const buildParams = () => {
-    if (type === ScheduledTaskType.ASTRBOT_RANDOM_PIC) {
-      return { umos };
-    }
-    return {};
-  };
+  }, [visible, task, defaults]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -81,10 +73,10 @@ export function TaskEditModal({ visible, task, defaultUmos, hasAstrbotConfig, on
           name: name.trim(),
           enabled,
           cron: cron.trim(),
-          params: buildParams(),
+          params,
         });
       } else {
-        await createScheduledTask({ name: name.trim(), type, enabled, cron: cron.trim(), params: buildParams() });
+        await createScheduledTask({ name: name.trim(), type, enabled, cron: cron.trim(), params });
       }
       Toast.success(t('taskCenter.save.success'));
       onSaved();
@@ -94,8 +86,6 @@ export function TaskEditModal({ visible, task, defaultUmos, hasAstrbotConfig, on
       setSaving(false);
     }
   };
-
-  const isAstrbotType = type === ScheduledTaskType.ASTRBOT_RANDOM_PIC;
 
   return (
     <Modal
@@ -108,15 +98,6 @@ export function TaskEditModal({ visible, task, defaultUmos, hasAstrbotConfig, on
       cancelText={t('common.action.cancel')}
     >
       <Space vertical spacing={16} align="start" style={{ width: '100%' }}>
-        {isAstrbotType && !hasAstrbotConfig ? (
-          <Banner
-            type="warning"
-            description={t('taskCenter.config.title')}
-            onClose={() => navigate('/setting/config/account')}
-            closeIcon={null}
-          />
-        ) : null}
-
         <div style={{ width: '100%' }}>
           <Typography.Text type="secondary">{t('taskCenter.field.name')}</Typography.Text>
           <Input
@@ -133,7 +114,11 @@ export function TaskEditModal({ visible, task, defaultUmos, hasAstrbotConfig, on
             value={type}
             disabled={isEdit}
             style={selectStyle}
-            onChange={event => setType(event.target.value as ScheduledTaskType)}
+            onChange={event => {
+              const nextType = event.target.value as ScheduledTaskType;
+              setType(nextType);
+              setParams(createTaskTypeDraftParams(nextType, defaults));
+            }}
           >
             {TASK_TYPE_OPTIONS.map(option => (
               <option key={option.value} value={option.value}>
@@ -153,17 +138,7 @@ export function TaskEditModal({ visible, task, defaultUmos, hasAstrbotConfig, on
           />
         </div>
 
-        {isAstrbotType ? (
-          <div style={{ width: '100%' }}>
-            <Typography.Text type="secondary">{t('taskCenter.field.umos')}</Typography.Text>
-            <TagInput
-              value={umos}
-              placeholder={t('taskCenter.field.umos.placeholder')}
-              style={{ marginTop: 4, width: '100%' }}
-              onChange={value => setUmos(value)}
-            />
-          </div>
-        ) : null}
+        <TaskParamFields type={type} params={params} hasAstrbotConfig={hasAstrbotConfig} onChange={setParams} />
 
         <Space spacing={12} align="center">
           <Switch checked={enabled} onChange={value => setEnabled(value)} />

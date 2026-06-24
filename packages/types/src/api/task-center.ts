@@ -10,6 +10,10 @@ export interface AstrbotRandomPicTaskParams {
 
 export type ScheduledTaskParams = AstrbotRandomPicTaskParams | Record<string, unknown>;
 
+export type ScheduledTaskTypeDefaults = Partial<{
+  [ScheduledTaskType.ASTRBOT_RANDOM_PIC]: AstrbotRandomPicTaskParams;
+}>;
+
 export interface ScheduledTask {
   id: string;
   name: string;
@@ -24,7 +28,7 @@ export interface ScheduledTask {
 }
 
 export interface ScheduledTaskDefaults {
-  astrbotUmos: string[];
+  taskTypeDefaults: ScheduledTaskTypeDefaults;
 }
 
 export interface ListScheduledTasksResponse {

@@ -3,11 +3,7 @@ import { ScheduledTaskType } from '@volix/types';
 import type { ScheduledTask, ScheduledTaskParams, ScheduledTaskRunStatus } from '@volix/types';
 import { ScheduledTaskModel } from '../model/scheduled-task.model';
 import type { ScheduledTaskEntity } from '../model/scheduled-task.model';
-
-const SUPPORTED_TASK_TYPES = new Set<string>(Object.values(ScheduledTaskType));
-
-export const isSupportedTaskType = (type: unknown): type is ScheduledTaskType =>
-  typeof type === 'string' && SUPPORTED_TASK_TYPES.has(type);
+import { isSupportedTaskType, normalizeTaskParams } from './task-type-registry';
 
 export const isValidCronExpression = (cron: string): boolean => {
   const fields = String(cron || '')
@@ -15,31 +11,6 @@ export const isValidCronExpression = (cron: string): boolean => {
     .split(/\s+/)
     .filter(Boolean);
   return fields.length === 5 || fields.length === 6;
-};
-
-export const normalizeUmoList = (umos: unknown): string[] => {
-  if (!Array.isArray(umos)) {
-    return [];
-  }
-  const seen = new Set<string>();
-  const result: string[] = [];
-  umos.forEach(item => {
-    const value = String(item || '').trim();
-    if (value && !seen.has(value)) {
-      seen.add(value);
-      result.push(value);
-    }
-  });
-  return result;
-};
-
-// 按任务类型清洗 params，避免存入无关字段
-export const normalizeTaskParams = (type: ScheduledTaskType, params: unknown): ScheduledTaskParams => {
-  const raw = (params && typeof params === 'object' ? params : {}) as Record<string, unknown>;
-  if (type === ScheduledTaskType.ASTRBOT_RANDOM_PIC) {
-    return { umos: normalizeUmoList(raw.umos) };
-  }
-  return {};
 };
 
 const parseParams = (raw: string): ScheduledTaskParams => {
@@ -79,7 +50,7 @@ export const getUserTask = async (userId: string | number, id: string): Promise<
 
 export interface UpsertTaskInput {
   name: string;
-  type: ScheduledTaskType;
+  type: ScheduledTask['type'];
   enabled: boolean;
   cron: string;
   params: ScheduledTaskParams;
@@ -141,7 +112,7 @@ export interface EnabledScheduledTask {
   id: string;
   name: string;
   userId: string;
-  type: ScheduledTaskType;
+  type: ScheduledTask['type'];
   cron: string;
   params: ScheduledTaskParams;
 }

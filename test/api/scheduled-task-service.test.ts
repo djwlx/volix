@@ -1,65 +1,39 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
-
-const mocked = vi.hoisted(() => ({
-  queryAnimeSubscriptions: vi.fn(),
-  syncAllAnimeSubscriptionDownloads: vi.fn(),
-  triggerAnimeSubscriptionCheckInBackground: vi.fn(),
-}));
-
-vi.mock('../../apps/api/src/modules/anime-subscription/service/anime-subscription.service', () => ({
-  queryAnimeSubscriptions: mocked.queryAnimeSubscriptions,
-  syncAllAnimeSubscriptionDownloads: mocked.syncAllAnimeSubscriptionDownloads,
-  triggerAnimeSubscriptionCheckInBackground: mocked.triggerAnimeSubscriptionCheckInBackground,
-}));
-
+import { describe, expect, test } from 'vitest';
+import { ScheduledTaskType } from '../../packages/types/src/api';
 import {
-  ensureDefaultScheduledTasks,
-  upsertBuiltinTask,
-} from '../../apps/api/src/modules/scheduled-task/service/scheduled-task.service';
-import {
-  executeBuiltinScheduledTask,
-  listScheduledTaskBuiltinHandlers,
-} from '../../apps/api/src/modules/scheduled-task/service/scheduled-task-builtin-registry.service';
+  getTaskExecutor,
+  getTaskTypeDefinition,
+  isSupportedTaskType,
+  listTaskTypeDefinitions,
+  normalizeTaskParams,
+} from '../../apps/api/src/modules/task-center/service/task-type-registry';
 
 describe('scheduled task service', () => {
-  beforeEach(() => {
-    mocked.queryAnimeSubscriptions.mockReset();
-    mocked.syncAllAnimeSubscriptionDownloads.mockReset();
-    mocked.triggerAnimeSubscriptionCheckInBackground.mockReset();
+  test('lists the built-in scheduled task definitions', () => {
+    const definitions = listTaskTypeDefinitions();
+
+    expect(definitions.map(item => item.type)).toEqual([ScheduledTaskType.ASTRBOT_RANDOM_PIC]);
+    expect(definitions[0]?.labelKey).toBe('taskCenter.type.astrbotRandomPic');
   });
 
-  test('creates built-in anime tasks during bootstrap', async () => {
-    const created = await ensureDefaultScheduledTasks();
-
-    expect(created.map(item => item.id)).toEqual(['anime.subscription.scan', 'anime.download.sync']);
-  });
-
-  test('refreshes next run time when built-in task is enabled', async () => {
-    const task = await upsertBuiltinTask({
-      id: 'anime.download.sync',
-      name: '追番下载同步',
-      description: '定时同步 qBittorrent 下载状态并触发后处理',
-      category: 'anime',
-      cronExpr: '*/5 * * * *',
-      timezone: 'Asia/Shanghai',
-      builtinHandler: 'anime.download.sync',
+  test('normalizes params by task type', () => {
+    expect(
+      normalizeTaskParams(ScheduledTaskType.ASTRBOT_RANDOM_PIC, {
+        umos: ['qq:group:1', '', 'qq:group:1', 'telegram:private:2'],
+        ignored: true,
+      })
+    ).toEqual({
+      umos: ['qq:group:1', 'telegram:private:2'],
     });
-
-    expect(task.enabled).toBe(true);
-    expect(task.nextRunAt).toBeTruthy();
   });
 
-  test('runs anime subscription scan handler', async () => {
-    mocked.queryAnimeSubscriptions.mockResolvedValue([
-      { dataValues: { id: '1', enabled: true } },
-      { dataValues: { id: '2', enabled: false } },
-    ]);
-    mocked.triggerAnimeSubscriptionCheckInBackground.mockResolvedValue(undefined);
+  test('resolves task executor from the registry', () => {
+    expect(getTaskExecutor(ScheduledTaskType.ASTRBOT_RANDOM_PIC)).toEqual(expect.any(Function));
+    expect(getTaskTypeDefinition(ScheduledTaskType.ASTRBOT_RANDOM_PIC)?.requiresAstrbotConfig).toBe(true);
+  });
 
-    const result = await executeBuiltinScheduledTask('anime.subscription.scan');
-
-    expect(result.summary).toBe('processed:2');
-    expect(mocked.triggerAnimeSubscriptionCheckInBackground).toHaveBeenCalledTimes(1);
-    expect(listScheduledTaskBuiltinHandlers()).toContain('anime.subscription.scan');
+  test('rejects unsupported task types', () => {
+    expect(isSupportedTaskType(ScheduledTaskType.ASTRBOT_RANDOM_PIC)).toBe(true);
+    expect(isSupportedTaskType('unknown_task')).toBe(false);
   });
 });

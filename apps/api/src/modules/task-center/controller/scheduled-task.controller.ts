@@ -11,13 +11,13 @@ import {
   createUserTask,
   deleteUserTask,
   getUserTask,
-  isSupportedTaskType,
   isValidCronExpression,
   listUserTasks,
-  normalizeUmoList,
   updateUserTask,
 } from '../service/scheduled-task.service';
 import { rescheduleTask, runScheduledTask, unscheduleTask } from '../service/scheduled-task-scheduler.service';
+import { normalizeUmoList } from '../service/task-param-utils';
+import { isSupportedTaskType } from '../service/task-type-registry';
 
 const ensureLoginUserId = (ctx: any) => {
   const userId = ctx.state.userInfo?.id;
@@ -41,7 +41,13 @@ export const listScheduledTasks: MyMiddleware = async ctx => {
   const [tasks, astrbotConfig] = await Promise.all([listUserTasks(userId), getUserAstrbotConfig(userId)]);
   const result: ListScheduledTasksResponse = {
     tasks,
-    defaults: { astrbotUmos: normalizeUmoList(astrbotConfig?.umos) },
+    defaults: {
+      taskTypeDefaults: {
+        astrbot_random_pic: {
+          umos: normalizeUmoList(astrbotConfig?.umos),
+        },
+      },
+    },
   };
   return result;
 };

@@ -1,8 +1,7 @@
 import schedule from 'node-schedule';
-import { ScheduledTaskType } from '@volix/types';
 import type { ScheduledTask, ScheduledTaskParams } from '@volix/types';
 import { log } from '../../../utils/logger';
-import { getTaskExecutor } from './executors';
+import { getTaskExecutor } from './task-type-registry';
 import { isValidCronExpression, listAllEnabledTasks, updateTaskRunResult } from './scheduled-task.service';
 import { createTaskLogger } from './task-logger';
 
@@ -14,7 +13,7 @@ interface RunnableTask {
   id: string;
   name: string;
   userId: string;
-  type: ScheduledTaskType;
+  type: ScheduledTask['type'];
   params: ScheduledTaskParams;
 }
 
