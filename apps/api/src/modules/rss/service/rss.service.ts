@@ -40,6 +40,12 @@ import { parseUserRssConfig } from './rss-user-config.service';
 import { t } from '../../../utils/i18n';
 import { getCurrentUserId, mapSubscriptionItem, normalizeSubscriptionName } from './rss-subscription-utils.service';
 import { emitRssStorageChanged } from './rss-realtime.service';
+import {
+  isAbsoluteHttpUrl,
+  normalizeAbsoluteUrl,
+  normalizeHost,
+  normalizeSubscriptionRoute,
+} from './rss-source.service';
 const DEFAULT_RSS_HUB = 'https://rsshub.app';
 const DEFAULT_RESOURCE_PROXY_BASE_URL = '';
 const DEFAULT_RESOURCE_CACHE_SIZE_MB = 0;
@@ -49,45 +55,7 @@ const MAX_REFRESH_INTERVAL_MINUTES = 24 * 60;
 const DEFAULT_RESOURCE_DOWNLOAD_MAX_RETRY = 10;
 const MIN_RESOURCE_DOWNLOAD_MAX_RETRY = 0;
 const MAX_RESOURCE_DOWNLOAD_MAX_RETRY = 100;
-const ALLOWED_PROTOCOLS = new Set(['http:', 'https:']);
 const rssFeedRefreshJobMap = new Map<string, Promise<void>>();
-const parseUrlOrThrow = (value: string, fieldName: string): URL => {
-  try {
-    return new URL(value);
-  } catch {
-    const message = t('rssApi.invalidUrl', { fieldName });
-    badRequest(message);
-    throw new Error(message);
-  }
-};
-const assertAllowedProtocol = (url: URL, fieldName: string) => {
-  if (!ALLOWED_PROTOCOLS.has(url.protocol)) {
-    badRequest(t('rssApi.protocolUnsupported', { fieldName }));
-  }
-};
-const normalizeRoute = (route: string): string => {
-  const trimmedRoute = String(route || '').trim();
-  if (!trimmedRoute) {
-    badRequest(t('rssApi.route.required'));
-  }
-  if (/^https?:\/\//i.test(trimmedRoute)) {
-    badRequest(t('rssApi.route.mustNotBeFullUrl'));
-  }
-  return trimmedRoute.startsWith('/') ? trimmedRoute : `/${trimmedRoute}`;
-};
-const normalizeHost = (host: string): string => {
-  const trimmedHost = String(host || '').trim();
-  if (!trimmedHost) {
-    badRequest(t('rssApi.host.required'));
-  }
-  const parsedHost = parseUrlOrThrow(trimmedHost, 'host');
-  assertAllowedProtocol(parsedHost, 'host');
-  const normalizedHost = new URL(parsedHost.toString());
-  normalizedHost.pathname = '/';
-  normalizedHost.search = '';
-  normalizedHost.hash = '';
-  return normalizedHost.toString();
-};
 const normalizeResourceProxyBaseUrl = (value: string): string => {
   const trimmed = String(value || '').trim();
   if (!trimmed) {
@@ -173,7 +141,7 @@ export async function createUserRssSubscription(
   payload: CreateUserRssSubscriptionPayload
 ): Promise<UserRssSubscriptionItem> {
   const normalizedUserId = getCurrentUserId(userId);
-  const route = normalizeRoute(payload?.route || '');
+  const route = normalizeSubscriptionRoute(payload?.route || '');
   const existingRows = await listUserRssSubscriptionStates(normalizedUserId);
   const existed = existingRows.some(item => item.route === route);
   const setting = await getUserRssSetting(normalizedUserId);
@@ -235,7 +203,7 @@ export async function createUserRssSubscription(
 }
 export async function removeUserRssSubscription(userId: string | number | undefined, routeValue: string) {
   const normalizedUserId = getCurrentUserId(userId);
-  const route = normalizeRoute(routeValue);
+  const route = normalizeSubscriptionRoute(routeValue);
   await clearRssSubscriptionStorage(normalizedUserId, route);
   await removeUserRssSubscriptionState(normalizedUserId, route);
   emitRssStorageChanged(normalizedUserId, { source: 'action' });
@@ -246,7 +214,7 @@ export async function setUserRssSubscriptionEnabled(
   payload: UpdateUserRssSubscriptionEnabledPayload
 ): Promise<UserRssSubscriptionItem> {
   const normalizedUserId = getCurrentUserId(userId);
-  const route = normalizeRoute(payload?.route || '');
+  const route = normalizeSubscriptionRoute(payload?.route || '');
   const enabled = payload?.enabled !== false;
   const updated = await updateUserRssSubscriptionEnabled(normalizedUserId, route, enabled);
   if (!updated) {
@@ -267,11 +235,12 @@ const resolveFeedUrl = async (
 ): Promise<string> => {
   const feedUrl = String(params.feedUrl || '').trim();
   if (feedUrl) {
-    const parsedFeedUrl = parseUrlOrThrow(feedUrl, 'feedUrl');
-    assertAllowedProtocol(parsedFeedUrl, 'feedUrl');
-    return parsedFeedUrl.toString();
+    return normalizeAbsoluteUrl(feedUrl, 'feedUrl');
   }
-  const route = normalizeRoute(String(params.route || ''));
+  const route = normalizeSubscriptionRoute(String(params.route || ''));
+  if (isAbsoluteHttpUrl(route)) {
+    return route;
+  }
   let hub = String(params.hub || '').trim();
   if (!hub) {
     if (fallbackHub) {
@@ -283,9 +252,7 @@ const resolveFeedUrl = async (
       hub = DEFAULT_RSS_HUB;
     }
   }
-  const hubUrl = parseUrlOrThrow(hub, 'hub');
-  assertAllowedProtocol(hubUrl, 'hub');
-  const normalizedHubUrl = new URL(hubUrl.toString());
+  const normalizedHubUrl = new URL(normalizeAbsoluteUrl(hub, 'hub'));
   normalizedHubUrl.pathname = '/';
   normalizedHubUrl.search = '';
   normalizedHubUrl.hash = '';
@@ -420,7 +387,7 @@ export async function fetchRssFeed(params: GetRssFeedParams, userId?: string | n
     });
   }
   const normalizedUserId = getCurrentUserId(userId);
-  const normalizedRoute = normalizeRoute(String(params.route || ''));
+  const normalizedRoute = normalizeSubscriptionRoute(String(params.route || ''));
   const forceRefresh = parseForceRefreshFlag(params.force);
   const currentSetting = await getUserRssSetting(normalizedUserId);
   const feedUrl = await resolveFeedUrl(params, normalizedUserId, currentSetting.host);

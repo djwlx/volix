@@ -1,7 +1,7 @@
 .page {
   width: 100%;
   height: 100%;
-  padding: 20px;
+  padding: 16px;
   background: transparent;
   overflow: hidden;
   display: flex;
@@ -11,8 +11,8 @@
 
 .readerWrap {
   display: grid;
-  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 12px;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -30,18 +30,24 @@
 
 .listPane {
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
   min-height: 0;
   padding: 12px;
-  gap: 10px;
+  gap: 12px;
   overflow: hidden;
 }
 
 .toolbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.toolbarMeta {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
 }
 
 .hostText {
@@ -59,9 +65,50 @@
   flex-wrap: wrap;
 }
 
+.routeSelectDropdown {
+  max-width: min(720px, calc(100vw - 24px));
+  overflow: hidden;
+}
+
+.routeSelectDropdown :global(.semi-select-option) {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.routeSelectDropdown :global(.semi-select-option-content) {
+  display: block;
+  min-width: 0;
+}
+
+.routeOption {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.routeOptionTitle,
+.routeOptionUrl {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.routeOptionTitle {
+  color: var(--app-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.routeOptionUrl {
+  color: var(--app-text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .historyHint {
   font-size: 12px;
   color: var(--app-text-muted);
+  line-height: 1.4;
 }
 
 .itemList {
@@ -87,18 +134,18 @@
   background: var(--app-surface);
   text-align: left;
   cursor: pointer;
-  padding: 10px;
+  padding: 12px;
   transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .itemCard:hover {
   transform: translateY(-1px);
-  border-color: rgba(20, 184, 166, 0.45);
+  border-color: var(--semi-color-primary);
 }
 
 .itemCardActive {
-  border-color: rgba(20, 184, 166, 0.55);
-  background: linear-gradient(180deg, rgba(20, 184, 166, 0.08), rgba(56, 189, 248, 0.08));
+  border-color: var(--semi-color-primary);
+  background: var(--semi-color-fill-0);
 }
 
 .itemTitle {
@@ -114,6 +161,10 @@
 .itemTitleText {
   min-width: 0;
   flex: 1;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .cachedBadge {
@@ -142,7 +193,7 @@
 
 .detailPane,
 .mobileDetailPane {
-  padding: 14px;
+  padding: 16px;
   min-height: 0;
   overflow: hidden;
 }
@@ -157,33 +208,64 @@
 
 .detailWrap {
   display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 14px;
   align-content: stretch;
   min-height: 0;
   height: 100%;
 }
 
+.detailHeader {
+  display: grid;
+  gap: 8px;
+}
+
 .feedTitle {
   color: var(--app-text);
   font-weight: 700;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.3;
 }
 
-.detailMeta {
+.detailLead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
   color: var(--app-text-muted);
   font-size: 13px;
 }
 
+.detailLeadItem {
+  min-width: 0;
+}
+
+.detailBadgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.metaBadge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--semi-color-border);
+  background: var(--semi-color-fill-0);
+  color: var(--app-text-muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
 .detailBody {
   min-height: 0;
-  line-height: 1.7;
+  line-height: 1.8;
   color: var(--app-text-soft);
-  background: var(--app-surface-strong);
-  border: 1px solid var(--app-border);
-  border-radius: 12px;
-  padding: 12px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
   overflow: auto;
 }
 
@@ -204,7 +286,7 @@
 }
 
 .detailBody a {
-  color: #0284c7;
+  color: var(--semi-color-link);
   word-break: break-all;
 }
 
@@ -219,7 +301,7 @@
   border-radius: 8px;
   border: 1px solid var(--app-border);
   padding: 10px;
-  background: rgba(15, 23, 42, 0.06);
+  background: var(--semi-color-fill-0);
 }
 
 .detailBody code {
@@ -236,6 +318,7 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  padding-top: 4px;
 }
 
 .emptyWrap {
@@ -248,7 +331,7 @@
 
 @media (max-width: 767px) {
   .page {
-    padding: 12px;
+    padding: 10px;
     overflow: visible;
     height: auto;
   }
@@ -262,16 +345,22 @@
   .listPane,
   .detailPane,
   .mobileDetailPane {
-    border: none;
-    box-shadow: none;
-    background: transparent;
-    padding: 0;
+    border-radius: 14px;
+    padding: 12px;
     overflow: visible;
   }
 
   .listPane {
-    grid-template-rows: auto auto auto auto;
+    grid-template-rows: auto auto minmax(0, 1fr);
     height: auto;
+  }
+
+  .toolbar {
+    align-items: center;
+  }
+
+  .toolbarMeta {
+    display: none;
   }
 
   .itemList {
@@ -289,7 +378,23 @@
     grid-template-rows: none;
   }
 
+  .detailHeader {
+    gap: 10px;
+  }
+
+  .feedTitle {
+    font-size: 16px;
+  }
+
   .detailBody {
     overflow: visible;
+  }
+
+  .detailActions {
+    width: 100%;
+  }
+
+  .detailActions :global(.semi-button) {
+    flex: 1 1 auto;
   }
 }

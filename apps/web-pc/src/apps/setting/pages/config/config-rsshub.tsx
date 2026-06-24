@@ -402,7 +402,10 @@ function SettingConfigRsshubApp() {
             <Input
               style={{ width: 420, maxWidth: '100%' }}
               value={routeInput}
-              placeholder={t({ id: 'setting.rss.route.placeholder', defaultMessage: '例如：/zhihu/daily' })}
+              placeholder={t({
+                id: 'setting.rss.route.placeholder',
+                defaultMessage: '例如：/zhihu/daily 或 https://example.com/feed.xml',
+              })}
               onChange={value => setRouteInput(String(value || ''))}
             />
             <Button type="primary" loading={addingRoute} onClick={() => onAddRoute()}>

@@ -8,7 +8,14 @@ import { useI18n } from '@/i18n';
 import { formatFeedDate, parseFeed } from './feed-parser';
 import { getRssFeed, getUserRssSetting, getUserRssSubscriptions } from '@/services/rss';
 import type { RssReaderRawFeed, UserRssSubscriptionItem } from '@volix/types';
-import { buildItemId, toTimestamp, type AggregatedItem } from './aggregate-utils';
+import {
+  buildItemId,
+  buildRouteFilterOption,
+  normalizeText,
+  toTimestamp,
+  type AggregatedItem,
+  type RouteFilterOption,
+} from './aggregate-utils';
 import styles from './index.module.scss';
 
 const FALLBACK_HOST = 'https://rsshub.app';
@@ -40,11 +47,24 @@ function RssApp() {
   }, [feedMap, subscriptions]);
 
   const routeFilterOptions = useMemo(() => {
-    return routeStates.map(item => ({
-      label: `${item.routeName} · ${item.route}`,
-      value: item.route,
-    }));
+    return routeStates.map(item => {
+      const option = buildRouteFilterOption({ routeName: item.routeName, route: item.route });
+      return {
+        ...option,
+        label: (
+          <div className={styles.routeOption}>
+            <div className={styles.routeOptionTitle}>{option.labelText}</div>
+            <div className={styles.routeOptionUrl}>{option.routeText}</div>
+          </div>
+        ),
+      };
+    });
   }, [routeStates]);
+
+  const renderRouteSelectedItem = (option: RouteFilterOption) => ({
+    isRenderInTag: true,
+    content: String(option.labelText || ''),
+  });
 
   const filteredRoutes = useMemo(() => {
     if (selectedRoutes.length === 0) {
@@ -221,51 +241,44 @@ function RssApp() {
       return <Empty title={t('rss.empty.content.title')} description={t('rss.empty.content.description')} />;
     }
 
+    const detailLeadParts = [
+      formatFeedDate(activeItem.publishedAt) || t('rss.time.unknown'),
+      activeItem.author,
+      activeItem.routeName,
+    ].filter(Boolean);
+    const detailBadgeTexts = [
+      activeItem.resourcesLocalized ? t('rss.badge.cached') : '',
+      ...(activeItem.category || []).map(item => t('rss.meta.category', { value: item })),
+      typeof activeItem.comments === 'number' ? t('rss.meta.comments', { count: activeItem.comments }) : '',
+      typeof activeItem.upvotes === 'number' ? t('rss.meta.upvotes', { count: activeItem.upvotes }) : '',
+      typeof activeItem.downvotes === 'number' ? t('rss.meta.downvotes', { count: activeItem.downvotes }) : '',
+      activeItem.updated ? t('rss.meta.updatedAt', { value: formatFeedDate(activeItem.updated) }) : '',
+      activeItem.enclosureUrl ? t('rss.meta.enclosure', { type: activeItem.enclosureType || 'unknown' }) : '',
+    ].filter(Boolean);
+
     return (
       <div className={styles.detailWrap}>
-        <div className={styles.feedTitle}>{activeItem.title}</div>
-        <div className={styles.detailMeta}>
-          {activeItem.routeName} · {activeItem.route}
+        <div className={styles.detailHeader}>
+          <div className={styles.feedTitle}>{activeItem.title}</div>
+          {detailLeadParts.length > 0 ? (
+            <div className={styles.detailLead}>
+              {detailLeadParts.map(item => (
+                <span key={item} className={styles.detailLeadItem}>
+                  {item}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {detailBadgeTexts.length > 0 ? (
+            <div className={styles.detailBadgeRow}>
+              {detailBadgeTexts.map(item => (
+                <span key={item} className={styles.metaBadge}>
+                  {item}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
-        <div className={styles.detailMeta}>
-          {formatFeedDate(activeItem.publishedAt) || t('rss.time.unknown')}
-          {activeItem.author ? ` · ${activeItem.author}` : ''}
-          {activeItem.feedTitle ? ` · ${activeItem.feedTitle}` : ''}
-        </div>
-        {activeItem.guid ? <div className={styles.detailMeta}>GUID: {activeItem.guid}</div> : null}
-        {activeItem.updated ? (
-          <div className={styles.detailMeta}>
-            {t('rss.meta.updatedAt', { value: formatFeedDate(activeItem.updated) })}
-          </div>
-        ) : null}
-        {activeItem.category && activeItem.category.length > 0 ? (
-          <div className={styles.detailMeta}>{t('rss.meta.category', { value: activeItem.category.join(' / ') })}</div>
-        ) : null}
-        {activeItem.doi ? <div className={styles.detailMeta}>DOI: {activeItem.doi}</div> : null}
-        {typeof activeItem.comments === 'number' ||
-        typeof activeItem.upvotes === 'number' ||
-        typeof activeItem.downvotes === 'number' ? (
-          <div className={styles.detailMeta}>
-            {typeof activeItem.comments === 'number' ? t('rss.meta.comments', { count: activeItem.comments }) : ''}
-            {typeof activeItem.upvotes === 'number'
-              ? `${typeof activeItem.comments === 'number' ? ' · ' : ''}${t('rss.meta.upvotes', {
-                  count: activeItem.upvotes,
-                })}`
-              : ''}
-            {typeof activeItem.downvotes === 'number'
-              ? `${typeof activeItem.comments === 'number' || typeof activeItem.upvotes === 'number' ? ' · ' : ''}${t(
-                  'rss.meta.downvotes',
-                  { count: activeItem.downvotes }
-                )}`
-              : ''}
-          </div>
-        ) : null}
-        {activeItem.enclosureUrl ? (
-          <div className={styles.detailMeta}>
-            {t('rss.meta.enclosure', { type: activeItem.enclosureType || 'unknown' })}
-            {typeof activeItem.enclosureLength === 'number' ? ` · ${activeItem.enclosureLength} bytes` : ''}
-          </div>
-        ) : null}
         <div className={styles.detailBody} ref={detailBodyRef}>
           {activeItem.descriptionHtml ? (
             <div dangerouslySetInnerHTML={{ __html: activeItem.descriptionHtml }} />
@@ -311,8 +324,11 @@ function RssApp() {
           {!isMobile || !mobileOpenedItemKey ? (
             <div className={styles.listPane}>
               <div className={styles.toolbar}>
-                <div className={styles.hostText} title={host}>
-                  Host: {host}
+                <div className={styles.toolbarMeta}>
+                  <div className={styles.historyHint}>{summaryText}</div>
+                  <div className={styles.hostText} title={host}>
+                    Host: {host}
+                  </div>
                 </div>
                 <Button size="small" theme="borderless" loading={loading} onClick={() => loadPanel({ force: true })}>
                   {t('rss.action.refresh')}
@@ -322,10 +338,19 @@ function RssApp() {
               <div className={styles.filterRow}>
                 <Select<string>
                   multiple
-                  filter
                   showClear
                   maxTagCount={2}
-                  optionList={routeFilterOptions}
+                  clickToHide
+                  filter={(inputValue, option) => {
+                    const optionItem = option as RouteFilterOption;
+                    return normalizeText(String(optionItem.searchText || optionItem.labelText || '')).includes(
+                      normalizeText(inputValue)
+                    );
+                  }}
+                  optionList={routeFilterOptions as never}
+                  dropdownClassName={styles.routeSelectDropdown}
+                  dropdownStyle={{ maxWidth: 'min(720px, calc(100vw - 24px))' }}
+                  renderSelectedItem={renderRouteSelectedItem as never}
                   value={selectedRoutes}
                   style={{ width: '100%' }}
                   placeholder={t('rss.filter.placeholder')}
@@ -338,8 +363,6 @@ function RssApp() {
                   }}
                 />
               </div>
-
-              <div className={styles.historyHint}>{summaryText}</div>
 
               <div className={styles.itemList}>
                 {aggregatedItems.length > 0 ? (

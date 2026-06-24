@@ -8,6 +8,13 @@ export interface AggregatedItem extends ReaderItem {
   fetchedAt: string;
 }
 
+export interface RouteFilterOption {
+  labelText: string;
+  value: string;
+  routeText: string;
+  searchText: string;
+}
+
 export const buildItemId = (item: ReaderItem): string => {
   const id = String(item.id || '').trim();
   if (id) {
@@ -42,4 +49,29 @@ export const normalizeText = (value: string): string => {
   return String(value || '')
     .trim()
     .toLowerCase();
+};
+
+const summarizeRouteText = (route: string): string => {
+  const normalizedRoute = String(route || '').trim();
+  if (!normalizedRoute) {
+    return '';
+  }
+
+  try {
+    const parsed = new URL(normalizedRoute);
+    return `${parsed.host}${parsed.pathname}` || normalizedRoute;
+  } catch {
+    return normalizedRoute;
+  }
+};
+
+export const buildRouteFilterOption = (params: { routeName: string; route: string }): RouteFilterOption => {
+  const routeName = String(params.routeName || '').trim();
+  const route = String(params.route || '').trim();
+  return {
+    labelText: routeName || route,
+    value: route,
+    routeText: summarizeRouteText(route),
+    searchText: routeName ? `${routeName} · ${route}` : route,
+  };
 };

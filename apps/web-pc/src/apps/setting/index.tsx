@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Nav, SideSheet, Toast, Typography } from '@douyinfe/semi-ui';
-import { IconCloudStroked, IconConfigStroked, IconDesktop, IconMenu, IconUserList } from '@douyinfe/semi-icons';
+import { IconCloudStroked, IconDesktop, IconMailStroked, IconMenu, IconUserList } from '@douyinfe/semi-icons';
 import { IconAvatar } from '@douyinfe/semi-icons-lab';
 import { useLocation, Outlet } from 'react-router';
 import { useI18n } from '@/i18n';
@@ -134,9 +134,9 @@ function SettingApp() {
           text: t({ id: 'setting.nav.account', defaultMessage: '账号管理' }),
           icon: (
             <MenuIcon
-              icon={<IconConfigStroked />}
-              bg="linear-gradient(135deg, rgba(244, 114, 182, 0.16) 0%, rgba(236, 72, 153, 0.2) 100%)"
-              color="#db2777"
+              icon={<IconMailStroked />}
+              bg="linear-gradient(135deg, rgba(251, 146, 60, 0.18) 0%, rgba(249, 115, 22, 0.22) 100%)"
+              color="#ea580c"
             />
           ),
         },

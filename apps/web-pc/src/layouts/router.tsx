@@ -2,12 +2,15 @@ import { createBrowserRouter } from 'react-router';
 import {
   IconApps,
   IconArticle,
+  IconCalendarClockStroked,
   IconCloudStroked,
-  IconComment,
   IconMailStroked,
   IconStar,
+  IconDesktop,
   IconTabsStroked,
+  IconUserList,
 } from '@douyinfe/semi-icons';
+import { IconAvatar } from '@douyinfe/semi-icons-lab';
 import HomeApp from '@/apps/home';
 import SqliteAdminApp from '@/apps/sqlite-admin';
 import LogViewerApp from '@/apps/log-viewer';
@@ -208,7 +211,7 @@ export const router = createBrowserRouter([
             description: msg('route.taskCenter.description', '管理定时任务，例如自动推送随机图片'),
             logo: (
               <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)' }}>
-                <IconComment style={{ fontSize: 20 }} />
+                <IconCalendarClockStroked style={{ fontSize: 20 }} />
               </div>
             ),
           },
@@ -227,7 +230,20 @@ export const router = createBrowserRouter([
         }),
         children: [
           { index: true, Component: RedirectToSetting },
-          { path: 'info', Component: SettingInfoApp },
+          {
+            path: 'info',
+            Component: SettingInfoApp,
+            handle: routeHandle({
+              appHeader: {
+                title: msg('setting.nav.info', '个人信息'),
+                logo: (
+                  <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #38bdf8 0%, #3b82f6 100%)' }}>
+                    <IconAvatar style={{ fontSize: 20 }} />
+                  </div>
+                ),
+              },
+            }),
+          },
           {
             path: 'user',
             Component: SettingUserApp,
@@ -237,7 +253,7 @@ export const router = createBrowserRouter([
                 description: msg('route.settingUser.description', '查看和维护系统用户'),
                 logo: (
                   <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)' }}>
-                    <IconComment style={{ fontSize: 20 }} />
+                    <IconUserList style={{ fontSize: 20 }} />
                   </div>
                 ),
               },
@@ -245,7 +261,20 @@ export const router = createBrowserRouter([
           },
           { path: 'user/add', Component: SettingUserAddApp },
           { path: 'user/edit/:id', Component: SettingUserEditApp },
-          { path: 'system', Component: SettingSystemApp },
+          {
+            path: 'system',
+            Component: SettingSystemApp,
+            handle: routeHandle({
+              appHeader: {
+                title: msg('setting.nav.system', '系统配置'),
+                logo: (
+                  <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #818cf8 0%, #6366f1 100%)' }}>
+                    <IconDesktop style={{ fontSize: 20 }} />
+                  </div>
+                ),
+              },
+            }),
+          },
           {
             path: 'config/115',
             Component: SettingConfig115App,
@@ -261,7 +290,20 @@ export const router = createBrowserRouter([
               },
             }),
           },
-          { path: 'config/rsshub', Component: SettingConfigRsshubApp },
+          {
+            path: 'config/rsshub',
+            Component: SettingConfigRsshubApp,
+            handle: routeHandle({
+              appHeader: {
+                title: msg('setting.nav.rss', 'RSS 配置'),
+                logo: (
+                  <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #0ea5e9 0%, #14b8a6 100%)' }}>
+                    <IconCloudStroked style={{ fontSize: 20 }} />
+                  </div>
+                ),
+              },
+            }),
+          },
           {
             path: 'config/account',
             Component: SettingConfigAccountCenterApp,
