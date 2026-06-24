@@ -1,5 +1,37 @@
 # Changelog
 
+## [1.1.25] - 2026-06-24
+
+### 中文
+#### Added
+- 新增 RSS 源管理服务，支持动态添加和管理 RSS 订阅源
+- 新增 RSS 聚合工具函数及单元测试
+- 新增 RSS 相关组件测试覆盖
+- 新增发布基线脚本 scripts/release-baseline.cjs
+#### Changed
+- 优化 RSS 页面样式，改进布局和视觉呈现
+- 重构 RSS 服务逻辑，简化代码结构
+- 更新首页、设置页及路由配置
+- 更新多语言翻译（中英文）
+- 更新依赖版本号及 CI 工作流
+#### Fixed
+- 修复 RSS 相关类型定义问题
+
+### English
+#### Added
+- Added RSS source management service for dynamic addition and management of RSS feeds
+- Added RSS aggregation utility functions with unit tests
+- Added test coverage for RSS-related components
+- Added release baseline script scripts/release-baseline.cjs
+#### Changed
+- Improved RSS page styles with better layout and visual presentation
+- Refactored RSS service logic to simplify code structure
+- Updated home page, settings page, and routing configuration
+- Updated multilingual translations (Chinese and English)
+- Updated dependency versions and CI workflow
+#### Fixed
+- Fixed RSS-related type definition issues
+
 ## [1.1.23] - 2026-06-24
 
 ### 中文
