@@ -3,8 +3,11 @@ import os from 'os';
 import path from 'path';
 import { execFileSync } from 'child_process';
 import { afterEach, describe, expect, test } from 'vitest';
+import { createRequire } from 'module';
 
 const scriptPath = path.resolve(process.cwd(), 'scripts/release-ai-summary.cjs');
+const require = createRequire(import.meta.url);
+const { resolveReleaseBaselineTag } = require('../scripts/release-baseline.cjs');
 const makeTempDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'volix-release-ai-summary-'));
 
 describe('release ai summary script', () => {
@@ -47,5 +50,47 @@ describe('release ai summary script', () => {
     expect(changelogContent).toContain('### English');
     expect(releaseNotesContent).toContain('### 中文');
     expect(releaseNotesContent).toContain('### English');
+  });
+
+  test('prefers previous successful GitHub release tag over previous git tag', async () => {
+    const result = await resolveReleaseBaselineTag({
+      currentTag: 'v1.1.3',
+      repository: 'volix/volix',
+      token: 'test-token',
+      fetchImpl: async () => ({
+        ok: true,
+        async json() {
+          return [
+            { tag_name: 'v1.1.3', draft: false, prerelease: false },
+            { tag_name: 'v1.1.1', draft: false, prerelease: false },
+          ];
+        },
+      }),
+      runCommand: () => 'v1.1.2',
+      logger: console,
+    });
+
+    expect(result).toEqual({
+      baselineTag: 'v1.1.1',
+      baselineSource: 'github-release',
+    });
+  });
+
+  test('falls back to previous git tag when GitHub release lookup is unavailable', async () => {
+    const result = await resolveReleaseBaselineTag({
+      currentTag: 'v1.1.3',
+      repository: 'volix/volix',
+      fetchImpl: async () => ({
+        ok: false,
+        status: 500,
+      }),
+      runCommand: () => 'v1.1.2',
+      logger: { warn() {} },
+    });
+
+    expect(result).toEqual({
+      baselineTag: 'v1.1.2',
+      baselineSource: 'git-tag',
+    });
   });
 });

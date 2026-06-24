@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { resolveReleaseBaselineTag } = require('./release-baseline.cjs');
 
 const repoRoot = path.resolve(__dirname, '..');
 const DEFAULT_CHANGELOG_PATH = path.join(repoRoot, 'CHANGELOG.md');
@@ -98,20 +99,12 @@ function getVersionFromTag(tag) {
   return tag.replace(/^v/, '');
 }
 
-function getPreviousTag(currentTag) {
-  try {
-    return run(`git describe --tags --abbrev=0 ${shellEscape(`${currentTag}^`)}`);
-  } catch {
-    return '';
-  }
-}
-
 function uniqueLines(input) {
   return [...new Set(input.split('\n').map(item => item.trim()).filter(Boolean))];
 }
 
-function getReleaseContext(currentTag, previousTag) {
-  const range = previousTag ? `${previousTag}..${currentTag}` : currentTag;
+function getReleaseContext(currentTag, baselineTag) {
+  const range = baselineTag ? `${baselineTag}..${currentTag}` : currentTag;
   const commitsRaw = run(
     `git log ${range} --no-merges --pretty=format:%h%x09%s%x09%an --max-count=${MAX_COMMITS}`
   );
@@ -123,8 +116,8 @@ function getReleaseContext(currentTag, previousTag) {
     : [];
 
   let files = [];
-  if (previousTag) {
-    const filesRaw = run(`git diff --name-status ${shellEscape(previousTag)} ${shellEscape(currentTag)}`);
+  if (baselineTag) {
+    const filesRaw = run(`git diff --name-status ${shellEscape(baselineTag)} ${shellEscape(currentTag)}`);
     files = filesRaw
       ? filesRaw.split('\n').slice(0, MAX_FILES).map(line => {
           const [status = '', ...rest] = line.split('\t');
@@ -139,14 +132,14 @@ function getReleaseContext(currentTag, previousTag) {
   }
 
   let diffStat = '';
-  if (previousTag) {
-    diffStat = run(`git diff --stat=160 ${shellEscape(previousTag)} ${shellEscape(currentTag)}`);
+  if (baselineTag) {
+    diffStat = run(`git diff --stat=160 ${shellEscape(baselineTag)} ${shellEscape(currentTag)}`);
   } else {
     diffStat = files.map(file => `${file.status}\t${file.path}`).join('\n');
   }
 
   return {
-    previousTag,
+    baselineTag,
     currentTag,
     commits,
     files,
@@ -169,10 +162,10 @@ function buildPrompt(context, version, releaseDate) {
   return [
     `当前发布版本: ${version}`,
     `当前 tag: ${context.currentTag}`,
-    `上一个 tag: ${context.previousTag || 'none'}`,
+    `对比基线版本: ${context.baselineTag || 'none'}`,
     `发布日期: ${releaseDate}`,
     '',
-    '请根据以下 git 变更信息，总结本次版本相比上一个版本的用户可见变化和技术改动，并同时输出中文和英文版本，要求两种语言表达同一组信息。',
+    '请根据以下 git 变更信息，总结本次版本相对基线版本的用户可见变化和技术改动，并同时输出中文和英文版本，要求两种语言表达同一组信息。',
     '要求：',
     '1. 输出必须是 JSON 对象，不要加代码块。',
     '2. 仅根据给定上下文总结，不要虚构功能。',
@@ -250,11 +243,11 @@ function parseJsonPayload(content) {
 
 function buildFallbackSummary(context, version, releaseDate) {
   const zhHighlights = [
-    `对比 ${context.previousTag || '项目起始版本'} 汇总了本次发布内容。`,
+    `对比 ${context.baselineTag || '项目起始版本'} 汇总了本次发布内容。`,
     ...context.commits.slice(0, 6).map(item => item.subject),
   ].slice(0, 7);
   const enHighlights = [
-    `Summarized this release against ${context.previousTag || 'the initial project version'}.`,
+    `Summarized this release against ${context.baselineTag || 'the initial project version'}.`,
     ...context.commits.slice(0, 6).map(item => item.subject),
   ].slice(0, 7);
   return {
@@ -371,11 +364,18 @@ async function main() {
   const currentTag = normalizeTag(args.tag);
   const version = getVersionFromTag(currentTag);
   const releaseDate = new Date().toISOString().slice(0, 10);
-  const previousTag = getPreviousTag(currentTag);
-  const context = getReleaseContext(currentTag, previousTag);
+  const { baselineTag, baselineSource } = await resolveReleaseBaselineTag({
+    currentTag,
+    runCommand: run,
+    repository: process.env.GITHUB_REPOSITORY,
+    token: process.env.GITHUB_TOKEN || process.env.GH_TOKEN,
+    logger: console,
+  });
+  const context = getReleaseContext(currentTag, baselineTag);
 
   console.log(`> current tag: ${currentTag}`);
-  console.log(`> previous tag: ${previousTag || 'none'}`);
+  console.log(`> baseline tag: ${baselineTag || 'none'}`);
+  console.log(`> baseline source: ${baselineSource}`);
   console.log(`> commits: ${context.commits.length}`);
   console.log(`> changed files: ${context.files.length}`);
 
