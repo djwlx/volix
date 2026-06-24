@@ -2,6 +2,7 @@ import { AccountConfigPlatform, AiProvider } from '@volix/types';
 import type {
   AccountConfigMap,
   AiAccountConfigItem,
+  AstrbotAccountConfigItem,
   BangumiAccountConfigItem,
   SmtpAccountConfigItem,
   ServiceAccountConfigItem,
@@ -9,7 +10,7 @@ import type {
 import { badRequest } from '../../shared/http-handler';
 import { decryptSecret, encryptSecret } from '../../../utils/crypto-store';
 import { t } from '../../../utils/i18n';
-import { createAiSdk, type AiSdk } from '../../../sdk';
+import { createAiSdk, createAstrbotSdk, type AiSdk, type AstrbotSdk } from '../../../sdk';
 import { queryUser, updateUser } from './user.service';
 
 const EMAIL_REGEXP = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -98,6 +99,32 @@ export const normalizeBangumiAccountConfig = (config: unknown): BangumiAccountCo
   return {
     baseUrl,
     accessToken,
+  };
+};
+
+export const normalizeAstrbotAccountConfig = (config: unknown): AstrbotAccountConfigItem => {
+  if (!config || typeof config !== 'object') {
+    badRequest('AstrBot 配置格式错误');
+  }
+
+  const raw = config as Partial<AstrbotAccountConfigItem>;
+  const baseUrl = typeof raw.baseUrl === 'string' ? raw.baseUrl.trim() : '';
+  const apiKey = typeof raw.apiKey === 'string' ? raw.apiKey.trim() : '';
+  const umos = Array.isArray(raw.umos)
+    ? Array.from(new Set(raw.umos.map(item => String(item || '').trim()).filter(Boolean)))
+    : [];
+
+  if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
+    badRequest('AstrBot baseUrl 必须是 http/https 地址');
+  }
+  if (!apiKey) {
+    badRequest('AstrBot apiKey 不能为空');
+  }
+
+  return {
+    baseUrl,
+    apiKey,
+    ...(umos.length ? { umos } : {}),
   };
 };
 
@@ -223,6 +250,17 @@ const parseAiAccountConfigFromUnknown = (raw: unknown): AiAccountConfigItem | nu
   }
 };
 
+const parseAstrbotAccountConfigFromUnknown = (raw: unknown): AstrbotAccountConfigItem | null => {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  try {
+    return normalizeAstrbotAccountConfig(raw);
+  } catch {
+    return null;
+  }
+};
+
 const normalizeByPlatform = (platform: AccountConfigPlatform, config: unknown) => {
   if (platform === AccountConfigPlatform.SMTP) {
     return normalizeSmtpAccountConfig(config);
@@ -232,6 +270,9 @@ const normalizeByPlatform = (platform: AccountConfigPlatform, config: unknown) =
   }
   if (platform === AccountConfigPlatform.AI) {
     return normalizeAiAccountConfig(config);
+  }
+  if (platform === AccountConfigPlatform.ASTRBOT) {
+    return normalizeAstrbotAccountConfig(config);
   }
   return normalizeServiceAccountConfig(config);
 };
@@ -250,6 +291,7 @@ export async function getUserAccountConfigs(userId: string | number): Promise<Ac
     openlist: parseServiceAccountConfigFromUnknown(accountList[AccountConfigPlatform.OPENLIST]) || undefined,
     bangumi: parseBangumiAccountConfigFromUnknown(accountList[AccountConfigPlatform.BANGUMI]) || undefined,
     ai: parseAiAccountConfigFromUnknown(accountList[AccountConfigPlatform.AI]) || undefined,
+    astrbot: parseAstrbotAccountConfigFromUnknown(accountList[AccountConfigPlatform.ASTRBOT]) || undefined,
   };
 }
 
@@ -282,6 +324,29 @@ export async function updateUserAccountConfig(
 export async function getUserAiConfig(userId: string | number): Promise<AiAccountConfigItem | null> {
   const configs = await getUserAccountConfigs(userId);
   return configs.ai || null;
+}
+
+export async function getUserAstrbotConfig(userId: string | number): Promise<AstrbotAccountConfigItem | null> {
+  const configs = await getUserAccountConfigs(userId);
+  return configs.astrbot || null;
+}
+
+export async function createUserAstrbotSdk(
+  userId: string | number
+): Promise<{ sdk: AstrbotSdk; config: AstrbotAccountConfigItem }> {
+  const config = await getUserAstrbotConfig(userId);
+  if (!config) {
+    badRequest('尚未配置 AstrBot 账号');
+    throw new Error('AstrBot account not configured');
+  }
+
+  const sdk = createAstrbotSdk({
+    baseUrl: config.baseUrl,
+    apiKey: config.apiKey,
+    umos: config.umos,
+  });
+
+  return { sdk, config };
 }
 
 export async function createUserAiSdk(userId: string | number): Promise<{ sdk: AiSdk; config: AiAccountConfigItem }> {

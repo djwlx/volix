@@ -6,7 +6,7 @@
     "build": "turbo run build",
     "tag": "node ./scripts/tag.js",
     "release": "node ./scripts/release.js",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=@volix/api --filter=@volix/web-pc",
     "typecheck": "turbo run typecheck",
     "agents:check": "node ./scripts/agents-check.cjs",
     "test": "vitest run",

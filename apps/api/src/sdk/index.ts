@@ -3,3 +3,4 @@ export * from './qbittorrent';
 export * from './openlist';
 export * from './bangumi';
 export * from './ai';
+export * from './astrbot';

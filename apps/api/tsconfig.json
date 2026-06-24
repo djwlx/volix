@@ -7,9 +7,6 @@
     "strict": true,
     "esModuleInterop": true,
     "baseUrl": ".",
-    "paths": {
-      "@volix/i18n": ["../../packages/i18n/dist/index.d.ts"]
-    },
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,

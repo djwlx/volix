@@ -11,3 +11,4 @@ export * from './format-convert';
 export * from './sqlite-admin';
 export * from './rss';
 export * from './log-viewer';
+export * from './task-center';

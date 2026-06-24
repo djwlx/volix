@@ -11,7 +11,16 @@ interface AuthenticateParam {
   notInclude?: string[];
 }
 
-const AUTH_BYPASS_PATHS = ['/api/rss/:dirKey/:subscriptionKey/:itemSeg/:resourceId', '/api/file/:dirKey/:fileName'];
+interface BypassRule {
+  method: string;
+  path: string;
+}
+
+const AUTH_BYPASS_PATHS: BypassRule[] = [
+  { method: 'GET', path: '/api/rss/:dirKey/:subscriptionKey/:itemSeg/:resourceId' },
+  { method: 'GET', path: '/api/file/:dirKey/:fileName' },
+  { method: 'GET', path: '/api/file/:id' },
+];
 
 const testArray = (array: string[], key: string) => {
   return array.some(item => {
@@ -21,14 +30,18 @@ const testArray = (array: string[], key: string) => {
   });
 };
 
+const testBypass = (rules: BypassRule[], method: string, key: string) => {
+  return rules.some(rule => rule.method === method.toUpperCase() && pathToRegexp(rule.path).test(key));
+};
+
 // 权限校验中间件，鉴权通过之后，将用户信息保存在state中方便后续操作没有权限返回401
 const authenticate = (option?: AuthenticateParam): MyMiddleware => {
   return async (ctx, next) => {
     // 自定义token放在header中，所以从header中去取，也可以放在其他地方
-    const { header, url, path } = ctx.request;
+    const { header, url, path, method } = ctx.request;
     const { include = [], notInclude = [] } = option || {};
 
-    if (testArray(AUTH_BYPASS_PATHS, path)) {
+    if (testBypass(AUTH_BYPASS_PATHS, method, path)) {
       await next();
       return;
     }

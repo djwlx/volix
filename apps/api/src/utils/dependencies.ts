@@ -5,6 +5,8 @@ import { setLogRetentionProvider } from './log-maintenance';
 import { getLogRetentionDays } from '../modules/user/service/system-setting.service';
 import { ensureFormatConvertTaskSchema } from '../modules/format-convert/model/format-convert-task.model';
 import { ensureRssFeedItemSchema } from '../modules/rss/model/rss-feed-item.model';
+import { ensureLocalFileSchema } from '../modules/file/model/local-file.model';
+import { ensureScheduledTaskSchema } from '../modules/task-center/model/scheduled-task.model';
 
 export const getBootstrapPathList = () => [
   { filePath: PATH.data, type: 'dir' as const },
@@ -27,6 +29,8 @@ const initApp = async () => {
 
   await ensureFormatConvertTaskSchema();
   await ensureRssFeedItemSchema();
+  await ensureLocalFileSchema();
+  await ensureScheduledTaskSchema();
 };
 
 export default initApp;

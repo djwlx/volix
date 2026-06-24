@@ -9,7 +9,7 @@ const SRC_ATTR_REGEX = new RegExp(
 const SRCSET_ATTR_REGEX = new RegExp(`\\bsrcset\\s*=\\s*(${ATTRIBUTE_QUOTE_PATTERN})([\\s\\S]*?)\\1`, 'gi');
 const RSS_RESOURCE_REWRITE_MAX_URLS = 120;
 const RETRY_LIMIT = 3;
-const LOCAL_RESOURCE_URL_PREFIX = '/api/rss/';
+const LOCAL_RESOURCE_URL_PREFIXES = ['/api/file/', '/api/rss/'];
 
 const decodeHtmlUrl = (value: string) => String(value || '').replace(/&amp;/gi, '&');
 const encodeHtmlUrl = (value: string) => String(value || '').replace(/&/g, '&amp;');
@@ -60,7 +60,7 @@ const collectLocalizedResourceUrls = (html: string, itemImageUrls?: string[]) =>
   const urls = new Set<string>();
   const pushUrl = (value: string) => {
     const normalized = decodeHtmlUrl(String(value || '').trim());
-    if (!normalized.startsWith(LOCAL_RESOURCE_URL_PREFIX)) {
+    if (!LOCAL_RESOURCE_URL_PREFIXES.some(prefix => normalized.startsWith(prefix))) {
       return;
     }
     urls.add(normalized);

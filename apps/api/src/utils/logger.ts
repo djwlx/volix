@@ -9,6 +9,7 @@ const { NODE_ENV } = process.env;
 const isProd = NODE_ENV === 'production';
 const getNormalAppenders = () => (isProd ? ['normal'] : ['normal', 'console']);
 const getDatabaseAppenders = () => ['database'];
+const getTaskAppenders = () => (isProd ? ['task'] : ['task', 'console']);
 
 const LOCAL_TIME_LAYOUT = { type: 'localTime' } as const;
 
@@ -35,6 +36,7 @@ log4js.configure({
     },
     normal: createDateFileAppender(path.join(`${PATH.log}/normal`, 'normal')),
     database: createDateFileAppender(path.join(`${PATH.log}/databse`, 'database')),
+    task: createDateFileAppender(path.join(`${PATH.log}/task`, 'task')),
   },
   categories: {
     normal: {
@@ -43,6 +45,10 @@ log4js.configure({
     },
     dataBase: {
       appenders: getDatabaseAppenders(),
+      level: 'all',
+    },
+    task: {
+      appenders: getTaskAppenders(),
       level: 'all',
     },
     default: {
@@ -55,6 +61,8 @@ log4js.configure({
 const log = log4js.getLogger('normal');
 // 数据库日志
 const baseLog = log4js.getLogger('dataBase');
+// 任务日志
+const taskLog = log4js.getLogger('task');
 
 startLogMaintenance({
   onSuccess(result, trigger) {
@@ -71,4 +79,4 @@ startLogMaintenance({
   },
 });
 
-export { log, baseLog };
+export { log, baseLog, taskLog };

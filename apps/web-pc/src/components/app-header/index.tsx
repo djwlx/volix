@@ -2,6 +2,7 @@ import { Avatar, Dropdown, Nav, Tag, Typography } from '@douyinfe/semi-ui';
 import {
   IconClose,
   IconExit,
+  IconLanguage,
   IconMoon,
   IconSetting,
   IconSun,
@@ -120,6 +121,7 @@ export function AppHeader(props: AppHeaderProps) {
   const localeMenuItem: HeaderDropdownItem = {
     key: 'locale',
     label: t(nextLocale === 'zh-CN' ? 'header.locale.switchToZhCn' : 'header.locale.switchToEnUs'),
+    icon: <IconLanguage />,
     onClick: () => setLocale(nextLocale),
   };
   const themeMenuItem: HeaderDropdownItem = {

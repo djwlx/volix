@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { removeFilesByPathPrefix } from '../../file/service/file-registry.service';
 import {
   getRssFeedRootDirByUserId,
   getRssSubscriptionDirPath as getUserScopedRssSubscriptionDirPath,
@@ -91,9 +92,9 @@ export const readRssItemHtmlFileByKey = async (params: { userId: string; key: st
 };
 
 export const clearRssItemHtmlFilesByRoute = async (params: { userId: string; route: string }) => {
-  await fs.promises
-    .rm(getUserScopedRssSubscriptionDirPath(params), { recursive: true, force: true })
-    .catch(() => undefined);
+  const subscriptionDir = getUserScopedRssSubscriptionDirPath(params);
+  await removeFilesByPathPrefix(subscriptionDir);
+  await fs.promises.rm(subscriptionDir, { recursive: true, force: true }).catch(() => undefined);
 };
 
 export const clearRssItemFilesByRouteItemKeys = async (params: {
@@ -116,11 +117,14 @@ export const clearRssItemFilesByRouteItemKeys = async (params: {
       if (!itemDirPath) {
         return;
       }
+      await removeFilesByPathPrefix(itemDirPath);
       await fs.promises.rm(itemDirPath, { recursive: true, force: true }).catch(() => undefined);
     })
   );
 };
 
 export const clearRssItemHtmlFilesByUser = async (userId: string) => {
-  await fs.promises.rm(getRssFeedRootDirByUserId(userId), { recursive: true, force: true }).catch(() => undefined);
+  const feedRoot = getRssFeedRootDirByUserId(userId);
+  await removeFilesByPathPrefix(feedRoot);
+  await fs.promises.rm(feedRoot, { recursive: true, force: true }).catch(() => undefined);
 };

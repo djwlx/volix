@@ -23,6 +23,9 @@ const resolveTarget = (type: LogViewerType): { dir: string; base: string } => {
   if (type === 'database') {
     return { dir: path.join(PATH.log, 'databse'), base: 'database' };
   }
+  if (type === 'task') {
+    return { dir: path.join(PATH.log, 'task'), base: 'task' };
+  }
   return badRequest(t({ id: 'logViewer.error.invalidType', defaultMessage: '日志类型错误' }));
 };
 

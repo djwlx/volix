@@ -14,7 +14,7 @@ const ensureAdmin = (ctx: Parameters<MyMiddleware>[0]) => {
 };
 
 const parseType = (raw: unknown): LogViewerType => {
-  if (raw === 'normal' || raw === 'database') {
+  if (raw === 'normal' || raw === 'database' || raw === 'task') {
     return raw;
   }
   return badRequest(t({ id: 'logViewer.error.invalidType', defaultMessage: '日志类型错误' }));

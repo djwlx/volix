@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { Button, Card, Empty, Input, Select, Spin, Switch, Tabs, Toast } from '@douyinfe/semi-ui';
 import { IconDownload, IconRefresh, IconSearch } from '@douyinfe/semi-icons';
 import { UserRole } from '@volix/types';
@@ -13,21 +14,27 @@ import styles from './index.module.scss';
 
 const PAGE_SIZE = 50;
 const LEVELS: LogViewerLevel[] = ['trace', 'debug', 'info', 'warn', 'error', 'fatal'];
+const LOG_TYPES: LogViewerType[] = ['normal', 'database', 'task'];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const SelectAny = Select as any;
+
+const normalizeType = (raw: string | null): LogViewerType =>
+  LOG_TYPES.includes(raw as LogViewerType) ? (raw as LogViewerType) : 'normal';
 
 function LogViewerApp() {
   const { t } = useI18n();
   const { user, loading } = useUser();
   const isAdmin = user?.role === UserRole.ADMIN;
 
-  const [type, setType] = useState<LogViewerType>('normal');
+  const [searchParams] = useSearchParams();
+  const [type, setType] = useState<LogViewerType>(normalizeType(searchParams.get('type')));
   const [dates, setDates] = useState<string[]>([]);
   const [date, setDate] = useState('');
   const [levels, setLevels] = useState<LogViewerLevel[]>([]);
-  const [keyword, setKeyword] = useState('');
-  const [appliedKeyword, setAppliedKeyword] = useState('');
+  const [keyword, setKeyword] = useState(searchParams.get('keyword') || '');
+  const [appliedKeyword, setAppliedKeyword] = useState(searchParams.get('keyword') || '');
+  const lastQueryRef = useRef('');
   const [entries, setEntries] = useState<LogViewerEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -62,6 +69,18 @@ function LogViewerApp() {
     },
     [type, date, levels, appliedKeyword, t]
   );
+
+  useEffect(() => {
+    const query = `${searchParams.get('type') || ''}|${searchParams.get('keyword') || ''}`;
+    if (query === lastQueryRef.current) {
+      return;
+    }
+    lastQueryRef.current = query;
+    const nextKeyword = searchParams.get('keyword') || '';
+    setType(normalizeType(searchParams.get('type')));
+    setKeyword(nextKeyword);
+    setAppliedKeyword(nextKeyword);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -180,6 +199,7 @@ function LogViewerApp() {
           >
             <Tabs.TabPane tab={t({ id: 'logViewer.type.normal', defaultMessage: '普通日志' })} itemKey="normal" />
             <Tabs.TabPane tab={t({ id: 'logViewer.type.database', defaultMessage: '数据库日志' })} itemKey="database" />
+            <Tabs.TabPane tab={t({ id: 'logViewer.type.task', defaultMessage: '任务日志' })} itemKey="task" />
           </Tabs>
 
           <div className={styles.toolbar}>

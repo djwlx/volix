@@ -22,6 +22,10 @@ export const unauthorized = (message: string, data?: unknown): never => {
   throw new HttpError(401, message, data);
 };
 
+export const notFound = (message: string, data?: unknown): never => {
+  throw new HttpError(404, message, data);
+};
+
 export const http = (handler: MyMiddleware): MyMiddleware => {
   return async (ctx, next) => {
     try {

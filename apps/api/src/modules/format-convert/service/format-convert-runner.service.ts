@@ -209,7 +209,8 @@ export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: 
         userDirKey,
         task.id,
         outputWorkspacePath,
-        outputFilename
+        outputFilename,
+        task.userId
       );
       await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.COMPLETED, {
         result_local_path: resultLocalPath,
@@ -273,7 +274,13 @@ export const runImageConvertTask = async (
 
     await convertImageFile(inputPath, outputWorkspacePath, option);
     const resultImageInfo = await probeImageFile(outputWorkspacePath);
-    const resultLocalPath = await persistFormatConvertResult(userDirKey, task.id, outputWorkspacePath, outputFilename);
+    const resultLocalPath = await persistFormatConvertResult(
+      userDirKey,
+      task.id,
+      outputWorkspacePath,
+      outputFilename,
+      task.userId
+    );
 
     await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.COMPLETED, {
       result_local_path: resultLocalPath,

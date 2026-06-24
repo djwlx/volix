@@ -15,11 +15,14 @@ RUN apt-get update \
   && echo $TZ > /etc/timezone \
   && rm -rf /var/lib/apt/lists/*
 
-# 复制 dist 文件夹的内容直接到 /app
+# 安装与仓库一致的 pnpm 版本
+RUN npm install -g pnpm@8.15.9
+
+# 复制打包产物（与裸机 node 部署使用同一份 dist）
 COPY dist/ .
 
-# 安装生产依赖
-RUN npm install -g pnpm@8.15.9 && pnpm install 
+# 安装生产依赖（含 file: vendored 的 workspace 包）
+RUN pnpm install --prod
 
 # 声明可挂载的数据卷
 VOLUME ["/app/data"]

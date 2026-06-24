@@ -1,5 +1,6 @@
 import fs from 'fs';
 import { FormatConvertSourceType, type FormatConvertTaskItem } from '@volix/types';
+import { removeFileByPath } from '../../file/service/file-registry.service';
 import type { FormatConvertTaskEntity } from '../types/format-convert.types';
 
 const deleteFileIfExists = async (filePath?: string) => {
@@ -53,6 +54,10 @@ export const cleanupFormatConvertTaskLocalArtifacts = async (
 
   for (const filePath of paths) {
     await deleteFileIfExists(filePath);
+  }
+
+  if (task.resultLocalPath) {
+    await removeFileByPath(task.resultLocalPath);
   }
 };
 

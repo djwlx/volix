@@ -1,4 +1,4 @@
-export type LogViewerType = 'normal' | 'database';
+export type LogViewerType = 'normal' | 'database' | 'task';
 
 export type LogViewerLevel = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 

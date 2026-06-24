@@ -15,6 +15,7 @@ import { formatTime } from '@volix/utils';
 import { startRssFeedAutoRefreshTask } from './src/modules/rss/service/rss-auto-refresh.service';
 import { sync115FileCacheDbWithFsOnStartup } from './src/modules/115/service/picture/picture-cache-startup-sync';
 import { recoverAndStartFormatConvertQueue } from './src/modules/format-convert/service/format-convert-queue.service';
+import { startScheduledTaskScheduler } from './src/modules/task-center/service/scheduled-task-scheduler.service';
 import { attachWebsocketServer } from './src/modules/shared/websocket/ws-server';
 
 async function startApp() {
@@ -24,6 +25,7 @@ async function startApp() {
   void sync115FileCacheDbWithFsOnStartup();
   startRssFeedAutoRefreshTask();
   void recoverAndStartFormatConvertQueue();
+  void startScheduledTaskScheduler();
 
   const app = new Koa();
   app.on('error', error => {

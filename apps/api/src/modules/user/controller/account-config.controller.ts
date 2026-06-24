@@ -8,16 +8,37 @@ import type {
   UpdateAccountConfigPayload,
 } from '@volix/types';
 import { badRequest, unauthorized } from '../../shared/http-handler';
-import { createAiSdk, createBangumiSdk, createOpenlistSdk, createQbittorrentSdk } from '../../../sdk';
+import { createAiSdk, createAstrbotSdk, createBangumiSdk, createOpenlistSdk, createQbittorrentSdk } from '../../../sdk';
 import { t } from '../../../utils/i18n';
 import {
   getUserAccountConfigs,
   normalizeAiConnection,
+  normalizeAstrbotAccountConfig,
   normalizeBangumiAccountConfig,
   normalizeServiceAccountConfig,
   updateUserAccountConfig,
 } from '../service/user-config.service';
 import { translateUserText } from '../service/ai-translate.service';
+
+const countAstrbotBots = (payload: unknown): number => {
+  let node = payload;
+  // SuccessEnvelope { status, message, data } 可能被透传，逐层解包 data
+  for (let depth = 0; depth < 3 && node && typeof node === 'object' && !Array.isArray(node); depth += 1) {
+    const obj = node as Record<string, unknown>;
+    if (Array.isArray(obj.bot_ids)) {
+      return obj.bot_ids.length;
+    }
+    if (Array.isArray(obj.bots)) {
+      return obj.bots.length;
+    }
+    if ('data' in obj) {
+      node = obj.data;
+      continue;
+    }
+    break;
+  }
+  return Array.isArray(node) ? node.length : 0;
+};
 
 const ensureLoginUserId = (ctx: any) => {
   const userId = ctx.state.userInfo?.id;
@@ -120,6 +141,22 @@ export const testAccountConfig: MyMiddleware = async ctx => {
       };
     }
 
+    if (platform === AccountConfigPlatform.ASTRBOT) {
+      const config = normalizeAstrbotAccountConfig(param.config);
+      const sdk = createAstrbotSdk({
+        baseUrl: config.baseUrl,
+        apiKey: config.apiKey,
+        userAgent: String(ctx.request.headers['user-agent'] || '').trim() || undefined,
+      });
+      const bots = (await sdk.listImBots()) as unknown;
+      const count = countAstrbotBots(bots);
+
+      return {
+        success: true,
+        message: t('accountConfig.test.astrbotSuccess', { count }),
+      };
+    }
+
     badRequest(t('accountConfig.test.unsupported'));
   } catch (error) {
     const message =
@@ -135,6 +172,7 @@ export const testAccountConfig: MyMiddleware = async ctx => {
       [AccountConfigPlatform.SMTP]: 'SMTP',
       [AccountConfigPlatform.BANGUMI]: 'Bangumi',
       [AccountConfigPlatform.AI]: 'AI',
+      [AccountConfigPlatform.ASTRBOT]: 'AstrBot',
     };
 
     badRequest(

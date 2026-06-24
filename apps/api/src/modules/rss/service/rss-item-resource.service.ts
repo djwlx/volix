@@ -3,6 +3,7 @@ import fs from 'fs';
 import mime from 'mime-types';
 import path from 'path';
 import { getUserRssFeedDir } from '../../../utils/path';
+import { registerOrGetFileByPath, removeFilesByPathPrefix } from '../../file/service/file-registry.service';
 import { fetchRemoteResource, normalizeHttpUrl } from '../../shared/service/remote-resource-fetch.service';
 import {
   buildRssSubscriptionStorageKey,
@@ -11,7 +12,6 @@ import {
   toRssItemSegment,
 } from './rss-storage-path.service';
 
-const RESOURCE_URL_PREFIX = '/api/rss';
 const RESOURCES_DIR_NAME = 'resources';
 const MAX_FILE_NAME_LENGTH = 100;
 
@@ -66,13 +66,6 @@ const getItemResourcesDir = (params: { userId: string; route: string; itemKey: s
   );
 };
 
-const buildItemResourceBaseUrl = (params: { userId: string; route: string; itemKey: string }) => {
-  const dirKey = getRssDirKey(params.userId);
-  const subscriptionKey = buildRssSubscriptionStorageKey({ userId: params.userId, route: params.route });
-  const itemSeg = toRssItemSegment(params.itemKey);
-  return `${RESOURCE_URL_PREFIX}/${dirKey}/${subscriptionKey}/${itemSeg}`;
-};
-
 const fileExists = async (filePath: string) => {
   const stat = await fs.promises.stat(filePath).catch(() => null);
   return Boolean(stat?.isFile());
@@ -92,11 +85,23 @@ export const downloadRssItemResource = async (params: {
   }
 
   const resourcesDir = getItemResourcesDir(params);
-  const baseUrl = buildItemResourceBaseUrl(params);
+  const dirKey = getRssDirKey(params.userId);
+
+  const registerResource = async (fileName: string) => {
+    const { url } = await registerOrGetFileByPath({
+      userId: params.userId,
+      absolutePath: path.join(resourcesDir, fileName),
+      originalName: fileName,
+      dirKey,
+      module: 'rss',
+      metadata: { route: params.route, itemKey: params.itemKey, sourceUrl: normalizedUrl },
+    });
+    return url;
+  };
 
   const urlBaseName = sanitizeFileName(path.basename(new URL(normalizedUrl).pathname || ''));
   if (urlBaseName && path.extname(urlBaseName) && (await fileExists(path.join(resourcesDir, urlBaseName)))) {
-    return { ok: true, url: `${baseUrl}/${urlBaseName}` } as const;
+    return { ok: true, url: await registerResource(urlBaseName) } as const;
   }
 
   const fetched = await fetchRemoteResource({
@@ -110,7 +115,7 @@ export const downloadRssItemResource = async (params: {
   await fs.promises.mkdir(resourcesDir, { recursive: true });
   await fs.promises.writeFile(path.join(resourcesDir, fileName), fetched.buffer);
 
-  return { ok: true, url: `${baseUrl}/${fileName}` } as const;
+  return { ok: true, url: await registerResource(fileName) } as const;
 };
 
 export const readRssItemResourceFileByLocator = async (params: {
@@ -160,6 +165,7 @@ export const readRssItemResourceFileByLocator = async (params: {
 };
 
 export const clearRssItemResourcesInFeedDir = async (feedRootDir: string) => {
+  await removeFilesByPathPrefix(feedRootDir);
   const subscriptions = await fs.promises.readdir(feedRootDir, { withFileTypes: true }).catch(() => [] as fs.Dirent[]);
   await Promise.all(
     subscriptions

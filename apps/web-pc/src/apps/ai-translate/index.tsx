@@ -6,43 +6,7 @@ import { useI18n } from '@/i18n';
 import { getAccountConfigs, translateText } from '@/services/user';
 import { getHttpErrorMessage } from '@/utils/error';
 import { TRANSLATE_LANGUAGE_OPTIONS } from './languages';
-
-const fieldStyle = {
-  width: '100%',
-  display: 'flex',
-  flexDirection: 'column' as const,
-  gap: 8,
-};
-
-const inputStyle = {
-  width: '100%',
-  minHeight: 120,
-  padding: 12,
-  borderRadius: 12,
-  border: '1px solid var(--semi-color-border)',
-  background: 'var(--semi-color-bg-0)',
-  color: 'var(--semi-color-text-0)',
-  outline: 'none',
-  boxSizing: 'border-box' as const,
-};
-
-const selectStyle = {
-  ...inputStyle,
-  minHeight: 40,
-  padding: '0 12px',
-};
-
-const resultStyle = {
-  minHeight: 120,
-  margin: 0,
-  padding: 12,
-  borderRadius: 12,
-  border: '1px solid var(--semi-color-border)',
-  background: 'var(--semi-color-fill-0)',
-  color: 'var(--semi-color-text-0)',
-  whiteSpace: 'pre-wrap' as const,
-  wordBreak: 'break-word' as const,
-};
+import styles from './index.module.scss';
 
 function AiTranslateApp() {
   const { t } = useI18n();
@@ -84,6 +48,18 @@ function AiTranslateApp() {
     };
   }, [t]);
 
+  const handleCopy = async (text: string) => {
+    if (!text) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      Toast.success(t('common.action.copied'));
+    } catch {
+      Toast.error(t('common.action.copyFailed'));
+    }
+  };
+
   const handleTranslate = async () => {
     try {
       setSubmitting(true);
@@ -123,18 +99,13 @@ function AiTranslateApp() {
 
   return (
     <PageCard title={t('route.aiTranslate.title')} shadows="hover" style={{ width: '100%' }}>
-      <Space vertical spacing={16} align="start" style={{ width: '100%' }}>
-        <div style={fieldStyle}>
-          <Typography.Text>{t('aiTranslate.sourceText.label')}</Typography.Text>
-          <textarea value={sourceText} style={inputStyle} onChange={event => setSourceText(event.target.value)} />
-        </div>
-
-        <div style={{ ...fieldStyle, flexDirection: 'row', gap: 12, flexWrap: 'wrap' }}>
-          <label style={{ ...fieldStyle, flex: 1, minWidth: 220 }}>
+      <div className={styles.container}>
+        <div className={styles.controls}>
+          <label className={styles.field}>
             <Typography.Text>{t('aiTranslate.sourceLanguage.label')}</Typography.Text>
             <select
               value={sourceLanguage}
-              style={selectStyle}
+              className={styles.select}
               onChange={event => setSourceLanguage(event.target.value)}
             >
               {TRANSLATE_LANGUAGE_OPTIONS.map(option => (
@@ -145,11 +116,11 @@ function AiTranslateApp() {
             </select>
           </label>
 
-          <label style={{ ...fieldStyle, flex: 1, minWidth: 220 }}>
+          <label className={styles.field}>
             <Typography.Text>{t('aiTranslate.targetLanguage.label')}</Typography.Text>
             <select
               value={targetLanguage}
-              style={selectStyle}
+              className={styles.select}
               onChange={event => setTargetLanguage(event.target.value)}
             >
               {TRANSLATE_LANGUAGE_OPTIONS.filter(option => option.value !== 'auto').map(option => (
@@ -161,15 +132,43 @@ function AiTranslateApp() {
           </label>
         </div>
 
-        <Button type="primary" loading={submitting} onClick={handleTranslate}>
-          {t('aiTranslate.action.translate')}
-        </Button>
-
-        <div style={fieldStyle}>
-          <Typography.Text>{t('aiTranslate.result.label')}</Typography.Text>
-          <pre style={resultStyle}>{result || t('aiTranslate.result.empty')}</pre>
+        <div className={styles.actions}>
+          <Button type="primary" loading={submitting} onClick={handleTranslate}>
+            {t('aiTranslate.action.translate')}
+          </Button>
         </div>
-      </Space>
+
+        <div className={styles.panes}>
+          <div className={styles.pane}>
+            <div className={styles.labelRow}>
+              <Typography.Text>{t('aiTranslate.sourceText.label')}</Typography.Text>
+              <Button
+                size="small"
+                theme="borderless"
+                disabled={!sourceText}
+                onClick={() => void handleCopy(sourceText)}
+              >
+                {t('common.action.copy')}
+              </Button>
+            </div>
+            <textarea
+              value={sourceText}
+              className={styles.textarea}
+              onChange={event => setSourceText(event.target.value)}
+            />
+          </div>
+
+          <div className={styles.pane}>
+            <div className={styles.labelRow}>
+              <Typography.Text>{t('aiTranslate.result.label')}</Typography.Text>
+              <Button size="small" theme="borderless" disabled={!result} onClick={() => void handleCopy(result)}>
+                {t('common.action.copy')}
+              </Button>
+            </div>
+            <pre className={styles.result}>{result || t('aiTranslate.result.empty')}</pre>
+          </div>
+        </div>
+      </div>
     </PageCard>
   );
 }

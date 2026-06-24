@@ -8,10 +8,12 @@ import { AccountConfigPlatform } from '@volix/types';
 import type {
   AccountConfigMap,
   AiAccountConfigItem,
+  AstrbotAccountConfigItem,
   BangumiAccountConfigItem,
   ServiceAccountConfigItem,
 } from '@volix/types';
 import { AiAccountCard } from './ai-account-card';
+import { AstrbotAccountCard } from './astrbot-account-card';
 
 interface ServiceCardProps {
   title: string;
@@ -265,6 +267,7 @@ function SettingConfigAccountCenterApp() {
           openlist: res.data?.openlist || EMPTY_SERVICE_VALUES,
           bangumi: res.data?.bangumi || EMPTY_BANGUMI_VALUES,
           ai: res.data?.ai,
+          astrbot: res.data?.astrbot,
         });
       })
       .catch(() => {
@@ -283,8 +286,6 @@ function SettingConfigAccountCenterApp() {
         <Loading rows={8} />
       ) : (
         <Space vertical spacing={16} style={{ width: '100%' }}>
-          <Typography.Text type="secondary">{t('setting.account.description')}</Typography.Text>
-          <Typography.Text type="secondary">{t('setting.account.smtpMoved')}</Typography.Text>
           <div
             style={{
               width: '100%',
@@ -330,6 +331,15 @@ function SettingConfigAccountCenterApp() {
                 setAccountConfigs(prev => ({
                   ...prev,
                   ai: config,
+                }));
+              }}
+            />
+            <AstrbotAccountCard
+              initialConfig={accountConfigs.astrbot}
+              onSaved={(config: AstrbotAccountConfigItem) => {
+                setAccountConfigs(prev => ({
+                  ...prev,
+                  astrbot: config,
                 }));
               }}
             />

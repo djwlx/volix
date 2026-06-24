@@ -6,6 +6,8 @@ import {
   getUserFormatTaskDir,
   getUserManualUploadDir,
 } from '../../../utils/path';
+import { registerOrGetFileByPath } from '../../file/service/file-registry.service';
+import { log } from '../../../utils/logger';
 
 const buildSourcePath = (baseDir: string, originalFilename: string, uniqueId: string) => {
   const safeOriginalName = path.basename(originalFilename || 'upload.bin');
@@ -61,10 +63,28 @@ export const persistFormatConvertResult = async (
   dirKey: string,
   taskId: number | string,
   tempOutputPath: string,
-  resultFilename: string
+  resultFilename: string,
+  userId?: string | number
 ) => {
   const resultPath = getFormatConvertResultPath(dirKey, taskId, resultFilename);
   await ensureFormatConvertResultDir(dirKey, taskId);
   await fs.promises.copyFile(tempOutputPath, resultPath);
+
+  if (userId !== undefined && userId !== null && String(userId)) {
+    try {
+      await registerOrGetFileByPath({
+        userId,
+        absolutePath: resultPath,
+        originalName: resultFilename,
+        dirKey,
+        module: 'format-convert',
+        visibility: 'private',
+        metadata: { taskId: String(taskId) },
+      });
+    } catch (error) {
+      log.warn('[format-convert] 结果文件登记失败', { taskId: String(taskId), error });
+    }
+  }
+
   return resultPath;
 };

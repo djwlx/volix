@@ -1,5 +1,5 @@
 import { AppCard } from './components';
-import { IconArticle, IconStar, IconTabsStroked } from '@douyinfe/semi-icons';
+import { IconArticle, IconComment, IconStar, IconTabsStroked } from '@douyinfe/semi-icons';
 import { useI18n } from '@/i18n';
 import { isAuthenticated } from '@/utils';
 import { useUser } from '@/hooks';
@@ -93,6 +93,18 @@ function HomeApp() {
                 icon={
                   <div style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #0f766e 0%, #0ea5e9 100%)' }}>
                     FM
+                  </div>
+                }
+              />
+            ) : null}
+            {authed ? (
+              <AppCard
+                title={t('home.card.taskCenter.title')}
+                description={t('home.card.taskCenter.description')}
+                link="/tasks"
+                icon={
+                  <div style={{ ...moduleIconStyle, background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)' }}>
+                    <IconComment size="large" />
                   </div>
                 }
               />

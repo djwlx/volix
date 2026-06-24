@@ -14,6 +14,7 @@ export enum AccountConfigPlatform {
   SMTP = 'smtp',
   BANGUMI = 'bangumi',
   AI = 'ai',
+  ASTRBOT = 'astrbot',
 }
 
 export enum AiProvider {
@@ -50,6 +51,12 @@ export interface AiAccountConfigItem {
   model: string;
 }
 
+export interface AstrbotAccountConfigItem {
+  baseUrl: string;
+  apiKey: string;
+  umos?: string[];
+}
+
 export interface UserSettingsJson {
   [key: string]: unknown;
 }
@@ -64,13 +71,15 @@ export interface AccountConfigMap {
   smtp?: SmtpAccountConfigItem;
   bangumi?: BangumiAccountConfigItem;
   ai?: AiAccountConfigItem;
+  astrbot?: AstrbotAccountConfigItem;
 }
 
 export type AccountConfigItem =
   | ServiceAccountConfigItem
   | SmtpAccountConfigItem
   | BangumiAccountConfigItem
-  | AiAccountConfigItem;
+  | AiAccountConfigItem
+  | AstrbotAccountConfigItem;
 
 export interface UpdateAccountConfigPayload {
   platform: AccountConfigPlatform;

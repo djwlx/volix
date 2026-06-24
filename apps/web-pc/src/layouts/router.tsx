@@ -20,6 +20,7 @@ import RssApp from '@/apps/rss';
 import AuthApp from '@/apps/auth';
 import SettingApp from '@/apps/setting';
 import FormatConvertApp from '@/apps/format-convert';
+import TaskCenterApp from '@/apps/task-center';
 import SettingInfoApp from '@/apps/setting/pages/info';
 import SettingUserApp from '@/apps/setting/pages/user';
 import SettingUserAddApp from '@/apps/setting/pages/user/add';
@@ -192,6 +193,22 @@ export const router = createBrowserRouter([
             logo: (
               <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #0f766e 0%, #0ea5e9 100%)' }}>
                 FM
+              </div>
+            ),
+          },
+        }),
+      },
+      {
+        path: 'tasks',
+        Component: TaskCenterApp,
+        handle: routeHandle({
+          requiresAuth: true,
+          appHeader: {
+            title: msg('route.taskCenter.title', '任务中心'),
+            description: msg('route.taskCenter.description', '管理定时任务，例如自动推送随机图片'),
+            logo: (
+              <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)' }}>
+                <IconComment style={{ fontSize: 20 }} />
               </div>
             ),
           },

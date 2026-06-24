@@ -7,6 +7,7 @@ import sqliteAdminRouter from '../modules/sqlite-admin/sqlite-admin.route';
 import rssRouter from '../modules/rss/rss.route';
 import formatConvertRouter from '../modules/format-convert/format-convert.route';
 import logViewerRouter from '../modules/log-viewer/log-viewer.route';
+import taskCenterRouter from '../modules/task-center/task-center.route';
 
 const router = new Router({
   prefix: '/api',
@@ -20,5 +21,6 @@ router.use(sqliteAdminRouter.routes());
 router.use(rssRouter.routes());
 router.use(formatConvertRouter.routes());
 router.use(logViewerRouter.routes());
+router.use(taskCenterRouter.routes());
 
 export default router;

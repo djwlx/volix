@@ -7,6 +7,8 @@ import { log } from '../../../utils/logger';
 import { getUserManualUploadDir } from '../../../utils/path';
 import { resolveUserDirKeyOrThrow } from '../../user/service/user-dir.service';
 import { badRequest, unauthorized } from '../../shared/http-handler';
+import { isValidFileId } from '../service/file-id';
+import { registerFile, resolveFile } from '../service/file-registry.service';
 import { UploadedFileFormData } from '../types/file.types';
 
 const DIR_KEY_REGEXP = /^[a-z0-9_-]+$/;
@@ -48,10 +50,17 @@ export const uploadFile: MyMiddleware = async ctx => {
   const dirKey = await resolveUserDirKeyOrThrow(userId);
   const manualDir = getUserManualUploadDir(dirKey);
   const newPath = path.join(manualDir, newName);
-  const publicPath = `/api/file/${dirKey}/${encodeURIComponent(newName)}`;
 
   await fs.promises.mkdir(manualDir, { recursive: true });
   await moveUploadedFile(filepath, newPath);
+
+  const { url: publicPath } = await registerFile({
+    userId,
+    absolutePath: newPath,
+    originalName: safeOriginalName,
+    dirKey,
+    module: 'upload',
+  });
 
   log.info('文件上传成功', { uuid: fileUuid, name: safeOriginalName, size, mimeType: mimetype, dirKey });
 
@@ -96,4 +105,38 @@ export const serveUserFile: MyMiddleware = async ctx => {
   ctx.response.set('Content-Type', mime.lookup(fileName) || 'application/octet-stream');
   ctx.response.set('Content-Disposition', `inline; filename="${encodeURIComponent(fileName)}"`);
   ctx.body = fs.createReadStream(filePath);
+};
+
+export const serveFileById: MyMiddleware = async ctx => {
+  const id = String(ctx.params.id || '').trim();
+  if (!isValidFileId(id)) {
+    badRequest(t({ id: 'file.notFound', defaultMessage: '文件不存在' }));
+    return;
+  }
+
+  const file = await resolveFile(id);
+  if (!file) {
+    badRequest(t({ id: 'file.notFound', defaultMessage: '文件不存在' }));
+    return;
+  }
+
+  // 非 public 文件需鉴权访问；鉴权能力尚未接入，此处先按未授权处理，避免误暴露
+  if (file.visibility !== 'public') {
+    const requesterId = ctx.state.userInfo?.id;
+    if (requesterId === undefined || requesterId === null || String(requesterId) !== file.userId) {
+      badRequest(t({ id: 'file.notFound', defaultMessage: '文件不存在' }));
+      return;
+    }
+  }
+
+  const safeName = path.basename(file.originalName).replace(/["\r\n]/g, '');
+  ctx.response.set('Content-Type', file.mimeType);
+  ctx.response.set(
+    'Content-Disposition',
+    `inline; filename="${encodeURIComponent(safeName)}"; filename*=UTF-8''${encodeURIComponent(safeName)}`
+  );
+  if (file.size !== null) {
+    ctx.response.set('Content-Length', String(file.size));
+  }
+  ctx.body = fs.createReadStream(file.absolutePath);
 };

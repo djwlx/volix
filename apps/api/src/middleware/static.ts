@@ -9,8 +9,6 @@ const staticMap: Record<string, Middleware<{}, DefaultContext, unknown>> = {
   // 静态资源
   '/assets': mount('/assets', staticServe(`${PATH.public}/assets`)),
   '/logo.svg': mount('/', staticServe(PATH.public)),
-  // 直链
-  '/file': mount('/file', staticServe(PATH.upload)),
 };
 
 // 静态文件中间件，负责返回前端需要的内容

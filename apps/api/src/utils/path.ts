@@ -50,12 +50,6 @@ export const PATH = {
   get usersRoot() {
     return path.join(ROOT, DATA, 'users');
   },
-  get upload() {
-    return path.join(ROOT, DATA, 'upload');
-  },
-  get uploadFormatConvert() {
-    return path.join(ROOT, DATA, 'upload', 'format-convert');
-  },
   get public() {
     return path.join(ROOT, 'public');
   },

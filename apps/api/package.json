@@ -5,7 +5,7 @@
   "main": "app/app.ts",
   "type": "commonjs",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development npm run db:migrate && cross-env NODE_ENV=development nodemon",
+    "dev": "cross-env NODE_ENV=development npm run db:migrate && cross-env NODE_ENV=development NODE_OPTIONS=--conditions=development tsx watch app.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "db:migrate": "sequelize-cli db:migrate --config config/sequelize-cli.cjs --migrations-path migrations",
@@ -24,6 +24,7 @@
     "@koa/cors": "^5.0.0",
     "@koa/router": "^15.2.0",
     "@volix/i18n": "workspace:*",
+    "@volix/types": "workspace:*",
     "@volix/utils": "workspace:*",
     "axios": "^1.6.8",
     "big-integer": "^1.6.52",
@@ -65,8 +66,6 @@
     "@types/qrcode": "^1.5.5",
     "@types/uuid": "^9.0.8",
     "@types/ws": "^8.18.1",
-    "@volix/types": "workspace:*",
-    "nodemon": "^2.0.20",
-    "ts-node": "^10.9.2"
+    "tsx": "^4.22.4"
   }
 }
