@@ -29,6 +29,17 @@ const parseRetentionDays = (raw?: string | null) => {
   return value;
 };
 
+const resolveRetentionSource = (raw?: string | null) => {
+  if (raw === undefined || raw === null || raw === '') {
+    return 'default_missing';
+  }
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < LOG_RETENTION_DAYS_MIN || value > LOG_RETENTION_DAYS_MAX) {
+    return 'default_invalid';
+  }
+  return 'database';
+};
+
 export async function getSystemConfigData(): Promise<SystemConfigResponse> {
   const [verifyEnabledRow, smtpRow, randomPicDefaultUserRow, logRetentionRow] = await Promise.all([
     querySystemSettingByKey(REGISTER_EMAIL_VERIFY_KEY),
@@ -105,7 +116,17 @@ export async function updateSystemConfigData(payload: UpdateSystemConfigPayload)
   }
   await Promise.all(updateTasks);
 
-  const logRetentionDays = hasLogRetentionInPayload ? Number(payload.logRetentionDays) : await getLogRetentionDays();
+  const persistedLogRetentionDays = hasLogRetentionInPayload ? await getLogRetentionDays() : undefined;
+  const logRetentionDays = persistedLogRetentionDays ?? (await getLogRetentionDays());
+
+  if (hasLogRetentionInPayload) {
+    log.info('系统日志保留天数已落库', {
+      requestedLogRetentionDays: Number(payload.logRetentionDays),
+      persistedLogRetentionDays,
+      source: 'database',
+      settingKey: LOG_RETENTION_DAYS_KEY,
+    });
+  }
 
   log.info('系统配置已更新', {
     registerEmailVerifyEnabled: payload.registerEmailVerifyEnabled,
@@ -125,8 +146,23 @@ export async function updateSystemConfigData(payload: UpdateSystemConfigPayload)
 export async function getLogRetentionDays(): Promise<number> {
   try {
     const row = await querySystemSettingByKey(LOG_RETENTION_DAYS_KEY);
-    return parseRetentionDays(row?.dataValues.setting_value);
-  } catch {
+    const rawValue = row?.dataValues.setting_value;
+    const parsedValue = parseRetentionDays(rawValue);
+    const source = resolveRetentionSource(rawValue);
+    log.info('读取系统日志保留天数', {
+      rawValue: rawValue ?? null,
+      parsedValue,
+      source,
+      settingKey: LOG_RETENTION_DAYS_KEY,
+    });
+    return parsedValue;
+  } catch (error) {
+    log.error('读取系统日志保留天数失败', {
+      source: 'default_error',
+      parsedValue: LOG_RETENTION_DAYS_DEFAULT,
+      settingKey: LOG_RETENTION_DAYS_KEY,
+      error,
+    });
     return LOG_RETENTION_DAYS_DEFAULT;
   }
 }

@@ -26,6 +26,12 @@ const initApp = async () => {
   }
 
   setLogRetentionProvider(() => getLogRetentionDays());
+  const currentLogRetentionDays = await getLogRetentionDays();
+  log.info('应用启动日志保留配置', {
+    logRetentionDays: currentLogRetentionDays,
+    dataPath: PATH.data,
+    logPath: PATH.log,
+  });
 
   await ensureFormatConvertTaskSchema();
   await ensureRssFeedItemSchema();

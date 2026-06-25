@@ -47,4 +47,20 @@ describe('deleteExpiredLogs', () => {
     expect(fs.existsSync(archiveDir)).toBe(false);
     expect(result.removedArchiveDirCount).toBe(1);
   });
+
+  it('keeps the previous day file right after midnight', async () => {
+    const now = new Date(2025, 0, 20, 0, 8, 0, 0).getTime();
+    const normalDir = path.join(rootDir, 'normal');
+    await fs.promises.mkdir(normalDir, { recursive: true });
+    const boundaryFile = path.join(normalDir, 'normal.2025-01-19.log');
+    const oldFile = path.join(normalDir, 'normal.2025-01-18.log');
+    await fs.promises.writeFile(boundaryFile, 'boundary');
+    await fs.promises.writeFile(oldFile, 'old');
+
+    const result = await deleteExpiredLogs({ rootDir, retentionDays: 1, now: () => now });
+
+    expect(fs.existsSync(boundaryFile)).toBe(true);
+    expect(fs.existsSync(oldFile)).toBe(false);
+    expect(result.deletedFiles).toEqual([oldFile]);
+  });
 });
