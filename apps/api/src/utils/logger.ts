@@ -66,11 +66,26 @@ const taskLog = log4js.getLogger('task');
 
 startLogMaintenance({
   onSuccess(result, trigger) {
+    log.info('[log-maintenance] 执行摘要', {
+      trigger,
+      retentionDays: result.retentionDays,
+      cutoffTime: new Date(result.cutoffTime).toISOString(),
+      scannedDirectoryCount: result.scannedDirectoryCount,
+      scannedFileCount: result.scannedFileCount,
+      deletedFileCount: result.deletedFileCount,
+      removedArchiveDirCount: result.removedArchiveDirCount,
+      deletedFiles: result.deletedFiles,
+    });
     if (result.deletedFileCount > 0 || result.removedArchiveDirCount > 0) {
       log.info('[log-maintenance] 清理完成', {
         trigger,
+        retentionDays: result.retentionDays,
+        cutoffTime: new Date(result.cutoffTime).toISOString(),
+        scannedDirectoryCount: result.scannedDirectoryCount,
+        scannedFileCount: result.scannedFileCount,
         deletedFileCount: result.deletedFileCount,
         removedArchiveDirCount: result.removedArchiveDirCount,
+        deletedFiles: result.deletedFiles,
       });
     }
   },

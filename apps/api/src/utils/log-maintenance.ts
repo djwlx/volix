@@ -9,8 +9,13 @@ const LOG_DATE_REGEXP = /(\d{4}-\d{2}-\d{2})\.log$/;
 const ARCHIVE_DIR_NAME = 'archive';
 
 type DeleteExpiredLogsResult = {
+  cutoffTime: number;
   deletedFileCount: number;
+  deletedFiles: string[];
   removedArchiveDirCount: number;
+  retentionDays: number;
+  scannedDirectoryCount: number;
+  scannedFileCount: number;
 };
 type LogMaintenanceTrigger = 'startup' | 'interval';
 type RetentionProvider = () => Promise<number> | number;
@@ -59,7 +64,9 @@ export const deleteExpiredLogs = async (options: {
   const cutoffTime = now() - retentionDays * 24 * 60 * 60 * 1000;
   const logDirs = await listLogDirectories(rootDir);
   let deletedFileCount = 0;
+  const deletedFiles: string[] = [];
   let removedArchiveDirCount = 0;
+  let scannedFileCount = 0;
 
   for (const logDir of logDirs) {
     const archiveDir = path.join(logDir, ARCHIVE_DIR_NAME);
@@ -73,6 +80,7 @@ export const deleteExpiredLogs = async (options: {
     }
 
     const entries = await fs.promises.readdir(logDir, { withFileTypes: true }).catch(() => []);
+    scannedFileCount += entries.filter(entry => entry.isFile()).length;
     const expiredFiles = entries
       .filter(entry => entry.isFile() && entry.name.endsWith('.log'))
       .map(entry => ({
@@ -84,12 +92,18 @@ export const deleteExpiredLogs = async (options: {
     for (const file of expiredFiles) {
       await fs.promises.rm(file.fullPath, { force: true });
       deletedFileCount += 1;
+      deletedFiles.push(file.fullPath);
     }
   }
 
   return {
+    cutoffTime,
     deletedFileCount,
+    deletedFiles,
     removedArchiveDirCount,
+    retentionDays,
+    scannedDirectoryCount: logDirs.length,
+    scannedFileCount,
   };
 };
 

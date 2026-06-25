@@ -29,6 +29,11 @@ describe('deleteExpiredLogs', () => {
     expect(fs.existsSync(oldFile)).toBe(false);
     expect(fs.existsSync(freshFile)).toBe(true);
     expect(result.deletedFileCount).toBe(1);
+    expect(result.retentionDays).toBe(10);
+    expect(result.cutoffTime).toBe(Date.UTC(2025, 0, 10));
+    expect(result.scannedDirectoryCount).toBe(1);
+    expect(result.scannedFileCount).toBe(2);
+    expect(result.deletedFiles).toEqual([oldFile]);
   });
 
   it('removes archive directories and their contents', async () => {
