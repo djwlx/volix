@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.1.26] - 2026-06-25
+
+### 中文
+#### Added
+- 新增随机图片缓存文件夹入口功能
+- 新增随机图片缓存文件夹入口的设计文档和计划
+#### Changed
+- 优化随机图片API，支持缓存文件夹入口
+- 更新国际化翻译（中文和英文）
+- 更新多个依赖包的版本号
+
+### English
+#### Added
+- Added random picture cache folder entry feature
+- Added design document and plan for random picture cache folder entry
+#### Changed
+- Optimized random picture API to support cache folder entry
+- Updated internationalization translations (Chinese and English)
+- Updated version numbers of multiple dependency packages
+
 ## [1.1.25] - 2026-06-24
 
 ### 中文
