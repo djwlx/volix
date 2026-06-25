@@ -6,6 +6,7 @@ import type { PicCacheFolderItem } from '@volix/types';
 import { clear115Pic, get115PicInfo, retry115Pic, set115PicRandomCacheConfig } from '@/services/115';
 import { getHttpErrorMessage } from '@/utils/error';
 import { useI18n } from '@/i18n';
+import { useAppPageContext } from '@/hooks';
 import { websocketEventBus } from '@/services/websocket-event-bus';
 import { FilePath } from './components';
 import { picCacheStatusOrder, renderPicCacheStatusTag } from './pic-cache-status';
@@ -51,6 +52,7 @@ const RANDOM_CACHE_FIELD_STYLE = {
 
 export function PicSetting() {
   const { t } = useI18n();
+  const { requestNavigate } = useAppPageContext();
   const [count, setCount] = useState(0);
   const [isCaching, setIsCaching] = useState(false);
   const [folders, setFolders] = useState<PicCacheFolderItem[]>([]);
@@ -425,6 +427,15 @@ export function PicSetting() {
             width: 180,
             render: (_: unknown, record: PicCacheFolderItem) => (
               <Space>
+                {record.status === 'cached' || record.status === 'partial' ? (
+                  <Button
+                    theme="borderless"
+                    type="tertiary"
+                    onClick={() => requestNavigate(`/pic?cid=${encodeURIComponent(record.cid)}`)}
+                  >
+                    {t('pic115.action.random')}
+                  </Button>
+                ) : null}
                 {record.status === 'failed' ? (
                   <Button theme="borderless" type="primary" onClick={() => onRetryByPath(record.cid)}>
                     {t('pic115.action.retry')}

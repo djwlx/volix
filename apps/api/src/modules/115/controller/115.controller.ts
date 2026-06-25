@@ -21,6 +21,7 @@ import {
   get115PicInfoData,
   get115PicCacheFileByPcData,
   get115RandomPicCacheFileData,
+  getRandom115PicFromCacheCidMeta,
   getRandom115PicMeta,
   getRandom115PicFromParentMeta,
   get115PicPathByPcData,
@@ -98,6 +99,22 @@ export const getRandom115PicByParent: MyMiddleware = async ctx => {
   const randomCacheConfig = await getRandomCacheConfig();
   const result = await getRandom115PicFromParentMeta({
     pc,
+    userAgent: ua as string,
+  });
+  return {
+    ...result,
+    url: result.url,
+    remoteSource: false,
+    autoPlayIntervalSeconds: randomCacheConfig.autoPlayIntervalSeconds,
+  };
+};
+
+export const getRandom115PicByCacheCid: MyMiddleware = async ctx => {
+  const ua = ctx.request.headers['user-agent'];
+  const cid = String(ctx.query?.cid || '');
+  const randomCacheConfig = await getRandomCacheConfig();
+  const result = await getRandom115PicFromCacheCidMeta({
+    cid,
     userAgent: ua as string,
   });
   return {

@@ -120,6 +120,7 @@ vi.mock('../../apps/api/src/modules/115/service/picture/picture-cache-fs-folder'
   nowIso: () => '2026-06-03T00:00:00.000Z',
   withFolderConfigLock: async <T>(task: () => Promise<T>) => task(),
   getCacheQueueRunner: () => null,
+  get115ScopeUserId: () => 'public',
   setCacheQueueRunner: vi.fn(),
   saveFile115List: vi.fn(),
   normalizePaths: (paths?: string[]) => (paths || []).map(item => item.trim()).filter(Boolean),
@@ -307,6 +308,46 @@ describe('115 picture service random meta', () => {
 
     expect(result.pc).toBe('pc-1');
     expect(result.notice).toBe('当前目录没有其他图片可切换');
+  });
+
+  test('getRandom115PicFromCacheCidMeta picks a random image from the provided cache cid', async () => {
+    getConfigMock.mockResolvedValue({
+      picture_115_random_weights: JSON.stringify({
+        sourceWeights: {
+          local: 0,
+          cloud: 100,
+        },
+        localMaxSizeMb: 2048,
+        randomNoRepeatWindowMinutes: 5,
+        randomNoRepeatMaxCount: 50,
+        cloudProxyUrl: '',
+      }),
+    });
+    getFile115RandomByCidListExcludePcMock.mockResolvedValue({
+      cid: 'cache-root',
+      parentCid: 'folder-a',
+      pc: 'pc-cache-1',
+      fullPath: '/Root/Cache Folder/01.jpg',
+      isLiked: false,
+      localCacheFileName: '',
+    });
+    get115FileDataMock.mockResolvedValue({
+      info: {
+        url: { url: 'https://img.example/cache-01.jpg' },
+        file_name: '01.jpg',
+      },
+    });
+
+    const { getRandom115PicFromCacheCidMeta } = await import('../../apps/api/src/modules/115/service/picture.service');
+    const result = await getRandom115PicFromCacheCidMeta({
+      cid: 'cache-root',
+      userAgent: 'test-agent',
+    });
+
+    expect(getFile115RandomByCidListExcludePcMock).toHaveBeenCalledWith(['cache-root'], expect.any(Array));
+    expect(result.pc).toBe('pc-cache-1');
+    expect(result.path).toBe('/Root/Cache Folder/01.jpg');
+    expect(result.parentPath).toBe('/Root/Cache Folder');
   });
 
   test('get115RandomPicCacheFileData wraps remote fallback urls with the configured proxy', async () => {

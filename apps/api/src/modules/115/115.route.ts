@@ -14,6 +14,7 @@ import {
   get115QrCodeStatus,
   get115UserInfo,
   getRandom115Pic,
+  getRandom115PicByCacheCid,
   getRandom115PicByParent,
   login115ByApp,
   like115Pic,
@@ -31,6 +32,7 @@ router.use(resolve115ActingUser());
 
 router
   .get('/pic', http(getRandom115Pic))
+  .get('/pic/cache-random', http(getRandom115PicByCacheCid))
   .get('/pic/parent-random', http(getRandom115PicByParent))
   .get('/pic/path', http(get115PicPathByPc))
   .get('/pic/cache/:pc', http(get115PicCacheFileByPc))

@@ -31,19 +31,28 @@ const getFilePathSegments = (fullPath: string) => {
   return parts.map((_, index) => `/${parts.slice(0, index + 1).join('/')}`);
 };
 
-const replaceFile115PathSegments = async (list: Cloud115DbFileItem[]) => {
-  const pcList = Array.from(new Set(list.map(item => String(item.pc || '').trim()).filter(Boolean)));
-  if (pcList.length === 0) {
+const removeFile115PathSegmentsByPcList = async (pcList: string[]) => {
+  const normalizedPcList = Array.from(new Set(pcList.map(item => String(item || '').trim()).filter(Boolean)));
+  if (normalizedPcList.length === 0) {
     return;
   }
 
   await File115PathSegmentModel.destroy({
     where: {
       pc: {
-        [Op.in]: pcList,
+        [Op.in]: normalizedPcList,
       },
     },
   });
+};
+
+const rebuildFile115PathSegments = async (list: Cloud115DbFileItem[]) => {
+  const pcList = Array.from(new Set(list.map(item => String(item.pc || '').trim()).filter(Boolean)));
+  if (pcList.length === 0) {
+    return;
+  }
+
+  await removeFile115PathSegmentsByPcList(pcList);
 
   const segmentRows = list.flatMap(item => {
     const filePc = String(item.pc || '').trim();
@@ -65,16 +74,96 @@ const replaceFile115PathSegments = async (list: Cloud115DbFileItem[]) => {
   }
 };
 
+const getExistingFile115ConflictRows = async (list: Cloud115DbFileItem[]) => {
+  const pcList = Array.from(new Set(list.map(item => String(item.pc || '').trim()).filter(Boolean)));
+  const fullPathList = Array.from(new Set(list.map(item => String(item.fullPath || '').trim()).filter(Boolean)));
+  const whereList: Array<Record<string, unknown>> = [];
+
+  if (pcList.length > 0) {
+    whereList.push({
+      pc: {
+        [Op.in]: pcList,
+      },
+    });
+  }
+
+  if (fullPathList.length > 0) {
+    whereList.push({
+      fullPath: {
+        [Op.in]: fullPathList,
+      },
+    });
+  }
+
+  if (whereList.length === 0) {
+    return [] as Array<{
+      pc: string | null;
+      fullPath: string | null;
+      isLiked: boolean | number | null;
+      localCacheFileName: string | null;
+    }>;
+  }
+
+  return (await File115Model.findAll({
+    attributes: ['pc', 'fullPath', 'isLiked', 'localCacheFileName'],
+    where: {
+      [Op.or]: whereList,
+    },
+    raw: true,
+  })) as unknown as Array<{
+    pc: string | null;
+    fullPath: string | null;
+    isLiked: boolean | number | null;
+    localCacheFileName: string | null;
+  }>;
+};
+
+const mergeExistingFile115Policy = (
+  list: Cloud115DbFileItem[],
+  existingRows: Array<{
+    pc: string | null;
+    fullPath: string | null;
+    isLiked: boolean | number | null;
+    localCacheFileName: string | null;
+  }>
+) => {
+  const existingByPc = new Map(existingRows.map(item => [String(item.pc || '').trim(), item]));
+  const existingByFullPath = new Map(existingRows.map(item => [String(item.fullPath || '').trim(), item]));
+
+  return list.map(item => {
+    const existing =
+      existingByPc.get(String(item.pc || '').trim()) || existingByFullPath.get(String(item.fullPath || '').trim());
+    return {
+      ...item,
+      isLiked: item.isLiked || Boolean(existing?.isLiked),
+      localCacheFileName: String(item.localCacheFileName || existing?.localCacheFileName || '').trim(),
+    };
+  });
+};
+
 export const setFile115List = async (list: Cloud115DbFileItem[]) => {
   if (list.length === 0) {
     return [];
   }
 
-  const result = await File115Model.bulkCreate(list, {
-    updateOnDuplicate: ['class', 'cid', 'parentCid', 'fullPath'],
-  });
+  const existingRows = await getExistingFile115ConflictRows(list);
+  const normalizedList = mergeExistingFile115Policy(list, existingRows);
+  const existingPcList = Array.from(new Set(existingRows.map(item => String(item.pc || '').trim()).filter(Boolean)));
 
-  await replaceFile115PathSegments(list);
+  if (existingPcList.length > 0) {
+    await removeFile115PathSegmentsByPcList(existingPcList);
+    await File115Model.destroy({
+      where: {
+        pc: {
+          [Op.in]: existingPcList,
+        },
+      },
+    });
+  }
+
+  const result = await File115Model.bulkCreate(normalizedList);
+
+  await rebuildFile115PathSegments(normalizedList);
   return result;
 };
 

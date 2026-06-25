@@ -362,3 +362,46 @@ export async function getRandom115PicFromParentMeta(params: { pc: string; userAg
   });
   return meta;
 }
+
+export async function getRandom115PicFromCacheCidMeta(params: {
+  cid: string;
+  userAgent: string;
+}): Promise<RandomPicMeta> {
+  const randomPickedHistory = getRandomPickedHistory();
+  const startAt = Date.now();
+  const randomCacheConfig = await getRandomCacheConfig();
+  const dedupeWindowMs = Math.max(0, Number(randomCacheConfig.randomNoRepeatWindowMinutes || 0)) * 60 * 1000;
+  const dedupeMaxCount = Math.max(0, Math.round(Number(randomCacheConfig.randomNoRepeatMaxCount || 0)));
+  const recentPickedPcSet = getRecentPickedPcSet(randomPickedHistory, startAt, dedupeWindowMs, dedupeMaxCount);
+  const dedupeLogMeta = getDedupeLogMeta(randomPickedHistory, recentPickedPcSet, dedupeWindowMs, dedupeMaxCount);
+  const cid = params.cid.trim();
+  if (!cid) {
+    badRequest(t('pic115Api.cacheCidRequired'));
+  }
+
+  const dedupeExcludedPcList = Array.from(recentPickedPcSet);
+  let selectedFile = await getFile115RandomByCidListExcludePc([cid], dedupeExcludedPcList);
+  let dedupeBypass = false;
+  if (!selectedFile) {
+    selectedFile = await getFile115RandomByCidList([cid]);
+    dedupeBypass = Boolean(selectedFile?.pc && recentPickedPcSet.has(selectedFile.pc));
+  }
+  const safeSelectedFile = selectedFile || badRequest(t('pic115Api.cacheUnavailable'));
+  const meta = await buildRandomPicMetaFromFile(safeSelectedFile, params.userAgent);
+  rememberPickedPc(randomPickedHistory, meta.pc, Date.now(), dedupeWindowMs, dedupeMaxCount);
+  log.info('[115-random] 缓存目录随机图片结果', {
+    finalSource: 'cache-folder-file',
+    dedupeBypass,
+    targetPc: meta.pc,
+    targetCid: meta.cid,
+    targetRootCid: cid,
+    timingsMs: {
+      totalMs: Date.now() - startAt,
+    },
+    dedupe: {
+      ...dedupeLogMeta,
+      excludedPcCount: dedupeExcludedPcList.length,
+    },
+  });
+  return meta;
+}

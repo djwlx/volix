@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { Button, Image, Space, Switch, Toast, Tooltip, Typography } from '@douyinfe/semi-ui';
 import styles from './index.module.scss';
-import { get115FileList, get115Pic, get115PicFromParent, get115PicPathByPc, like115Pic } from '@/services/115';
+import {
+  get115FileList,
+  get115Pic,
+  get115PicFromCacheCid,
+  get115PicFromParent,
+  get115PicPathByPc,
+  like115Pic,
+} from '@/services/115';
 import { Loading } from '@/components';
 import { getHttpErrorMessage } from '@/utils/error';
 import { useUser } from '@/hooks';
@@ -22,6 +30,7 @@ interface PicMeta {
 
 function PicApp() {
   const { t } = useI18n();
+  const [searchParams] = useSearchParams();
   const { user } = useUser(false);
   const [picMeta, setPicMeta] = useState<PicMeta | null>(null);
   const [picPath, setPicPath] = useState('');
@@ -31,6 +40,7 @@ function PicApp() {
   const [autoPlayIntervalSeconds, setAutoPlayIntervalSeconds] = useState(10);
   const fetchImgRef = useRef<() => Promise<void>>(async () => undefined);
   const isAdmin = user?.role === UserRole.ADMIN;
+  const bootstrapCid = String(searchParams.get('cid') || '').trim();
 
   const applyPicMeta = (data?: Random115PicResponse | null) => {
     if (data?.url) {
@@ -114,6 +124,18 @@ function PicApp() {
     }
   };
 
+  const fetchInitialImg = async () => {
+    try {
+      setLoading(true);
+      const res = bootstrapCid ? await get115PicFromCacheCid(bootstrapCid) : await get115Pic('json');
+      applyPicMeta(res.data);
+    } catch {
+      setPicMeta(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchImgRef.current = fetchImg;
   });
@@ -156,8 +178,8 @@ function PicApp() {
   };
 
   useEffect(() => {
-    fetchImg();
-  }, []);
+    fetchInitialImg();
+  }, [bootstrapCid]);
 
   useEffect(() => {
     if (!autoPlayEnabled || loading || !picMeta?.src) {

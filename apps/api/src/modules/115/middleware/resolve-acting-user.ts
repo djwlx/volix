@@ -10,6 +10,7 @@ import { t } from '../../../utils/i18n';
 
 const GUEST_ALLOWED_PATHS = [
   '/api/115/pic',
+  '/api/115/pic/cache-random',
   '/api/115/pic/parent-random',
   '/api/115/pic/cache/:pc',
   '/api/115/pic/random-cache/:cacheFileName',

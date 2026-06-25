@@ -98,6 +98,14 @@ export function get115PicFromParent(pc: string) {
   });
 }
 
+export function get115PicFromCacheCid(cid: string) {
+  return http.get<Random115PicResponse>('/115/pic/cache-random', {
+    params: {
+      cid,
+    },
+  });
+}
+
 export function get115PicPathByPc(pc: string) {
   return http.get<PicPathByPcResponse>('/115/pic/path', {
     params: {
