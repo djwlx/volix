@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.1.27] - 2026-06-25
+
+### 中文
+#### Added
+- 新增日志记录功能，记录系统设置变更等操作日志
+- 新增日志维护功能，支持自动清理过期日志
+- 新增系统设置服务单元测试
+#### Changed
+- 优化日志模块，调整日志记录逻辑
+- 更新依赖版本
+
+### English
+#### Added
+- Added logging feature to record operations like system setting changes
+- Added log maintenance feature to automatically clean up expired logs
+- Added unit tests for system setting service
+#### Changed
+- Optimized log module, adjusted logging logic
+- Updated dependency versions
+
 ## [1.1.26] - 2026-06-25
 
 ### 中文
