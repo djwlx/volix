@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.1.28] - 2026-06-26
+
+### 中文
+#### Added
+- 新增漫画格式转换功能，支持元数据编辑
+- 新增 Komga 集成 SDK，支持与 Komga 服务器交互
+- 新增忘记密码功能，支持通过邮箱重置密码
+- 新增本地文件单次上传组件
+- 新增漫画元数据表单与面板组件
+#### Changed
+- 优化格式转换任务执行逻辑，支持漫画转换
+- 优化定时任务服务，调整任务调度逻辑
+- 优化用户配置服务，支持 Komga 账号配置
+- 更新国际化翻译文件，新增相关文案
+#### Fixed
+- 修复文件数据库变更服务中的若干问题
+- 修复格式转换任务数据库服务中的问题
+- 修复定时任务 API 测试中的问题
+
+### English
+#### Added
+- Added comic format conversion with metadata editing support
+- Added Komga integration SDK for interacting with Komga server
+- Added forgot password functionality via email reset
+- Added local single file upload component
+- Added comic metadata form and panel components
+#### Changed
+- Optimized format conversion task execution logic to support comic conversion
+- Optimized scheduled task service with adjusted scheduling logic
+- Optimized user configuration service to support Komga account settings
+- Updated i18n translation files with new related texts
+#### Fixed
+- Fixed several issues in file database mutation service
+- Fixed issues in format conversion task database service
+- Fixed issues in scheduled task API tests
+
 ## [1.1.27] - 2026-06-25
 
 ### 中文
