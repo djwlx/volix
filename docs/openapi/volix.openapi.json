@@ -1,0 +1,5695 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Volix",
+    "version": "1.1.25",
+    "description": "OpenAPI definition generated from the Volix backend routes."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development server"
+    }
+  ],
+  "x-tagGroups": [
+    {
+      "name": "Volix",
+      "tags": [
+        "Util",
+        "115",
+        "File",
+        "User",
+        "SQLite Admin",
+        "RSS",
+        "Format Convert",
+        "Log Viewer",
+        "Task Center"
+      ]
+    }
+  ],
+  "tags": [
+    {
+      "name": "Util"
+    },
+    {
+      "name": "115"
+    },
+    {
+      "name": "File"
+    },
+    {
+      "name": "User"
+    },
+    {
+      "name": "SQLite Admin"
+    },
+    {
+      "name": "RSS"
+    },
+    {
+      "name": "Format Convert"
+    },
+    {
+      "name": "Log Viewer"
+    },
+    {
+      "name": "Task Center"
+    }
+  ],
+  "paths": {
+    "/api/util/test": {
+      "get": {
+        "tags": [
+          "Util"
+        ],
+        "operationId": "testUtil",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAny"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/pic": {
+      "get": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "getRandom115Pic",
+        "description": "Supports guest access when a default random-picture user is configured.",
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "json",
+                "direct"
+              ],
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Random picture metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Random115PicResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/pic/parent-random": {
+      "get": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "getRandom115PicByParent",
+        "description": "Supports guest access when a default random-picture user is configured.",
+        "parameters": [
+          {
+            "name": "pc",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Random picture under a parent folder",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Random115PicResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/pic/path": {
+      "get": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "get115PicPathByPc",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pc",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Picture path by pc",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PicPathByPcResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/pic/cache/{pc}": {
+      "get": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "get115PicCacheFileByPc",
+        "description": "Returns cached picture file. Supports guest access when a default random-picture user is configured.",
+        "parameters": [
+          {
+            "name": "pc",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary file"
+          }
+        }
+      }
+    },
+    "/api/115/pic/random-cache/{cacheFileName}": {
+      "get": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "get115RandomPicCacheFile",
+        "description": "Returns cached random picture file. Supports guest access when a default random-picture user is configured.",
+        "parameters": [
+          {
+            "name": "cacheFileName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary file"
+          }
+        }
+      }
+    },
+    "/api/115/pic/likes": {
+      "get": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "get115LikedPicList",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liked pictures",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Liked115PicListResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/pic/info": {
+      "get": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "get115PicInfo",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Picture cache info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PicInfo115"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "set115PicInfo",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PicInfoParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated picture cache info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PicInfo115"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "clear115Pic",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "paths",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated paths"
+          },
+          {
+            "name": "folderPaths",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated folder paths"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClearPicInfoParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cleared picture cache info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PicInfo115"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/pic/like": {
+      "post": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "like115Pic",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Like115PicParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Like state updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Like115PicResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/pic/random-cache-config": {
+      "put": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "set115PicRandomCacheConfig",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPicRandomCacheConfigParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated random cache config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PicInfo115"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/pic/info/retry": {
+      "post": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "retry115Pic",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetryPicInfoParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Retried picture loading",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/PicInfo115"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/user": {
+      "get": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "get115UserInfo",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "115 account user info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/Account115UserInfo"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/exit": {
+      "post": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "exitCloud115",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logged out of 115 account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAny"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/qrcode": {
+      "get": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "get115QrCode",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "QR code for 115 login",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/QrCodeResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/qrcode/status": {
+      "get": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "get115QrCodeStatus",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sign",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "time",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "QR code status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/QrCodeStatus"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/qrcode/login": {
+      "post": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "login115ByApp",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QrLoginParams"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "QR code login result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAny"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/files/{cid}": {
+      "get": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "get115FileList",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "cid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "115 file list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/FileListData"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/115/file/{pc}": {
+      "get": {
+        "tags": [
+          "115"
+        ],
+        "operationId": "get115File",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pc",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "115 file info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAny"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/file/upload": {
+      "post": {
+        "tags": [
+          "File"
+        ],
+        "operationId": "uploadFile",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Uploaded file metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UploadFileResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/file/{dirKey}/{fileName}": {
+      "get": {
+        "tags": [
+          "File"
+        ],
+        "operationId": "serveUserFile",
+        "description": "Public file serving route.",
+        "parameters": [
+          {
+            "name": "dirKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary file"
+          }
+        }
+      }
+    },
+    "/api/file/{id}": {
+      "get": {
+        "tags": [
+          "File"
+        ],
+        "operationId": "serveFileById",
+        "description": "Public file serving route.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary file"
+          }
+        }
+      }
+    },
+    "/api/user/login": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "loginUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginUserPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LoginUserResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/register": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "registerUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterUserPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Register result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAny"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/register-config": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "getRegisterConfig",
+        "responses": {
+          "200": {
+            "description": "Register config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RegisterConfigResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/register-code": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "sendRegisterCode",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendRegisterCodePayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Register code sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SendRegisterCodeResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/forgot-password-code": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "sendForgotPasswordCode",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendForgotPasswordCodePayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset email sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SendRegisterCodeResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/reset-password": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "resetPassword",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SendRegisterCodeResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/me": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "getCurrentUser",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserInfoResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/me/email-verify-code": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "sendCurrentUserEmailVerifyCode",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verification code sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SendRegisterCodeResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/me/email-verify": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "verifyCurrentUserEmail",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyCurrentUserEmailPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verified current user email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserInfoResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/account-configs": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "getAccountConfigs",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account configs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/AccountConfigMap"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "updateAccountConfig",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAccountConfigPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated account config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAny"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/account-configs/test": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "testAccountConfig",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestAccountConfigPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Test account config result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/TestAccountConfigResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/account-configs/ai/models": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "listAiModels",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListAiModelsPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "AI models",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ListAiModelsResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/ai/translate": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "translateText",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranslateTextPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Translated text",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/TranslateTextResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/system-config": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "getSystemConfig",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "System config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SystemConfigResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "updateSystemConfig",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSystemConfigPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated system config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SystemConfigResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/profile": {
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "updateCurrentUserProfile",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserProfilePayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated current user profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserInfoResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/list": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "getUserList",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/UserInfoResponse"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/role": {
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "setUserRole",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetUserRolePayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserInfoResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/admin-create": {
+      "post": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "adminCreateUser",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCreateUserPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserInfoResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/assign-role": {
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "assignUserRole",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignUserRolePayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Assigned role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAny"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/{id}": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "getUserDetail",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserInfoResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "User"
+        ],
+        "operationId": "adminUpdateUser",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUpdateUserPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserInfoResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sqlite-admin/tables": {
+      "get": {
+        "tags": [
+          "SQLite Admin"
+        ],
+        "operationId": "listSqliteAdminTables",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List sqlite tables",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SqliteAdminTableListResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sqlite-admin/tables/{tableName}": {
+      "get": {
+        "tags": [
+          "SQLite Admin"
+        ],
+        "operationId": "getSqliteAdminTableDetail",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tableName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Table detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SqliteAdminTableDetailResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sqlite-admin/tables/{tableName}/rows": {
+      "post": {
+        "tags": [
+          "SQLite Admin"
+        ],
+        "operationId": "createSqliteAdminRow",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tableName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSqliteAdminRowPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created row",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SqliteAdminMutationResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "SQLite Admin"
+        ],
+        "operationId": "updateSqliteAdminRow",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tableName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSqliteAdminRowPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated row",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SqliteAdminMutationResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "SQLite Admin"
+        ],
+        "operationId": "deleteSqliteAdminRow",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "tableName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteSqliteAdminRowPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deleted row",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SqliteAdminMutationResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rss/{dirKey}/{subscriptionKey}/{itemSeg}/{resourceId}": {
+      "get": {
+        "tags": [
+          "RSS"
+        ],
+        "operationId": "getRssItemResourceFile",
+        "description": "Public RSS resource proxy file route.",
+        "parameters": [
+          {
+            "name": "dirKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subscriptionKey",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemSeg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "resourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Binary file"
+          }
+        }
+      }
+    },
+    "/api/rss/feed": {
+      "get": {
+        "tags": [
+          "RSS"
+        ],
+        "operationId": "getRssFeed",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "route",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hub",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "feedUrl",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "force",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "RSS feed data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RssReaderRawFeed"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rss/setting": {
+      "get": {
+        "tags": [
+          "RSS"
+        ],
+        "operationId": "getCurrentUserRssSetting",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user RSS setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserRssSetting"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "RSS"
+        ],
+        "operationId": "updateCurrentUserRssSetting",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRssSettingPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated RSS setting",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserRssSetting"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rss/storage": {
+      "get": {
+        "tags": [
+          "RSS"
+        ],
+        "operationId": "getRssStorage",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "RSS storage status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RssStorageStatus"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rss/storage/clear": {
+      "post": {
+        "tags": [
+          "RSS"
+        ],
+        "operationId": "clearCurrentUserRssStorage",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClearRssStoragePayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cleared RSS storage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/RssStorageStatus"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rss/subscriptions": {
+      "get": {
+        "tags": [
+          "RSS"
+        ],
+        "operationId": "getCurrentUserRssSubscriptions",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "RSS subscriptions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/UserRssSubscriptionItem"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "RSS"
+        ],
+        "operationId": "addCurrentUserRssSubscription",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserRssSubscriptionPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created RSS subscription",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserRssSubscriptionItem"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "RSS"
+        ],
+        "operationId": "removeCurrentUserRssSubscription",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "route",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Removed RSS subscription",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "type": "object",
+                          "required": [
+                            "route"
+                          ],
+                          "properties": {
+                            "route": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rss/subscriptions/enabled": {
+      "put": {
+        "tags": [
+          "RSS"
+        ],
+        "operationId": "updateCurrentUserRssSubscriptionEnabled",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRssSubscriptionEnabledPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated RSS subscription enabled state",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/UserRssSubscriptionItem"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/format-convert/local-task": {
+      "post": {
+        "tags": [
+          "Format Convert"
+        ],
+        "operationId": "createLocalFormatConvertTask",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "payload"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "payload": {
+                    "type": "string",
+                    "description": "JSON string containing the local task payload."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created local format convert task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/CreateFormatConvertTaskResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/format-convert/cloud-task": {
+      "post": {
+        "tags": [
+          "Format Convert"
+        ],
+        "operationId": "createCloudFormatConvertTask",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFormatConvertTaskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created cloud format convert task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/CreateFormatConvertTaskResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/format-convert/tasks": {
+      "get": {
+        "tags": [
+          "Format Convert"
+        ],
+        "operationId": "getFormatConvertTasks",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Format convert tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/GetFormatConvertTaskListResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/format-convert/task/{id}/retry": {
+      "post": {
+        "tags": [
+          "Format Convert"
+        ],
+        "operationId": "retryFormatConvertTask",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Retry scheduled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAny"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/format-convert/task/{id}/cleanup": {
+      "post": {
+        "tags": [
+          "Format Convert"
+        ],
+        "operationId": "cleanupFormatConvertTaskFiles",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cleanup scheduled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAny"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/format-convert/task/{id}/delete": {
+      "post": {
+        "tags": [
+          "Format Convert"
+        ],
+        "operationId": "deleteFormatConvertTask",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAny"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/format-convert/tasks/delete": {
+      "post": {
+        "tags": [
+          "Format Convert"
+        ],
+        "operationId": "deleteFormatConvertTasks",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "taskIds"
+                ],
+                "properties": {
+                  "taskIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Deleted tasks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAny"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/format-convert/task/{id}/result": {
+      "get": {
+        "tags": [
+          "Format Convert"
+        ],
+        "operationId": "downloadFormatConvertResult",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Download result file"
+          }
+        }
+      }
+    },
+    "/api/format-convert/task/{id}/log": {
+      "get": {
+        "tags": [
+          "Format Convert"
+        ],
+        "operationId": "downloadFormatConvertLog",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Download task log file"
+          }
+        }
+      }
+    },
+    "/api/format-convert/openlist/fs": {
+      "get": {
+        "tags": [
+          "Format Convert"
+        ],
+        "operationId": "listOpenlistFsForFormatConvert",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "/"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "perPage",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Browse OpenList filesystem for format conversion",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/FormatConvertOpenlistBrowserResult"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/log-viewer/dates": {
+      "get": {
+        "tags": [
+          "Log Viewer"
+        ],
+        "operationId": "getLogDatesAction",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/LogViewerType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Log dates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LogViewerDatesResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/log-viewer/entries": {
+      "get": {
+        "tags": [
+          "Log Viewer"
+        ],
+        "operationId": "getLogEntriesAction",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/LogViewerType"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "levels",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated log levels"
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Log entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/LogViewerEntriesResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/log-viewer/download": {
+      "get": {
+        "tags": [
+          "Log Viewer"
+        ],
+        "operationId": "downloadLogAction",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/LogViewerType"
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Download log file"
+          }
+        }
+      }
+    },
+    "/api/task-center/tasks": {
+      "get": {
+        "tags": [
+          "Task Center"
+        ],
+        "operationId": "listScheduledTasks",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scheduled task list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ListScheduledTasksResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Task Center"
+        ],
+        "operationId": "createScheduledTask",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScheduledTaskPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created scheduled task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ScheduledTask"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Task Center"
+        ],
+        "operationId": "updateScheduledTask",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateScheduledTaskPayload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated scheduled task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ScheduledTask"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/task-center/tasks/{id}": {
+      "delete": {
+        "tags": [
+          "Task Center"
+        ],
+        "operationId": "deleteScheduledTask",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted scheduled task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseAny"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/task-center/tasks/{id}/trigger": {
+      "post": {
+        "tags": [
+          "Task Center"
+        ],
+        "operationId": "triggerScheduledTask",
+        "security": [
+          {
+            "VolixToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Triggered scheduled task",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ApiResponseBase"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/TriggerScheduledTaskResponse"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "VolixToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "volix-token",
+        "description": "Volix authentication token header."
+      }
+    },
+    "schemas": {
+      "ApiResponseBase": {
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "data"
+        ],
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {}
+        }
+      },
+      "ApiResponseAny": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ApiResponseBase"
+          },
+          {
+            "properties": {
+              "data": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        ]
+      },
+      "UserRole": {
+        "type": "string",
+        "enum": [
+          "user",
+          "admin"
+        ]
+      },
+      "AppFeature": {
+        "type": "string",
+        "enum": [
+          "account115",
+          "randomPic"
+        ]
+      },
+      "AccountConfigPlatform": {
+        "type": "string",
+        "enum": [
+          "qbittorrent",
+          "openlist",
+          "smtp",
+          "bangumi",
+          "ai",
+          "astrbot"
+        ]
+      },
+      "AiProvider": {
+        "type": "string",
+        "enum": [
+          "openai",
+          "gemini",
+          "deepseek",
+          "custom"
+        ]
+      },
+      "ServiceAccountConfigItem": {
+        "type": "object",
+        "required": [
+          "baseUrl",
+          "username",
+          "password"
+        ],
+        "properties": {
+          "baseUrl": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "SmtpAccountConfigItem": {
+        "type": "object",
+        "required": [
+          "host",
+          "port",
+          "secure",
+          "username",
+          "password",
+          "fromEmail"
+        ],
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "secure": {
+            "type": "boolean"
+          },
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "fromEmail": {
+            "type": "string"
+          }
+        }
+      },
+      "BangumiAccountConfigItem": {
+        "type": "object",
+        "required": [
+          "baseUrl",
+          "accessToken"
+        ],
+        "properties": {
+          "baseUrl": {
+            "type": "string"
+          },
+          "accessToken": {
+            "type": "string"
+          }
+        }
+      },
+      "AiAccountConfigItem": {
+        "type": "object",
+        "required": [
+          "provider",
+          "baseUrl",
+          "apiKey",
+          "model"
+        ],
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/AiProvider"
+          },
+          "baseUrl": {
+            "type": "string"
+          },
+          "apiKey": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          }
+        }
+      },
+      "AstrbotAccountConfigItem": {
+        "type": "object",
+        "required": [
+          "baseUrl",
+          "apiKey"
+        ],
+        "properties": {
+          "baseUrl": {
+            "type": "string"
+          },
+          "apiKey": {
+            "type": "string"
+          },
+          "umos": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AccountConfigItem": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ServiceAccountConfigItem"
+          },
+          {
+            "$ref": "#/components/schemas/SmtpAccountConfigItem"
+          },
+          {
+            "$ref": "#/components/schemas/BangumiAccountConfigItem"
+          },
+          {
+            "$ref": "#/components/schemas/AiAccountConfigItem"
+          },
+          {
+            "$ref": "#/components/schemas/AstrbotAccountConfigItem"
+          }
+        ]
+      },
+      "AccountConfigMap": {
+        "type": "object",
+        "properties": {
+          "qbittorrent": {
+            "$ref": "#/components/schemas/ServiceAccountConfigItem"
+          },
+          "openlist": {
+            "$ref": "#/components/schemas/ServiceAccountConfigItem"
+          },
+          "smtp": {
+            "$ref": "#/components/schemas/SmtpAccountConfigItem"
+          },
+          "bangumi": {
+            "$ref": "#/components/schemas/BangumiAccountConfigItem"
+          },
+          "ai": {
+            "$ref": "#/components/schemas/AiAccountConfigItem"
+          },
+          "astrbot": {
+            "$ref": "#/components/schemas/AstrbotAccountConfigItem"
+          }
+        }
+      },
+      "UpdateAccountConfigPayload": {
+        "type": "object",
+        "required": [
+          "platform",
+          "config"
+        ],
+        "properties": {
+          "platform": {
+            "$ref": "#/components/schemas/AccountConfigPlatform"
+          },
+          "config": {
+            "$ref": "#/components/schemas/AccountConfigItem"
+          }
+        }
+      },
+      "TestAccountConfigPayload": {
+        "$ref": "#/components/schemas/UpdateAccountConfigPayload"
+      },
+      "TestAccountConfigResponse": {
+        "type": "object",
+        "required": [
+          "success",
+          "message"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ListAiModelsPayload": {
+        "type": "object",
+        "required": [
+          "baseUrl",
+          "apiKey"
+        ],
+        "properties": {
+          "baseUrl": {
+            "type": "string"
+          },
+          "apiKey": {
+            "type": "string"
+          }
+        }
+      },
+      "ListAiModelsResponse": {
+        "type": "object",
+        "required": [
+          "models"
+        ],
+        "properties": {
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TranslateTextPayload": {
+        "type": "object",
+        "required": [
+          "text",
+          "targetLanguage"
+        ],
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "sourceLanguage": {
+            "type": "string"
+          },
+          "targetLanguage": {
+            "type": "string"
+          }
+        }
+      },
+      "TranslateTextResponse": {
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "RegisterConfigResponse": {
+        "type": "object",
+        "required": [
+          "emailVerificationRequired"
+        ],
+        "properties": {
+          "emailVerificationRequired": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SendRegisterCodePayload": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        }
+      },
+      "SendForgotPasswordCodePayload": {
+        "$ref": "#/components/schemas/SendRegisterCodePayload"
+      },
+      "SendRegisterCodeResponse": {
+        "type": "object",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ResetPasswordPayload": {
+        "type": "object",
+        "required": [
+          "newPassword"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "verifyCode": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
+          }
+        }
+      },
+      "VerifyCurrentUserEmailPayload": {
+        "type": "object",
+        "required": [
+          "verifyCode"
+        ],
+        "properties": {
+          "verifyCode": {
+            "type": "string"
+          }
+        }
+      },
+      "SystemConfigResponse": {
+        "type": "object",
+        "required": [
+          "registerEmailVerifyEnabled"
+        ],
+        "properties": {
+          "registerEmailVerifyEnabled": {
+            "type": "boolean"
+          },
+          "registerEmailVerifySmtp": {
+            "$ref": "#/components/schemas/SmtpAccountConfigItem"
+          },
+          "randomPicDefaultUserId": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "logRetentionDays": {
+            "type": "integer"
+          },
+          "settings": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "UpdateSystemConfigPayload": {
+        "type": "object",
+        "required": [
+          "registerEmailVerifyEnabled"
+        ],
+        "properties": {
+          "registerEmailVerifyEnabled": {
+            "type": "boolean"
+          },
+          "registerEmailVerifySmtp": {
+            "$ref": "#/components/schemas/SmtpAccountConfigItem"
+          },
+          "randomPicDefaultUserId": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "logRetentionDays": {
+            "type": "integer"
+          }
+        }
+      },
+      "LoginUserPayload": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "RegisterUserPayload": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "verifyCode": {
+            "type": "string"
+          }
+        }
+      },
+      "LoginUserResponse": {
+        "type": "object",
+        "required": [
+          "token"
+        ],
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        }
+      },
+      "UserInfoResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "emailVerified",
+          "role",
+          "featurePermissions"
+        ],
+        "properties": {
+          "id": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "roleKey": {
+            "type": "string"
+          },
+          "featurePermissions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AppFeature"
+            }
+          },
+          "settings": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "SetUserRolePayload": {
+        "type": "object",
+        "required": [
+          "userId",
+          "role"
+        ],
+        "properties": {
+          "userId": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          }
+        }
+      },
+      "UpdateUserProfilePayload": {
+        "type": "object",
+        "properties": {
+          "nickname": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          }
+        }
+      },
+      "AssignUserRolePayload": {
+        "type": "object",
+        "required": [
+          "userId",
+          "roleKey"
+        ],
+        "properties": {
+          "userId": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "roleKey": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminCreateUserPayload": {
+        "type": "object",
+        "required": [
+          "email",
+          "password"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "nickname": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "roleKey": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminUpdateUserPayload": {
+        "type": "object",
+        "properties": {
+          "nickname": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "roleKey": {
+            "type": "string"
+          }
+        }
+      },
+      "QrLoginParams": {
+        "type": "object",
+        "required": [
+          "uid",
+          "app"
+        ],
+        "properties": {
+          "uid": {
+            "type": "string"
+          },
+          "app": {
+            "type": "string"
+          }
+        }
+      },
+      "Account115UserInfo": {
+        "type": "object",
+        "properties": {
+          "user_name": {
+            "type": "string"
+          },
+          "face": {
+            "type": "string"
+          }
+        }
+      },
+      "FileListDataItem": {
+        "type": "object",
+        "required": [
+          "n",
+          "pc",
+          "cid"
+        ],
+        "properties": {
+          "n": {
+            "type": "string"
+          },
+          "pc": {
+            "type": "string"
+          },
+          "cid": {
+            "type": "string"
+          },
+          "fid": {
+            "type": "string"
+          }
+        }
+      },
+      "FileListData": {
+        "type": "object",
+        "required": [
+          "data",
+          "count",
+          "path"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FileListDataItem"
+            }
+          },
+          "count": {
+            "type": "integer"
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "PicInfoParams": {
+        "type": "object",
+        "required": [
+          "paths"
+        ],
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ClearPicInfoParams": {
+        "type": "object",
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "folderPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RetryPicInfoParams": {
+        "type": "object",
+        "required": [
+          "paths"
+        ],
+        "properties": {
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Like115PicParams": {
+        "type": "object",
+        "properties": {
+          "cid": {
+            "type": "string"
+          },
+          "pc": {
+            "type": "string"
+          },
+          "liked": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Like115PicResponse": {
+        "type": "object",
+        "properties": {
+          "pc": {
+            "type": "string"
+          },
+          "cid": {
+            "type": "string"
+          },
+          "liked": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          },
+          "parentPath": {
+            "type": "string"
+          },
+          "cached": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "Random115PicResponse": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "cid": {
+            "type": "string"
+          },
+          "pc": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "parentPath": {
+            "type": "string"
+          },
+          "liked": {
+            "type": "boolean"
+          },
+          "notice": {
+            "type": "string"
+          },
+          "remoteSource": {
+            "type": "boolean"
+          },
+          "autoPlayIntervalSeconds": {
+            "type": "integer"
+          }
+        }
+      },
+      "PicPathByPcResponse": {
+        "type": "object",
+        "properties": {
+          "pc": {
+            "type": "string"
+          },
+          "cid": {
+            "type": "string"
+          },
+          "parentPath": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "liked": {
+            "type": "boolean"
+          },
+          "cached": {
+            "type": "boolean"
+          }
+        }
+      },
+      "Liked115PicItem": {
+        "type": "object",
+        "properties": {
+          "pc": {
+            "type": "string"
+          },
+          "cid": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "parentPath": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "liked": {
+            "type": "boolean"
+          },
+          "cached": {
+            "type": "boolean"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "Liked115PicListResponse": {
+        "type": "object",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Liked115PicItem"
+            }
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          }
+        }
+      },
+      "PicCacheFolderItem": {
+        "type": "object",
+        "properties": {
+          "cid": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "caching",
+              "cached",
+              "failed",
+              "partial"
+            ]
+          },
+          "errorMessage": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          }
+        }
+      },
+      "PicRandomCacheConfig": {
+        "type": "object",
+        "properties": {
+          "sourceWeights": {
+            "type": "object",
+            "properties": {
+              "memory": {
+                "type": "integer"
+              },
+              "local": {
+                "type": "integer"
+              },
+              "cloud": {
+                "type": "integer"
+              }
+            }
+          },
+          "memoryMaxSizeMb": {
+            "type": "integer"
+          },
+          "localMaxSizeMb": {
+            "type": "integer"
+          },
+          "randomNoRepeatWindowMinutes": {
+            "type": "integer"
+          },
+          "randomNoRepeatMaxCount": {
+            "type": "integer"
+          },
+          "cloudProxyUrl": {
+            "type": "string"
+          },
+          "autoPlayIntervalSeconds": {
+            "type": "integer"
+          }
+        }
+      },
+      "PicRandomCacheStats": {
+        "type": "object",
+        "properties": {
+          "memoryFileCount": {
+            "type": "integer"
+          },
+          "memoryTotalSizeBytes": {
+            "type": "integer"
+          },
+          "memoryTotalSizeMb": {
+            "type": "number"
+          },
+          "memoryLimitExceeded": {
+            "type": "boolean"
+          },
+          "localFileCount": {
+            "type": "integer"
+          },
+          "localTotalSizeBytes": {
+            "type": "integer"
+          },
+          "localTotalSizeMb": {
+            "type": "number"
+          },
+          "localLimitExceeded": {
+            "type": "boolean"
+          }
+        }
+      },
+      "QrCodeValue": {
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "string"
+          },
+          "time": {
+            "type": "integer"
+          },
+          "sign": {
+            "type": "string"
+          },
+          "qrcode": {
+            "type": "string"
+          }
+        }
+      },
+      "QrCodeResponse": {
+        "type": "object",
+        "properties": {
+          "qrCode": {
+            "type": "string"
+          },
+          "qrCodeValue": {
+            "$ref": "#/components/schemas/QrCodeValue"
+          },
+          "qrCodeImg": {
+            "type": "string"
+          }
+        }
+      },
+      "QrCodeStatus": {
+        "type": "object",
+        "properties": {
+          "msg": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      },
+      "PicInfo115": {
+        "type": "object",
+        "properties": {
+          "loading": {
+            "type": "boolean"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "likedCount": {
+            "type": "integer"
+          },
+          "folders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PicCacheFolderItem"
+            }
+          },
+          "cachedCids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cachedFolderPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "randomCacheConfig": {
+            "$ref": "#/components/schemas/PicRandomCacheConfig"
+          },
+          "randomCacheStats": {
+            "$ref": "#/components/schemas/PicRandomCacheStats"
+          }
+        }
+      },
+      "SetPicRandomCacheConfigParams": {
+        "type": "object",
+        "properties": {
+          "sourceWeights": {
+            "type": "object",
+            "properties": {
+              "memory": {
+                "type": "integer"
+              },
+              "local": {
+                "type": "integer"
+              },
+              "cloud": {
+                "type": "integer"
+              }
+            }
+          },
+          "memoryMaxSizeMb": {
+            "type": "integer"
+          },
+          "localMaxSizeMb": {
+            "type": "integer"
+          },
+          "randomNoRepeatWindowMinutes": {
+            "type": "integer"
+          },
+          "randomNoRepeatMaxCount": {
+            "type": "integer"
+          },
+          "cloudProxyUrl": {
+            "type": "string"
+          },
+          "autoPlayIntervalSeconds": {
+            "type": "integer"
+          }
+        }
+      },
+      "UploadedFileMeta": {
+        "type": "object",
+        "properties": {
+          "extension": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "storage": {
+            "type": "string",
+            "enum": [
+              "local"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "deleted"
+            ]
+          }
+        }
+      },
+      "UploadFileResponse": {
+        "$ref": "#/components/schemas/UploadedFileMeta"
+      },
+      "RssReaderItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "descriptionHtml": {
+            "type": "string"
+          },
+          "imageUrls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "author": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "type": "string"
+          },
+          "guid": {
+            "type": "string"
+          },
+          "category": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "updated": {
+            "type": "string"
+          },
+          "enclosureUrl": {
+            "type": "string"
+          },
+          "enclosureLength": {
+            "type": "integer"
+          },
+          "enclosureType": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "integer"
+          },
+          "upvotes": {
+            "type": "integer"
+          },
+          "downvotes": {
+            "type": "integer"
+          },
+          "media": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "doi": {
+            "type": "string"
+          },
+          "resourcesLocalized": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RssReaderRawFeed": {
+        "type": "object",
+        "properties": {
+          "feedUrl": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "xml": {
+            "type": "string"
+          },
+          "fetchedAt": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RssReaderItem"
+            }
+          }
+        }
+      },
+      "UserRssSetting": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "resourceProxyBaseUrl": {
+            "type": "string"
+          },
+          "resourceCacheMaxSizeMb": {
+            "type": "integer"
+          },
+          "refreshIntervalMinutes": {
+            "type": "integer"
+          },
+          "resourceDownloadMaxRetry": {
+            "type": "integer"
+          }
+        }
+      },
+      "RssPathUsageStat": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "fileCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "RssStorageStatus": {
+        "type": "object",
+        "properties": {
+          "queue": {
+            "type": "object",
+            "properties": {
+              "pendingCount": {
+                "type": "integer"
+              },
+              "running": {
+                "type": "boolean"
+              }
+            }
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "pendingCount": {
+                  "type": "integer"
+                },
+                "itemCount": {
+                  "type": "integer"
+                },
+                "lastUpdatedAt": {
+                  "type": "string"
+                },
+                "lastNewCount": {
+                  "type": "integer"
+                },
+                "nextUpdateAt": {
+                  "type": "string"
+                },
+                "storageSizeBytes": {
+                  "type": "integer"
+                },
+                "storageFileCount": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RssPathUsageStat"
+            }
+          },
+          "totalSizeBytes": {
+            "type": "integer"
+          }
+        }
+      },
+      "UpdateUserRssSettingPayload": {
+        "type": "object",
+        "required": [
+          "host"
+        ],
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "resourceProxyBaseUrl": {
+            "type": "string"
+          },
+          "resourceCacheMaxSizeMb": {
+            "type": "integer"
+          },
+          "refreshIntervalMinutes": {
+            "type": "integer"
+          },
+          "resourceDownloadMaxRetry": {
+            "type": "integer"
+          }
+        }
+      },
+      "ClearRssStoragePayload": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "resource-cache",
+              "history",
+              "all"
+            ]
+          },
+          "route": {
+            "type": "string"
+          },
+          "routes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keepLatestItems": {
+            "type": "integer"
+          }
+        }
+      },
+      "UserRssSubscriptionItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "route": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateUserRssSubscriptionPayload": {
+        "type": "object",
+        "required": [
+          "route"
+        ],
+        "properties": {
+          "route": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateUserRssSubscriptionEnabledPayload": {
+        "type": "object",
+        "required": [
+          "route",
+          "enabled"
+        ],
+        "properties": {
+          "route": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SqliteAdminTableSummary": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "rowCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "SqliteAdminColumn": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "notNull": {
+            "type": "boolean"
+          },
+          "defaultValue": {
+            "type": "string",
+            "nullable": true
+          },
+          "primaryKey": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SqliteAdminRowIdentity": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "SqliteAdminTableData": {
+        "type": "object",
+        "properties": {
+          "table": {
+            "type": "string"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SqliteAdminColumn"
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "identityColumns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "SqliteAdminTableListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SqliteAdminTableSummary"
+            }
+          }
+        }
+      },
+      "SqliteAdminTableDetailResponse": {
+        "$ref": "#/components/schemas/SqliteAdminTableData"
+      },
+      "CreateSqliteAdminRowPayload": {
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "UpdateSqliteAdminRowPayload": {
+        "type": "object",
+        "properties": {
+          "identity": {
+            "$ref": "#/components/schemas/SqliteAdminRowIdentity"
+          },
+          "values": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "DeleteSqliteAdminRowPayload": {
+        "type": "object",
+        "properties": {
+          "identity": {
+            "$ref": "#/components/schemas/SqliteAdminRowIdentity"
+          }
+        }
+      },
+      "SqliteAdminMutationResponse": {
+        "type": "object",
+        "properties": {
+          "table": {
+            "type": "string"
+          },
+          "row": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "deleted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "FormatConvertMode": {
+        "type": "string",
+        "enum": [
+          "local",
+          "cloud"
+        ]
+      },
+      "FormatConvertEngine": {
+        "type": "string",
+        "enum": [
+          "media",
+          "image"
+        ]
+      },
+      "FormatConvertCommandMode": {
+        "type": "string",
+        "enum": [
+          "preset",
+          "custom"
+        ]
+      },
+      "FormatConvertTaskStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "downloading",
+          "download_failed",
+          "converting",
+          "convert_failed",
+          "uploading",
+          "upload_failed",
+          "completed",
+          "canceled"
+        ]
+      },
+      "FormatConvertTaskStage": {
+        "type": "string",
+        "enum": [
+          "prepare",
+          "download",
+          "convert",
+          "upload",
+          "finalize"
+        ]
+      },
+      "FormatConvertSourceType": {
+        "type": "string",
+        "enum": [
+          "upload",
+          "openlist"
+        ]
+      },
+      "FormatConvertTargetType": {
+        "type": "string",
+        "enum": [
+          "download",
+          "openlist"
+        ]
+      },
+      "FormatConvertImageOption": {
+        "type": "object",
+        "required": [
+          "outputFormat",
+          "quality"
+        ],
+        "properties": {
+          "outputFormat": {
+            "type": "string",
+            "enum": [
+              "jpeg",
+              "png",
+              "webp",
+              "avif"
+            ]
+          },
+          "quality": {
+            "type": "integer"
+          },
+          "width": {
+            "type": "integer"
+          }
+        }
+      },
+      "FormatConvertOption": {
+        "type": "object",
+        "required": [
+          "outputFormat"
+        ],
+        "properties": {
+          "outputFormat": {
+            "type": "string"
+          },
+          "videoCodec": {
+            "type": "string"
+          },
+          "audioCodec": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "videoBitrateKbps": {
+            "type": "integer"
+          },
+          "audioBitrateKbps": {
+            "type": "integer"
+          },
+          "crf": {
+            "type": "integer"
+          },
+          "encodingPreset": {
+            "type": "string"
+          },
+          "keepAudio": {
+            "type": "boolean"
+          },
+          "extraArgs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "customArgsText": {
+            "type": "string"
+          }
+        }
+      },
+      "FormatConvertSource": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/FormatConvertSourceType"
+          },
+          "path": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "storageMountPath": {
+            "type": "string"
+          },
+          "rawUrl": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "FormatConvertTarget": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/FormatConvertTargetType"
+          },
+          "dirPath": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "conflictPolicy": {
+            "type": "string",
+            "enum": [
+              "rename",
+              "overwrite"
+            ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "CreateFormatConvertTaskRequest": {
+        "type": "object",
+        "required": [
+          "mode",
+          "commandMode",
+          "source",
+          "target",
+          "option"
+        ],
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/FormatConvertMode"
+          },
+          "commandMode": {
+            "$ref": "#/components/schemas/FormatConvertCommandMode"
+          },
+          "source": {
+            "$ref": "#/components/schemas/FormatConvertSource"
+          },
+          "target": {
+            "$ref": "#/components/schemas/FormatConvertTarget"
+          },
+          "option": {
+            "$ref": "#/components/schemas/FormatConvertOption"
+          },
+          "presetId": {
+            "type": "string"
+          },
+          "engine": {
+            "$ref": "#/components/schemas/FormatConvertEngine"
+          },
+          "imageOption": {
+            "$ref": "#/components/schemas/FormatConvertImageOption"
+          }
+        }
+      },
+      "FormatConvertMediaInfo": {
+        "type": "object",
+        "properties": {
+          "formatName": {
+            "type": "string"
+          },
+          "durationSeconds": {
+            "type": "number"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "bitRateKbps": {
+            "type": "number"
+          },
+          "hasVideo": {
+            "type": "boolean"
+          },
+          "hasAudio": {
+            "type": "boolean"
+          },
+          "video": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "audio": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "FormatConvertSummary": {
+        "type": "object",
+        "properties": {
+          "commandMode": {
+            "$ref": "#/components/schemas/FormatConvertCommandMode"
+          },
+          "presetId": {
+            "type": "string"
+          },
+          "outputFormat": {
+            "type": "string"
+          },
+          "videoCodec": {
+            "type": "string"
+          },
+          "audioCodec": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string"
+          },
+          "videoBitrateKbps": {
+            "type": "integer"
+          },
+          "audioBitrateKbps": {
+            "type": "integer"
+          },
+          "crf": {
+            "type": "integer"
+          },
+          "encodingPreset": {
+            "type": "string"
+          },
+          "keepAudio": {
+            "type": "boolean"
+          },
+          "customArgsText": {
+            "type": "string"
+          }
+        }
+      },
+      "FormatConvertTaskItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "userId": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              }
+            ]
+          },
+          "mode": {
+            "$ref": "#/components/schemas/FormatConvertMode"
+          },
+          "commandMode": {
+            "$ref": "#/components/schemas/FormatConvertCommandMode"
+          },
+          "status": {
+            "$ref": "#/components/schemas/FormatConvertTaskStatus"
+          },
+          "source": {
+            "$ref": "#/components/schemas/FormatConvertSource"
+          },
+          "target": {
+            "$ref": "#/components/schemas/FormatConvertTarget"
+          },
+          "option": {
+            "$ref": "#/components/schemas/FormatConvertOption"
+          },
+          "sourceMediaInfo": {
+            "$ref": "#/components/schemas/FormatConvertMediaInfo"
+          },
+          "convertSummary": {
+            "$ref": "#/components/schemas/FormatConvertSummary"
+          },
+          "resultMediaInfo": {
+            "$ref": "#/components/schemas/FormatConvertMediaInfo"
+          },
+          "engine": {
+            "$ref": "#/components/schemas/FormatConvertEngine"
+          },
+          "imageOption": {
+            "$ref": "#/components/schemas/FormatConvertImageOption"
+          },
+          "sourceImageInfo": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "resultImageInfo": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "imageSummary": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "presetId": {
+            "type": "string"
+          },
+          "attemptCount": {
+            "type": "integer"
+          },
+          "lastStage": {
+            "$ref": "#/components/schemas/FormatConvertTaskStage"
+          },
+          "workspaceDir": {
+            "type": "string"
+          },
+          "sourceLocalPath": {
+            "type": "string"
+          },
+          "outputLocalPath": {
+            "type": "string"
+          },
+          "logLocalPath": {
+            "type": "string"
+          },
+          "resultLocalPath": {
+            "type": "string"
+          },
+          "resultOpenlistPath": {
+            "type": "string"
+          },
+          "errorMessage": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string"
+          },
+          "finishedAt": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateFormatConvertTaskResult": {
+        "type": "object",
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/FormatConvertTaskItem"
+          }
+        }
+      },
+      "GetFormatConvertTaskListResult": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormatConvertTaskItem"
+            }
+          }
+        }
+      },
+      "FormatConvertOpenlistBrowserItem": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "isDir": {
+            "type": "boolean"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "modified": {
+            "type": "string"
+          }
+        }
+      },
+      "FormatConvertOpenlistBrowserResult": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "perPage": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FormatConvertOpenlistBrowserItem"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "LogViewerType": {
+        "type": "string",
+        "enum": [
+          "normal",
+          "database",
+          "task"
+        ]
+      },
+      "LogViewerLevel": {
+        "type": "string",
+        "enum": [
+          "trace",
+          "debug",
+          "info",
+          "warn",
+          "error",
+          "fatal"
+        ]
+      },
+      "LogViewerEntry": {
+        "type": "object",
+        "properties": {
+          "timestamp": {
+            "type": "string"
+          },
+          "level": {
+            "$ref": "#/components/schemas/LogViewerLevel"
+          },
+          "category": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "LogViewerDatesResponse": {
+        "type": "object",
+        "properties": {
+          "dates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "LogViewerEntriesResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LogViewerEntry"
+            }
+          },
+          "total": {
+            "type": "integer"
+          }
+        }
+      },
+      "ScheduledTaskType": {
+        "type": "string",
+        "enum": [
+          "astrbot_random_pic"
+        ]
+      },
+      "ScheduledTask": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ScheduledTaskType"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "cron": {
+            "type": "string"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "lastRunAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastRunStatus": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "success",
+              "failed"
+            ]
+          },
+          "lastRunError": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        }
+      },
+      "ScheduledTaskDefaults": {
+        "type": "object",
+        "properties": {
+          "taskTypeDefaults": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "ListScheduledTasksResponse": {
+        "type": "object",
+        "properties": {
+          "tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduledTask"
+            }
+          },
+          "defaults": {
+            "$ref": "#/components/schemas/ScheduledTaskDefaults"
+          }
+        }
+      },
+      "CreateScheduledTaskPayload": {
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "enabled",
+          "cron",
+          "params"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ScheduledTaskType"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "cron": {
+            "type": "string"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "UpdateScheduledTaskPayload": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "enabled",
+          "cron",
+          "params"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "cron": {
+            "type": "string"
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "TriggerScheduledTaskResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "accepted": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

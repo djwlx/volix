@@ -1,6 +1,8 @@
 import { Button, Card, Empty, Popconfirm, Space, Table, Toast, Typography } from '@douyinfe/semi-ui';
 import {
   FORMAT_CONVERT_FAILED_STATUSES,
+  type FormatComicAnalysis,
+  type FormatComicSummary,
   FormatConvertEngine,
   FormatConvertTaskStatus,
   isFormatConvertTaskDeletable,
@@ -201,6 +203,52 @@ const buildImageSummaryRows = (summary: FormatConvertImageSummary | undefined, t
   ];
 };
 
+const buildComicAnalysisRows = (analysis: FormatComicAnalysis | undefined, t: (key: string) => string) => [
+  { label: t('formatConvert.comic.record.extension'), value: analysis?.fileExtension || '' },
+  {
+    label: t('formatConvert.comic.record.extensionMatches'),
+    value:
+      typeof analysis?.extensionMatches === 'boolean'
+        ? t(analysis.extensionMatches ? 'common.toggle.on' : 'common.toggle.off')
+        : '',
+  },
+  {
+    label: t('formatConvert.comic.record.hasComicInfo'),
+    value:
+      typeof analysis?.hasComicInfo === 'boolean'
+        ? t(analysis.hasComicInfo ? 'common.toggle.on' : 'common.toggle.off')
+        : '',
+  },
+  { label: t('formatConvert.comic.record.pageCount'), value: analysis?.pageCount ? String(analysis.pageCount) : '' },
+  { label: t('formatConvert.comic.record.title'), value: analysis?.comicInfo?.title || '' },
+  { label: t('formatConvert.comic.record.series'), value: analysis?.comicInfo?.series || '' },
+  { label: t('formatConvert.comic.record.writer'), value: analysis?.comicInfo?.writer || '' },
+  { label: t('formatConvert.comic.record.publisher'), value: analysis?.comicInfo?.publisher || '' },
+];
+
+const buildComicSummaryRows = (summary: FormatComicSummary | undefined, t: (key: string) => string) => [
+  { label: t('formatConvert.comic.record.mergeStrategy'), value: summary?.mergeStrategy || '' },
+  { label: t('formatConvert.comic.record.targetExtension'), value: summary?.targetExtension || '' },
+  {
+    label: t('formatConvert.comic.record.normalizedExtension'),
+    value:
+      typeof summary?.normalizedExtension === 'boolean'
+        ? t(summary.normalizedExtension ? 'common.toggle.on' : 'common.toggle.off')
+        : '',
+  },
+  {
+    label: t('formatConvert.comic.record.metadataWritten'),
+    value:
+      typeof summary?.metadataWritten === 'boolean'
+        ? t(summary.metadataWritten ? 'common.toggle.on' : 'common.toggle.off')
+        : '',
+  },
+  {
+    label: t('formatConvert.comic.record.metadataFieldCount'),
+    value: summary?.metadataFieldCount ? String(summary.metadataFieldCount) : '',
+  },
+];
+
 export function TaskRecordList(props: TaskRecordListProps) {
   const { loading, tasks, onBatchDelete, onDelete, onRetry } = props;
   const { t } = useI18n();
@@ -284,7 +332,25 @@ export function TaskRecordList(props: TaskRecordListProps) {
                   </div>
                 ) : null}
                 <div style={detailsGridStyle}>
-                  {record.engine === FormatConvertEngine.IMAGE ? (
+                  {record.engine === FormatConvertEngine.COMIC ? (
+                    <>
+                      {renderDetailSection(
+                        t('formatConvert.record.detail.sourceMediaInfo'),
+                        buildComicAnalysisRows(record.sourceComicInfo, t),
+                        t('common.status.none')
+                      )}
+                      {renderDetailSection(
+                        t('formatConvert.record.detail.convertSummary'),
+                        buildComicSummaryRows(record.comicSummary, t),
+                        t('common.status.none')
+                      )}
+                      {renderDetailSection(
+                        t('formatConvert.record.detail.resultMediaInfo'),
+                        buildComicAnalysisRows(record.resultComicInfo, t),
+                        t('common.status.none')
+                      )}
+                    </>
+                  ) : record.engine === FormatConvertEngine.IMAGE ? (
                     <>
                       {renderDetailSection(
                         t('formatConvert.record.detail.sourceMediaInfo'),

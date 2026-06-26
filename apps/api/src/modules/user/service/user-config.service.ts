@@ -4,13 +4,21 @@ import type {
   AiAccountConfigItem,
   AstrbotAccountConfigItem,
   BangumiAccountConfigItem,
+  KomgaAccountConfigItem,
   SmtpAccountConfigItem,
   ServiceAccountConfigItem,
 } from '@volix/types';
 import { badRequest } from '../../shared/http-handler';
 import { decryptSecret, encryptSecret } from '../../../utils/crypto-store';
 import { t } from '../../../utils/i18n';
-import { createAiSdk, createAstrbotSdk, type AiSdk, type AstrbotSdk } from '../../../sdk';
+import {
+  createAiSdk,
+  createAstrbotSdk,
+  createKomgaSdk,
+  type AiSdk,
+  type AstrbotSdk,
+  type KomgaSdk,
+} from '../../../sdk';
 import { queryUser, updateUser } from './user.service';
 
 const EMAIL_REGEXP = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -125,6 +133,32 @@ export const normalizeAstrbotAccountConfig = (config: unknown): AstrbotAccountCo
     baseUrl,
     apiKey,
     ...(umos.length ? { umos } : {}),
+  };
+};
+
+export const normalizeKomgaAccountConfig = (config: unknown): KomgaAccountConfigItem => {
+  if (!config || typeof config !== 'object') {
+    badRequest(t('accountConfig.komga.invalidConfig'));
+  }
+
+  const raw = config as Partial<KomgaAccountConfigItem>;
+  const baseUrl = typeof raw.baseUrl === 'string' ? raw.baseUrl.trim() : '';
+  const username = typeof raw.username === 'string' ? raw.username.trim() : '';
+  const password = typeof raw.password === 'string' ? raw.password.trim() : '';
+  const apiKey = typeof raw.apiKey === 'string' ? raw.apiKey.trim() : '';
+
+  if (!baseUrl || !/^https?:\/\//.test(baseUrl)) {
+    badRequest(t('accountConfig.komga.invalidBaseUrl'));
+  }
+  if (!apiKey && !(username && password)) {
+    badRequest(t('accountConfig.komga.missingAuth'));
+  }
+
+  return {
+    baseUrl,
+    ...(username ? { username } : {}),
+    ...(password ? { password } : {}),
+    ...(apiKey ? { apiKey } : {}),
   };
 };
 
@@ -261,6 +295,17 @@ const parseAstrbotAccountConfigFromUnknown = (raw: unknown): AstrbotAccountConfi
   }
 };
 
+const parseKomgaAccountConfigFromUnknown = (raw: unknown): KomgaAccountConfigItem | null => {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  try {
+    return normalizeKomgaAccountConfig(raw);
+  } catch {
+    return null;
+  }
+};
+
 const normalizeByPlatform = (platform: AccountConfigPlatform, config: unknown) => {
   if (platform === AccountConfigPlatform.SMTP) {
     return normalizeSmtpAccountConfig(config);
@@ -273,6 +318,9 @@ const normalizeByPlatform = (platform: AccountConfigPlatform, config: unknown) =
   }
   if (platform === AccountConfigPlatform.ASTRBOT) {
     return normalizeAstrbotAccountConfig(config);
+  }
+  if (platform === AccountConfigPlatform.KOMGA) {
+    return normalizeKomgaAccountConfig(config);
   }
   return normalizeServiceAccountConfig(config);
 };
@@ -292,6 +340,7 @@ export async function getUserAccountConfigs(userId: string | number): Promise<Ac
     bangumi: parseBangumiAccountConfigFromUnknown(accountList[AccountConfigPlatform.BANGUMI]) || undefined,
     ai: parseAiAccountConfigFromUnknown(accountList[AccountConfigPlatform.AI]) || undefined,
     astrbot: parseAstrbotAccountConfigFromUnknown(accountList[AccountConfigPlatform.ASTRBOT]) || undefined,
+    komga: parseKomgaAccountConfigFromUnknown(accountList[AccountConfigPlatform.KOMGA]) || undefined,
   };
 }
 
@@ -331,6 +380,11 @@ export async function getUserAstrbotConfig(userId: string | number): Promise<Ast
   return configs.astrbot || null;
 }
 
+export async function getUserKomgaConfig(userId: string | number): Promise<KomgaAccountConfigItem | null> {
+  const configs = await getUserAccountConfigs(userId);
+  return configs.komga || null;
+}
+
 export async function createUserAstrbotSdk(
   userId: string | number
 ): Promise<{ sdk: AstrbotSdk; config: AstrbotAccountConfigItem }> {
@@ -360,6 +414,25 @@ export async function createUserAiSdk(userId: string | number): Promise<{ sdk: A
     baseUrl: config.baseUrl,
     apiKey: config.apiKey,
     model: config.model,
+  });
+
+  return { sdk, config };
+}
+
+export async function createUserKomgaSdk(
+  userId: string | number
+): Promise<{ sdk: KomgaSdk; config: KomgaAccountConfigItem }> {
+  const config = await getUserKomgaConfig(userId);
+  if (!config) {
+    badRequest(t('accountConfig.komga.notConfigured'));
+    throw new Error('Komga account not configured');
+  }
+
+  const sdk = createKomgaSdk({
+    baseUrl: config.baseUrl,
+    username: config.username,
+    password: config.password,
+    apiKey: config.apiKey,
   });
 
   return { sdk, config };

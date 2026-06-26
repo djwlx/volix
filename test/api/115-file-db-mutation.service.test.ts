@@ -78,4 +78,37 @@ describe('115 file db mutation service', () => {
       }),
     ]);
   });
+
+  test('deduplicates rows that conflict on fullPath within the same batch', async () => {
+    const { setFile115List } = await import('../../apps/api/src/modules/115/service/file-db.mutation.service');
+    await setFile115List([
+      {
+        pc: 'pc-1',
+        class: 'PIC',
+        cid: 'root-cid',
+        parentCid: 'folder-cid',
+        fullPath: '/Root/Album/01.jpg',
+        isLiked: false,
+        localCacheFileName: '',
+      },
+      {
+        pc: 'pc-2',
+        class: 'PIC',
+        cid: 'root-cid',
+        parentCid: 'folder-cid',
+        fullPath: '/Root/Album/01.jpg',
+        isLiked: true,
+        localCacheFileName: 'cache-2.jpg',
+      },
+    ]);
+
+    expect(fileBulkCreateMock).toHaveBeenCalledWith([
+      expect.objectContaining({
+        pc: 'pc-1',
+        fullPath: '/Root/Album/01.jpg',
+        isLiked: true,
+        localCacheFileName: 'cache-2.jpg',
+      }),
+    ]);
+  });
 });

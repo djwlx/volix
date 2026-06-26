@@ -4,6 +4,7 @@ import { FormatConvertEngine } from '@volix/types';
 import { useState } from 'react';
 import { useI18n } from '@/i18n';
 import { getConvertType } from '../convert-types';
+import { ComicMetadataPanel } from './comic-metadata-panel';
 import { ConvertTypeSwitch } from './convert-type-switch';
 import { ImageConvertPanel } from './image-convert-panel';
 import { MediaConvertPanel } from './media-convert-panel';
@@ -47,7 +48,9 @@ export function ConvertTaskCard(props: ConvertTaskCardProps) {
           </div>
         </div>
 
-        {config?.engine === FormatConvertEngine.IMAGE ? (
+        {config?.engine === FormatConvertEngine.COMIC ? (
+          <ComicMetadataPanel onCreated={onCreated} />
+        ) : config?.engine === FormatConvertEngine.IMAGE ? (
           <ImageConvertPanel onCreated={onCreated} />
         ) : config ? (
           <MediaConvertPanel sourceKind={config.sourceKind} uploadAccept={config.uploadAccept} onCreated={onCreated} />

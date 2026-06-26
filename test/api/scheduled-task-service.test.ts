@@ -7,6 +7,10 @@ import {
   listTaskTypeDefinitions,
   normalizeTaskParams,
 } from '../../apps/api/src/modules/task-center/service/task-type-registry';
+import {
+  getNextRunAtFromCron,
+  isValidCronExpression,
+} from '../../apps/api/src/modules/task-center/service/scheduled-task.service';
 
 describe('scheduled task service', () => {
   test('lists the built-in scheduled task definitions', () => {
@@ -35,5 +39,17 @@ describe('scheduled task service', () => {
   test('rejects unsupported task types', () => {
     expect(isSupportedTaskType(ScheduledTaskType.ASTRBOT_RANDOM_PIC)).toBe(true);
     expect(isSupportedTaskType('unknown_task')).toBe(false);
+  });
+
+  test('validates cron expressions with real parser rules', () => {
+    expect(isValidCronExpression('0 9 * * *')).toBe(true);
+    expect(isValidCronExpression('0 */10 * * * *')).toBe(true);
+    expect(isValidCronExpression('99 99 * * *')).toBe(false);
+    expect(isValidCronExpression('invalid cron')).toBe(false);
+  });
+
+  test('calculates the next run time for enabled cron tasks', () => {
+    expect(Date.parse(String(getNextRunAtFromCron('0 9 * * *')))).not.toBeNaN();
+    expect(getNextRunAtFromCron('99 99 * * *')).toBeNull();
   });
 });

@@ -35,6 +35,14 @@ export const CONVERT_TYPES: ConvertTypeConfig[] = [
     sourceKind: 'local-upload',
     uploadAccept: 'image/*',
   },
+  {
+    id: 'local-comic-metadata',
+    labelKey: 'formatConvert.sourcePicker.localComicMetadata',
+    mode: FormatConvertMode.LOCAL,
+    engine: FormatConvertEngine.COMIC,
+    sourceKind: 'local-upload',
+    uploadAccept: '.cbz,.zip,application/zip',
+  },
 ];
 
 export const listConvertTypes = () => CONVERT_TYPES;

@@ -1,3 +1,4 @@
+import schedule from 'node-schedule';
 import { v4 as uuidv4 } from 'uuid';
 import { ScheduledTaskType } from '@volix/types';
 import type { ScheduledTask, ScheduledTaskParams, ScheduledTaskRunStatus } from '@volix/types';
@@ -5,12 +6,57 @@ import { ScheduledTaskModel } from '../model/scheduled-task.model';
 import type { ScheduledTaskEntity } from '../model/scheduled-task.model';
 import { isSupportedTaskType, normalizeTaskParams } from './task-type-registry';
 
+const createCronProbeJob = (cron: string) => {
+  const normalizedCron = String(cron || '').trim();
+  if (!normalizedCron) {
+    return null;
+  }
+
+  try {
+    return schedule.scheduleJob(normalizedCron, () => undefined);
+  } catch {
+    return null;
+  }
+};
+
 export const isValidCronExpression = (cron: string): boolean => {
-  const fields = String(cron || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-  return fields.length === 5 || fields.length === 6;
+  const job = createCronProbeJob(cron);
+  if (!job) {
+    return false;
+  }
+  job.cancel();
+  return true;
+};
+
+export const getNextRunAtFromCron = (cron: string): string | null => {
+  const job = createCronProbeJob(cron);
+  if (!job) {
+    return null;
+  }
+
+  try {
+    const nextInvocation = job.nextInvocation();
+    if (!nextInvocation) {
+      return null;
+    }
+
+    const nextDate = (() => {
+      if (nextInvocation instanceof Date) {
+        return nextInvocation;
+      }
+
+      const dateLike = nextInvocation as { toDate?: () => Date };
+      if (typeof dateLike.toDate === 'function') {
+        return dateLike.toDate();
+      }
+
+      return new Date(String(nextInvocation));
+    })();
+
+    return Number.isNaN(nextDate.getTime()) ? null : nextDate.toISOString();
+  } finally {
+    job.cancel();
+  }
 };
 
 const parseParams = (raw: string): ScheduledTaskParams => {
@@ -30,6 +76,7 @@ const toTask = (entity: ScheduledTaskEntity): ScheduledTask => ({
   cron: String(entity.cron || ''),
   params: parseParams(entity.params_json),
   lastRunAt: entity.last_run_at ? new Date(entity.last_run_at).toISOString() : null,
+  nextRunAt: entity.enabled ? getNextRunAtFromCron(String(entity.cron || '')) : null,
   lastRunStatus: (entity.last_run_status as ScheduledTaskRunStatus | null) || null,
   lastRunError: entity.last_run_error || null,
   createdAt: entity.created_at ? new Date(entity.created_at).toISOString() : undefined,

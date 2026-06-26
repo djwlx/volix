@@ -23,9 +23,11 @@
   "dependencies": {
     "@koa/cors": "^5.0.0",
     "@koa/router": "^15.2.0",
+    "@types/adm-zip": "^0.5.8",
     "@volix/i18n": "workspace:*",
     "@volix/types": "workspace:*",
     "@volix/utils": "workspace:*",
+    "adm-zip": "^0.5.17",
     "axios": "^1.6.8",
     "big-integer": "^1.6.52",
     "cross-env": "^7.0.3",

@@ -1,6 +1,9 @@
 import type {
   CreateFormatConvertTaskRequest,
   CreateFormatConvertTaskResult,
+  FormatComicAnalysis,
+  FormatComicMetadataOption,
+  FormatComicSummary,
   FormatConvertCommandMode,
   FormatConvertEngine,
   FormatConvertImageInfo,
@@ -23,6 +26,9 @@ import type {
 export type {
   CreateFormatConvertTaskRequest,
   CreateFormatConvertTaskResult,
+  FormatComicAnalysis,
+  FormatComicMetadataOption,
+  FormatComicSummary,
   FormatConvertImageInfo,
   FormatConvertImageOption,
   FormatConvertImageSummary,
@@ -77,16 +83,20 @@ export interface FormatConvertTaskSnapshot {
   sourceMediaInfo?: FormatConvertMediaInfo;
   convertSummary?: FormatConvertSummary;
   resultMediaInfo?: FormatConvertMediaInfo;
+  comicOption?: FormatComicMetadataOption;
+  sourceComicInfo?: FormatComicAnalysis;
+  comicSummary?: FormatComicSummary;
+  resultComicInfo?: FormatComicAnalysis;
 }
 
 export interface CreateFormatConvertTaskDbPayload extends Omit<CreateFormatConvertTaskRequest, 'option'> {
   userId: string;
   engine?: FormatConvertEngine;
-  option: FormatConvertOption | FormatConvertImageOption;
+  option: FormatConvertOption | FormatConvertImageOption | FormatComicMetadataOption;
   status?: FormatConvertTaskStatus;
   attemptCount?: number;
   requestUserAgent?: string;
-  sourceMediaInfo?: FormatConvertMediaInfo | FormatConvertImageInfo;
-  convertSummary?: FormatConvertSummary | FormatConvertImageSummary;
-  resultMediaInfo?: FormatConvertMediaInfo | FormatConvertImageInfo;
+  sourceMediaInfo?: FormatConvertMediaInfo | FormatConvertImageInfo | FormatComicAnalysis;
+  convertSummary?: FormatConvertSummary | FormatConvertImageSummary | FormatComicSummary;
+  resultMediaInfo?: FormatConvertMediaInfo | FormatConvertImageInfo | FormatComicAnalysis;
 }

@@ -4,12 +4,14 @@ import type {
   AdminCreateUserPayload,
   AdminUpdateUserPayload,
   AccountConfigPlatform,
+  ResetPasswordPayload,
   ListAiModelsPayload,
   ListAiModelsResponse,
   LoginUserPayload,
   LoginUserResponse,
   RegisterUserPayload,
   RegisterConfigResponse,
+  SendForgotPasswordCodePayload,
   SendRegisterCodePayload,
   SendRegisterCodeResponse,
   SetUserRolePayload,
@@ -39,6 +41,14 @@ export const getRegisterConfig = () => {
 
 export const sendRegisterCode = (data: SendRegisterCodePayload) => {
   return http.post<SendRegisterCodeResponse>('/user/register-code', data);
+};
+
+export const sendForgotPasswordCode = (data: SendForgotPasswordCodePayload) => {
+  return http.post<SendRegisterCodeResponse>('/user/forgot-password-code', data);
+};
+
+export const resetPassword = (data: ResetPasswordPayload) => {
+  return http.post<SendRegisterCodeResponse>('/user/reset-password', data);
 };
 
 export const getCurrentUser = () => {

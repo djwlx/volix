@@ -3,6 +3,7 @@ export * from './types/format-convert.types';
 export * from './service/format-convert-option.service';
 export * from './service/format-convert-artifact.service';
 export * from './service/format-convert-ffmpeg.service';
+export * from './service/format-convert-comic.service';
 export * from './service/format-convert-openlist.service';
 export * from './service/format-convert-queue.service';
 export * from './service/format-convert-runner.service';

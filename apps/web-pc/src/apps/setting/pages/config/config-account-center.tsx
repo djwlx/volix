@@ -10,10 +10,12 @@ import type {
   AiAccountConfigItem,
   AstrbotAccountConfigItem,
   BangumiAccountConfigItem,
+  KomgaAccountConfigItem,
   ServiceAccountConfigItem,
 } from '@volix/types';
 import { AiAccountCard } from './ai-account-card';
 import { AstrbotAccountCard } from './astrbot-account-card';
+import { KomgaAccountCard } from './komga-account-card';
 
 interface ServiceCardProps {
   title: string;
@@ -268,6 +270,7 @@ function SettingConfigAccountCenterApp() {
           bangumi: res.data?.bangumi || EMPTY_BANGUMI_VALUES,
           ai: res.data?.ai,
           astrbot: res.data?.astrbot,
+          komga: res.data?.komga,
         });
       })
       .catch(() => {
@@ -340,6 +343,15 @@ function SettingConfigAccountCenterApp() {
                 setAccountConfigs(prev => ({
                   ...prev,
                   astrbot: config,
+                }));
+              }}
+            />
+            <KomgaAccountCard
+              initialConfig={accountConfigs.komga}
+              onSaved={(config: KomgaAccountConfigItem) => {
+                setAccountConfigs(prev => ({
+                  ...prev,
+                  komga: config,
                 }));
               }}
             />

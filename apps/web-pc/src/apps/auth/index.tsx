@@ -1,15 +1,22 @@
 import { useEffect, useState } from 'react';
 import { Button, Toast, Typography } from '@douyinfe/semi-ui';
-import type { LoginUserPayload, RegisterUserPayload } from '@volix/types';
+import type { LoginUserPayload, RegisterUserPayload, ResetPasswordPayload } from '@volix/types';
 import { useI18n } from '@/i18n';
-import { getRegisterConfig, loginUser, registerUser, sendRegisterCode } from '@/services/user';
+import {
+  getRegisterConfig,
+  loginUser,
+  registerUser,
+  resetPassword,
+  sendForgotPasswordCode,
+  sendRegisterCode,
+} from '@/services/user';
 import { AppForm, PageCard } from '@/components';
 import { setAuthToken } from '@/utils';
 import { useLocation, useNavigate } from 'react-router';
 import type { FormApi } from '@douyinfe/semi-ui/lib/es/form';
 import { useUserStore } from '@/stores';
 
-type Mode = 'login' | 'register';
+type Mode = 'login' | 'register' | 'reset';
 
 const getErrorMessage = (error: unknown, t: (key: string, values?: Record<string, unknown>) => string) => {
   const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -28,6 +35,10 @@ function AuthApp() {
   const location = useLocation();
   const refreshCurrentUser = useUserStore(state => state.refreshCurrentUser);
   const redirectTo = ((location.state as { from?: string } | null)?.from || '/') as string;
+  const query = new URLSearchParams(location.search);
+  const resetToken = query.get('token')?.trim() || '';
+  const resetEmail = query.get('email')?.trim() || '';
+  const resetByToken = mode === 'reset' && Boolean(resetToken);
 
   useEffect(() => {
     getRegisterConfig()
@@ -40,6 +51,20 @@ function AuthApp() {
   }, []);
 
   useEffect(() => {
+    const nextMode = query.get('mode') === 'reset' ? 'reset' : 'login';
+    setMode(current => (current === 'register' && nextMode === 'login' ? current : nextMode));
+  }, [location.search]);
+
+  useEffect(() => {
+    if (!formApi) {
+      return;
+    }
+    if (resetEmail) {
+      formApi.setValue('email', resetEmail);
+    }
+  }, [formApi, resetEmail]);
+
+  useEffect(() => {
     if (countdown <= 0) {
       return;
     }
@@ -48,7 +73,7 @@ function AuthApp() {
   }, [countdown]);
 
   const onSubmit = async (values: unknown) => {
-    const payload = values as LoginUserPayload & RegisterUserPayload;
+    const payload = values as LoginUserPayload & RegisterUserPayload & ResetPasswordPayload;
     try {
       setLoading(true);
 
@@ -56,6 +81,19 @@ function AuthApp() {
         await registerUser(payload);
         Toast.success(t({ id: 'auth.register.success', defaultMessage: '注册成功，请登录' }));
         setMode('login');
+        return;
+      }
+
+      if (mode === 'reset') {
+        await resetPassword({
+          email: payload.email,
+          verifyCode: resetByToken ? undefined : payload.verifyCode,
+          token: resetByToken ? resetToken : undefined,
+          newPassword: payload.newPassword || payload.password,
+        });
+        Toast.success(t({ id: 'auth.reset.success', defaultMessage: '密码已重置，请重新登录' }));
+        setMode('login');
+        navigate('/auth', { replace: true });
         return;
       }
 
@@ -85,14 +123,31 @@ function AuthApp() {
     }
     try {
       setSendingCode(true);
-      await sendRegisterCode({ email });
+      if (mode === 'register') {
+        await sendRegisterCode({ email });
+        Toast.success(t({ id: 'auth.register.codeSent', defaultMessage: '验证码已发送，请检查邮箱' }));
+      } else {
+        await sendForgotPasswordCode({ email });
+        Toast.success(t({ id: 'auth.reset.codeSent', defaultMessage: '重置邮件已发送，请检查邮箱' }));
+      }
       setCountdown(60);
-      Toast.success(t({ id: 'auth.register.codeSent', defaultMessage: '验证码已发送，请检查邮箱' }));
     } catch (error) {
       Toast.error(getErrorMessage(error, t));
     } finally {
       setSendingCode(false);
     }
+  };
+
+  const titleMap: Record<Mode, string> = {
+    login: t({ id: 'auth.mode.login.title', defaultMessage: '账号登录' }),
+    register: t({ id: 'auth.mode.register.title', defaultMessage: '账号注册' }),
+    reset: t({ id: 'auth.mode.reset.title', defaultMessage: '重置密码' }),
+  };
+
+  const submitTextMap: Record<Mode, string> = {
+    login: t({ id: 'auth.mode.login.submit', defaultMessage: '登录' }),
+    register: t({ id: 'auth.mode.register.submit', defaultMessage: '注册' }),
+    reset: t({ id: 'auth.mode.reset.submit', defaultMessage: '重置密码' }),
   };
 
   return (
@@ -102,20 +157,18 @@ function AuthApp() {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        background: 'linear-gradient(145deg, #e8f7ff 0%, #f8fff1 100%)',
+        background:
+          'linear-gradient(145deg, color-mix(in srgb, var(--semi-color-info-light-default) 75%, transparent) 0%, color-mix(in srgb, var(--semi-color-success-light-default) 65%, transparent) 100%)',
         padding: 16,
       }}
     >
       <PageCard
-        title={
-          mode === 'login'
-            ? t({ id: 'auth.mode.login.title', defaultMessage: '账号登录' })
-            : t({ id: 'auth.mode.register.title', defaultMessage: '账号注册' })
-        }
+        title={titleMap[mode]}
         style={{
           width: '100%',
           maxWidth: 420,
           borderRadius: 12,
+          border: '1px solid var(--semi-color-border)',
         }}
       >
         <AppForm onSubmit={onSubmit} labelPosition="top" getFormApi={setFormApi}>
@@ -128,16 +181,62 @@ function AuthApp() {
               { type: 'email', message: t({ id: 'auth.email.invalid', defaultMessage: '邮箱格式错误' }) },
             ]}
           />
-          <AppForm.Input
-            field="password"
-            mode="password"
-            label={t({ id: 'auth.password.label', defaultMessage: '密码' })}
-            placeholder={t({ id: 'auth.password.placeholder', defaultMessage: '请输入密码' })}
-            rules={[
-              { required: true, message: t({ id: 'auth.password.required', defaultMessage: '请输入密码' }) },
-              { min: 6, message: t({ id: 'auth.password.min', defaultMessage: '密码至少 6 位' }) },
-            ]}
-          />
+          {mode === 'reset' ? (
+            <>
+              <AppForm.Input
+                field="newPassword"
+                mode="password"
+                label={t({ id: 'auth.reset.password.label', defaultMessage: '新密码' })}
+                placeholder={t({ id: 'auth.reset.password.placeholder', defaultMessage: '请输入新密码' })}
+                rules={[
+                  {
+                    required: true,
+                    message: t({ id: 'auth.reset.password.required', defaultMessage: '请输入新密码' }),
+                  },
+                  { min: 6, message: t({ id: 'auth.password.min', defaultMessage: '密码至少 6 位' }) },
+                ]}
+              />
+              {!resetByToken ? (
+                <>
+                  <AppForm.Input
+                    field="verifyCode"
+                    label={t({ id: 'auth.verifyCode.label', defaultMessage: '邮箱验证码' })}
+                    placeholder={t({ id: 'auth.verifyCode.placeholder', defaultMessage: '请输入邮箱验证码' })}
+                    rules={[
+                      {
+                        required: true,
+                        message: t({ id: 'auth.verifyCode.required', defaultMessage: '请输入邮箱验证码' }),
+                      },
+                    ]}
+                  />
+                  <Button
+                    onClick={onSendCode}
+                    loading={sendingCode}
+                    disabled={countdown > 0}
+                    style={{ width: '100%', marginBottom: 12 }}
+                  >
+                    {countdown > 0
+                      ? t(
+                          { id: 'auth.verifyCode.resendCountdown', defaultMessage: '{countdown}s 后重发' },
+                          { countdown }
+                        )
+                      : t({ id: 'auth.reset.send', defaultMessage: '发送重置邮件' })}
+                  </Button>
+                </>
+              ) : null}
+            </>
+          ) : (
+            <AppForm.Input
+              field="password"
+              mode="password"
+              label={t({ id: 'auth.password.label', defaultMessage: '密码' })}
+              placeholder={t({ id: 'auth.password.placeholder', defaultMessage: '请输入密码' })}
+              rules={[
+                { required: true, message: t({ id: 'auth.password.required', defaultMessage: '请输入密码' }) },
+                { min: 6, message: t({ id: 'auth.password.min', defaultMessage: '密码至少 6 位' }) },
+              ]}
+            />
+          )}
           {mode === 'register' && registerEmailVerifyRequired ? (
             <>
               <AppForm.Input
@@ -165,20 +264,29 @@ function AuthApp() {
           ) : null}
 
           <Button htmlType="submit" theme="solid" type="primary" loading={loading} style={{ width: '100%' }}>
-            {mode === 'login'
-              ? t({ id: 'auth.mode.login.submit', defaultMessage: '登录' })
-              : t({ id: 'auth.mode.register.submit', defaultMessage: '注册' })}
+            {submitTextMap[mode]}
           </Button>
         </AppForm>
-        <Typography.Text
-          link
-          onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-          style={{ marginTop: 12, display: 'inline-block' }}
-        >
-          {mode === 'login'
-            ? t({ id: 'auth.mode.login.switch', defaultMessage: '没有账号？去注册' })
-            : t({ id: 'auth.mode.register.switch', defaultMessage: '已有账号？去登录' })}
-        </Typography.Text>
+        {mode === 'login' ? (
+          <>
+            <Typography.Text
+              link
+              onClick={() => setMode('register')}
+              style={{ marginTop: 12, display: 'inline-block', marginRight: 12 }}
+            >
+              {t({ id: 'auth.mode.login.switch', defaultMessage: '没有账号？去注册' })}
+            </Typography.Text>
+            <Typography.Text link onClick={() => setMode('reset')} style={{ marginTop: 12, display: 'inline-block' }}>
+              {t({ id: 'auth.mode.login.forgot', defaultMessage: '忘记密码？' })}
+            </Typography.Text>
+          </>
+        ) : (
+          <Typography.Text link onClick={() => setMode('login')} style={{ marginTop: 12, display: 'inline-block' }}>
+            {mode === 'register'
+              ? t({ id: 'auth.mode.register.switch', defaultMessage: '已有账号？去登录' })
+              : t({ id: 'auth.mode.reset.switch', defaultMessage: '返回登录' })}
+          </Typography.Text>
+        )}
       </PageCard>
     </div>
   );

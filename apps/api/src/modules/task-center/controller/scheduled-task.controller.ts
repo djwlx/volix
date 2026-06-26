@@ -27,11 +27,11 @@ const ensureLoginUserId = (ctx: any) => {
   return userId as string | number;
 };
 
-const validateNameAndCron = (name: string, enabled: boolean, cron: string) => {
+const validateNameAndCron = (name: string, cron: string) => {
   if (!String(name || '').trim()) {
     badRequest(t('taskCenter.name.required'));
   }
-  if (enabled && !isValidCronExpression(cron)) {
+  if (!isValidCronExpression(cron)) {
     badRequest(t('taskCenter.cron.invalid'));
   }
 };
@@ -59,7 +59,7 @@ export const createScheduledTask: MyMiddleware = async ctx => {
   if (!isSupportedTaskType(payload.type)) {
     badRequest(t('taskCenter.taskType.invalid'));
   }
-  validateNameAndCron(payload.name, Boolean(payload.enabled), String(payload.cron || ''));
+  validateNameAndCron(payload.name, String(payload.cron || ''));
 
   const task = await createUserTask(userId, {
     name: payload.name,
@@ -81,7 +81,7 @@ export const updateScheduledTask: MyMiddleware = async ctx => {
   if (!id) {
     badRequest(t('taskCenter.id.required'));
   }
-  validateNameAndCron(payload.name, Boolean(payload.enabled), String(payload.cron || ''));
+  validateNameAndCron(payload.name, String(payload.cron || ''));
 
   const task = await updateUserTask(userId, id, {
     name: payload.name,

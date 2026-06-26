@@ -191,8 +191,8 @@ export const router = createBrowserRouter([
         handle: routeHandle({
           requiresAuth: true,
           appHeader: {
-            title: msg('route.formatConvert.title', '格式转换'),
-            description: msg('route.formatConvert.description', '本地文件与 OpenList 云文件的统一格式转换工具'),
+            title: msg('route.formatConvert.title', '格式工厂'),
+            description: msg('route.formatConvert.description', '本地文件与 OpenList 云文件的统一处理工具'),
             logo: (
               <div style={{ ...logoWrapStyle, background: 'linear-gradient(135deg, #0f766e 0%, #0ea5e9 100%)' }}>
                 FM

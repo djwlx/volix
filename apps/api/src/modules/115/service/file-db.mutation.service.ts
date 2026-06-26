@@ -141,13 +141,46 @@ const mergeExistingFile115Policy = (
   });
 };
 
+const mergeFile115PolicyFields = (target: Cloud115DbFileItem, source: Cloud115DbFileItem) => ({
+  ...target,
+  isLiked: Boolean(target.isLiked || source.isLiked),
+  localCacheFileName: String(target.localCacheFileName || source.localCacheFileName || '').trim(),
+});
+
+const dedupeFile115List = (list: Cloud115DbFileItem[]) => {
+  const dedupedList: Cloud115DbFileItem[] = [];
+  const indexByPc = new Map<string, number>();
+  const indexByFullPath = new Map<string, number>();
+
+  list.forEach(item => {
+    const pc = String(item.pc || '').trim();
+    const fullPath = String(item.fullPath || '').trim();
+    const existingIndex = indexByPc.get(pc) ?? (fullPath ? indexByFullPath.get(fullPath) : undefined);
+
+    if (existingIndex === undefined) {
+      dedupedList.push(item);
+      if (pc) {
+        indexByPc.set(pc, dedupedList.length - 1);
+      }
+      if (fullPath) {
+        indexByFullPath.set(fullPath, dedupedList.length - 1);
+      }
+      return;
+    }
+
+    dedupedList[existingIndex] = mergeFile115PolicyFields(dedupedList[existingIndex], item);
+  });
+
+  return dedupedList;
+};
+
 export const setFile115List = async (list: Cloud115DbFileItem[]) => {
   if (list.length === 0) {
     return [];
   }
 
   const existingRows = await getExistingFile115ConflictRows(list);
-  const normalizedList = mergeExistingFile115Policy(list, existingRows);
+  const normalizedList = dedupeFile115List(mergeExistingFile115Policy(list, existingRows));
   const existingPcList = Array.from(new Set(existingRows.map(item => String(item.pc || '').trim()).filter(Boolean)));
 
   if (existingPcList.length > 0) {

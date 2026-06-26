@@ -104,6 +104,17 @@ function TaskCenterApp() {
     );
   };
 
+  const renderNextRun = (task: ScheduledTask) => {
+    if (!task.nextRunAt) {
+      return <Typography.Text type="tertiary">{t('taskCenter.nextRun.none')}</Typography.Text>;
+    }
+    return (
+      <Typography.Text type="tertiary" size="small">
+        {new Date(task.nextRunAt).toLocaleString()}
+      </Typography.Text>
+    );
+  };
+
   const columns = [
     {
       title: t('taskCenter.column.name'),
@@ -143,6 +154,11 @@ function TaskCenterApp() {
       title: t('taskCenter.column.lastRun'),
       dataIndex: 'lastRunAt',
       render: (_: unknown, task: ScheduledTask) => renderLastRun(task),
+    },
+    {
+      title: t('taskCenter.column.nextRun'),
+      dataIndex: 'nextRunAt',
+      render: (_: unknown, task: ScheduledTask) => renderNextRun(task),
     },
     {
       title: t('taskCenter.column.actions'),

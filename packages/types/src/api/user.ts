@@ -15,6 +15,7 @@ export enum AccountConfigPlatform {
   BANGUMI = 'bangumi',
   AI = 'ai',
   ASTRBOT = 'astrbot',
+  KOMGA = 'komga',
 }
 
 export enum AiProvider {
@@ -57,6 +58,13 @@ export interface AstrbotAccountConfigItem {
   umos?: string[];
 }
 
+export interface KomgaAccountConfigItem {
+  baseUrl: string;
+  username?: string;
+  password?: string;
+  apiKey?: string;
+}
+
 export interface UserSettingsJson {
   [key: string]: unknown;
 }
@@ -72,6 +80,7 @@ export interface AccountConfigMap {
   bangumi?: BangumiAccountConfigItem;
   ai?: AiAccountConfigItem;
   astrbot?: AstrbotAccountConfigItem;
+  komga?: KomgaAccountConfigItem;
 }
 
 export type AccountConfigItem =
@@ -79,7 +88,8 @@ export type AccountConfigItem =
   | SmtpAccountConfigItem
   | BangumiAccountConfigItem
   | AiAccountConfigItem
-  | AstrbotAccountConfigItem;
+  | AstrbotAccountConfigItem
+  | KomgaAccountConfigItem;
 
 export interface UpdateAccountConfigPayload {
   platform: AccountConfigPlatform;
@@ -125,6 +135,17 @@ export interface SendRegisterCodePayload {
 
 export interface SendRegisterCodeResponse {
   success: boolean;
+}
+
+export interface SendForgotPasswordCodePayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  email?: string;
+  verifyCode?: string;
+  token?: string;
+  newPassword: string;
 }
 
 export interface VerifyCurrentUserEmailPayload {

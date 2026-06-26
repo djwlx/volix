@@ -1,6 +1,7 @@
 export * from './convert-task-card';
 export * from './convert-type-switch';
 export * from './cloud-source-tree';
+export * from './comic-metadata-panel';
 export * from './convert-settings-form';
 export * from './image-convert-panel';
 export * from './image-convert-settings-form';

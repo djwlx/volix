@@ -98,4 +98,20 @@ describe('format convert service', () => {
       },
     });
   });
+
+  it('uploads a local comic archive for analysis', async () => {
+    const { analyzeLocalComicFile } = await import('../format-convert');
+
+    await analyzeLocalComicFile(new Blob(['demo'], { type: 'application/zip' }) as File);
+
+    expect(mocked.http.post).toHaveBeenCalledWith(
+      '/format-convert/local-comic/analyze',
+      expect.any(FormData),
+      expect.objectContaining({
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      })
+    );
+  });
 });

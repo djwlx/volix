@@ -1,0 +1,76 @@
+import type { KomgaOperationDefinitionMap } from '../core/komga.types';
+
+export const referentialMetadataKomgaOperations = {
+  getAgeRatings: {
+    method: 'GET',
+    path: '/api/v1/age-ratings',
+    tag: 'Referential metadata',
+    requiresAuth: true,
+    pathParams: [],
+  },
+  getAuthors: {
+    method: 'GET',
+    path: '/api/v2/authors',
+    tag: 'Referential metadata',
+    requiresAuth: true,
+    pathParams: [],
+  },
+  getAuthorsNames: {
+    method: 'GET',
+    path: '/api/v1/authors/names',
+    tag: 'Referential metadata',
+    requiresAuth: true,
+    pathParams: [],
+  },
+  getAuthorsRoles: {
+    method: 'GET',
+    path: '/api/v1/authors/roles',
+    tag: 'Referential metadata',
+    requiresAuth: true,
+    pathParams: [],
+  },
+  getBookTags: {
+    method: 'GET',
+    path: '/api/v1/tags/book',
+    tag: 'Referential metadata',
+    requiresAuth: true,
+    pathParams: [],
+  },
+  getGenres: { method: 'GET', path: '/api/v1/genres', tag: 'Referential metadata', requiresAuth: true, pathParams: [] },
+  getLanguages: {
+    method: 'GET',
+    path: '/api/v1/languages',
+    tag: 'Referential metadata',
+    requiresAuth: true,
+    pathParams: [],
+  },
+  getPublishers: {
+    method: 'GET',
+    path: '/api/v1/publishers',
+    tag: 'Referential metadata',
+    requiresAuth: true,
+    pathParams: [],
+  },
+  getSeriesReleaseDates: {
+    method: 'GET',
+    path: '/api/v1/series/release-dates',
+    tag: 'Referential metadata',
+    requiresAuth: true,
+    pathParams: [],
+  },
+  getSeriesTags: {
+    method: 'GET',
+    path: '/api/v1/tags/series',
+    tag: 'Referential metadata',
+    requiresAuth: true,
+    pathParams: [],
+  },
+  getSharingLabels: {
+    method: 'GET',
+    path: '/api/v1/sharing-labels',
+    tag: 'Referential metadata',
+    requiresAuth: true,
+    pathParams: [],
+  },
+  getTags: { method: 'GET', path: '/api/v1/tags', tag: 'Referential metadata', requiresAuth: true, pathParams: [] },
+} as const satisfies KomgaOperationDefinitionMap;

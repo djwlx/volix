@@ -18,8 +18,8 @@ vi.mock('@/i18n', () => ({
     t: (key: string) =>
       ((
         {
-          'route.formatConvert.title': '格式转换',
-          'formatConvert.form.sourceMode': '来源模式',
+          'route.formatConvert.title': '格式工厂',
+          'formatConvert.form.sourceMode': '操作类型',
         } as Record<string, string>
       )[key] || key),
   }),
@@ -31,6 +31,10 @@ vi.mock('../convert-type-switch', () => ({
 
 vi.mock('../image-convert-panel', () => ({
   ImageConvertPanel: () => createElement('div', null, 'image-panel'),
+}));
+
+vi.mock('../comic-metadata-panel', () => ({
+  ComicMetadataPanel: () => createElement('div', null, 'comic-panel'),
 }));
 
 vi.mock('../media-convert-panel', () => ({
@@ -47,8 +51,8 @@ describe('convert task card', () => {
 
     const markup = renderToStaticMarkup(createElement(ConvertTaskCard, { onCreated: () => undefined }));
 
-    expect(markup).toContain('格式转换');
-    expect(markup).toContain('来源模式');
+    expect(markup).toContain('格式工厂');
+    expect(markup).toContain('操作类型');
     expect(markup).toContain('data-card-title-provided="false"');
   });
 });

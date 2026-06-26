@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import {
   FORMAT_CONVERT_AUDIO_ONLY_OUTPUT_FORMATS,
+  type FormatComicMetadataOption,
   FormatConvertEngine,
   FormatConvertSourceType,
   FormatConvertTargetType,
@@ -11,6 +12,7 @@ import {
   type FormatConvertMediaInfo,
 } from '@volix/types';
 import { buildFormatConvertArgs, probeMediaFile, runFfmpegCommand } from './format-convert-ffmpeg.service';
+import { fillComicMetadataForArchive } from './format-convert-comic.service';
 import { convertImageFile, probeImageFile, resolveImageOutputExtension } from './format-convert-image.service';
 import { normalizeFormatConvertImageOption } from './format-convert-image-option.service';
 import {
@@ -70,6 +72,9 @@ const resolveStatusByStage = (stage: 'download' | 'convert' | 'upload') => {
 
 export const runFormatConvertTask = async (task: FormatConvertTaskItem, hooks?: FormatConvertRunnerHooks) => {
   const userDirKey = await resolveUserDirKeyOrThrow(task.userId);
+  if (task.engine === FormatConvertEngine.COMIC) {
+    return runComicMetadataTask(task, userDirKey, hooks);
+  }
   if (task.engine === FormatConvertEngine.IMAGE) {
     return runImageConvertTask(task, userDirKey, hooks);
   }
@@ -248,6 +253,12 @@ const buildImageOutputFilename = (task: FormatConvertTaskItem, extension: string
   return `${baseName}.${extension}`;
 };
 
+const buildComicOutputFilename = (task: FormatConvertTaskItem) => {
+  const preferred = task.target.fileName || task.source.fileName || `task-${task.id}.cbz`;
+  const baseName = preferred.replace(/\.[^.]+$/, '') || `task-${task.id}`;
+  return `${baseName}.cbz`;
+};
+
 export const runImageConvertTask = async (
   task: FormatConvertTaskItem,
   userDirKey: string,
@@ -295,6 +306,68 @@ export const runImageConvertTask = async (
     hooks?.onStatusChange?.(FormatConvertTaskStatus.COMPLETED);
   } catch (error) {
     log.error('[format-convert] image task failed', { taskId: task.id, error });
+    await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.CONVERT_FAILED, {
+      error_message: error instanceof Error ? error.message : String(error),
+      finished_at: new Date(),
+    });
+    throw error;
+  }
+};
+
+export const runComicMetadataTask = async (
+  task: FormatConvertTaskItem,
+  userDirKey: string,
+  hooks?: FormatConvertRunnerHooks
+) => {
+  const option = (task.comicOption || {
+    metadata: {},
+    normalizeExtension: true,
+    mergeStrategy: 'merge',
+  }) as FormatComicMetadataOption;
+  const outputFilename = buildComicOutputFilename(task);
+
+  await ensureFormatConvertWorkspace(userDirKey, task.id);
+  const outputWorkspacePath = getFormatConvertWorkspaceFilePath(userDirKey, task.id, 'output.cbz');
+  const inputPath = resolveLocalSourcePath(task);
+
+  try {
+    hooks?.onStatusChange?.(FormatConvertTaskStatus.CONVERTING);
+    await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.CONVERTING, {
+      last_stage: FormatConvertTaskStage.CONVERT,
+      workspace_dir: getFormatConvertWorkspaceDir(userDirKey, task.id),
+      source_local_path: inputPath,
+      output_local_path: outputWorkspacePath,
+      source_media_info_json: JSON.stringify(task.sourceComicInfo || {}),
+      convert_summary_json: JSON.stringify(task.comicSummary || {}),
+      started_at: new Date(),
+    });
+
+    const result = await fillComicMetadataForArchive({
+      sourcePath: inputPath,
+      outputPath: outputWorkspacePath,
+      metadata: option.metadata || {},
+      normalizeExtension: option.normalizeExtension !== false,
+      mergeStrategy: option.mergeStrategy === 'replace' ? 'replace' : 'merge',
+    });
+    const resultLocalPath = await persistFormatConvertResult(
+      userDirKey,
+      task.id,
+      outputWorkspacePath,
+      outputFilename,
+      task.userId
+    );
+
+    await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.COMPLETED, {
+      result_local_path: resultLocalPath,
+      source_media_info_json: JSON.stringify(result.sourceAnalysis || {}),
+      convert_summary_json: JSON.stringify(result.summary || {}),
+      result_media_info_json: JSON.stringify(result.resultAnalysis || {}),
+      finished_at: new Date(),
+      error_message: '',
+    });
+    hooks?.onStatusChange?.(FormatConvertTaskStatus.COMPLETED);
+  } catch (error) {
+    log.error('[format-convert] comic task failed', { taskId: task.id, error });
     await updateFormatConvertTaskStatus(task.id, FormatConvertTaskStatus.CONVERT_FAILED, {
       error_message: error instanceof Error ? error.message : String(error),
       finished_at: new Date(),

@@ -3,6 +3,9 @@ import { FORMAT_CONVERT_RECOVERABLE_STATUSES, FormatConvertEngine, FormatConvert
 import { FormatConvertTaskModel } from '../model/format-convert-task.model';
 import type {
   CreateFormatConvertTaskDbPayload,
+  FormatComicAnalysis,
+  FormatComicMetadataOption,
+  FormatComicSummary,
   FormatConvertImageInfo,
   FormatConvertImageOption,
   FormatConvertImageSummary,
@@ -53,6 +56,7 @@ export const mapFormatConvertTaskRow = (row: FormatConvertTaskEntity): FormatCon
 
   const engine = (row.engine as FormatConvertEngine) || FormatConvertEngine.MEDIA;
   const isImage = engine === FormatConvertEngine.IMAGE;
+  const isComic = engine === FormatConvertEngine.COMIC;
 
   return {
     id: Number(row.id || 0),
@@ -63,14 +67,18 @@ export const mapFormatConvertTaskRow = (row: FormatConvertTaskEntity): FormatCon
     status: row.status,
     source: snapshot.source,
     target: snapshot.target,
-    option: snapshot.option,
-    sourceMediaInfo: isImage ? undefined : snapshot.sourceMediaInfo,
-    convertSummary: isImage ? undefined : snapshot.convertSummary,
-    resultMediaInfo: isImage ? undefined : snapshot.resultMediaInfo,
+    option: isComic ? ({} as FormatConvertTaskSnapshot['option']) : snapshot.option,
+    sourceMediaInfo: isImage || isComic ? undefined : snapshot.sourceMediaInfo,
+    convertSummary: isImage || isComic ? undefined : snapshot.convertSummary,
+    resultMediaInfo: isImage || isComic ? undefined : snapshot.resultMediaInfo,
     imageOption: isImage ? parseJson(row.option_json, {} as FormatConvertImageOption) : undefined,
     sourceImageInfo: isImage ? parseOptionalJson<FormatConvertImageInfo>(row.source_media_info_json) : undefined,
     resultImageInfo: isImage ? parseOptionalJson<FormatConvertImageInfo>(row.result_media_info_json) : undefined,
     imageSummary: isImage ? parseOptionalJson<FormatConvertImageSummary>(row.convert_summary_json) : undefined,
+    comicOption: isComic ? parseJson(row.option_json, {} as FormatComicMetadataOption) : undefined,
+    sourceComicInfo: isComic ? parseOptionalJson<FormatComicAnalysis>(row.source_media_info_json) : undefined,
+    resultComicInfo: isComic ? parseOptionalJson<FormatComicAnalysis>(row.result_media_info_json) : undefined,
+    comicSummary: isComic ? parseOptionalJson<FormatComicSummary>(row.convert_summary_json) : undefined,
     presetId: row.preset_id || undefined,
     attemptCount: Number(row.attempt_count || 0),
     requestUserAgent: row.request_user_agent || undefined,

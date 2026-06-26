@@ -19,6 +19,7 @@ describe('scheduled task api contracts', () => {
         umos: ['qq:group:10001'],
       },
       lastRunAt: '2026-06-24T01:00:00.000Z',
+      nextRunAt: '2026-06-25T01:00:00.000Z',
       lastRunStatus: 'success',
       lastRunError: null,
       createdAt: '2026-06-24T00:00:00.000Z',
@@ -30,6 +31,7 @@ describe('scheduled task api contracts', () => {
       type: ScheduledTaskType.ASTRBOT_RANDOM_PIC,
       enabled: expect.any(Boolean),
       cron: expect.any(String),
+      nextRunAt: expect.any(String),
     });
   });
 

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import mime from 'mime-types';
 import { v4 as uuidV4 } from 'uuid';
-import type { CreateFormatConvertTaskRequest } from '@volix/types';
+import type { CreateFormatConvertTaskRequest, FormatComicMetadataOption } from '@volix/types';
 import {
   isFormatConvertTaskDeletable,
   FORMAT_CONVERT_FAILED_STATUSES,
@@ -29,6 +29,8 @@ import {
   normalizeFormatConvertImageOption,
 } from '../service/format-convert-image-option.service';
 import { probeImageFile } from '../service/format-convert-image.service';
+import { analyzeComicArchive } from '../service/format-convert-comic.service';
+import { countComicInfoFields } from '../service/format-convert-comic-info.service';
 import { getFormatConvertManualSourcePath } from '../service/format-convert-workspace.service';
 import {
   createFormatConvertTask,
@@ -85,6 +87,12 @@ const parsePositiveIntegerQuery = (value: unknown, fallback: number) => {
   const parsed = Number.parseInt(normalized, 10);
   return parsed > 0 ? parsed : fallback;
 };
+
+const normalizeComicOption = (value: FormatComicMetadataOption | undefined): FormatComicMetadataOption => ({
+  metadata: value?.metadata || {},
+  normalizeExtension: value?.normalizeExtension !== false,
+  mergeStrategy: value?.mergeStrategy === 'replace' ? 'replace' : 'merge',
+});
 
 const toPublicFormatConvertTask = (task: FormatConvertTaskItem | null | undefined) => {
   if (!task) {
@@ -143,6 +151,52 @@ export const createLocalFormatConvertTask: MyMiddleware = async ctx => {
     uploadPath: storedUploadPath,
   } as const;
 
+  if (payload.engine === FormatConvertEngine.COMIC) {
+    const comicOption = normalizeComicOption(payload.comicOption);
+    const analyzedComicInfo = await analyzeComicArchive(storedUploadPath).catch(() => null);
+    if (!analyzedComicInfo) {
+      badRequest(
+        t({
+          id: 'formatConvert.error.invalidComicArchive',
+          defaultMessage: '本地漫画文件必须是可读取的 ZIP/CBZ 压缩包',
+        })
+      );
+      return;
+    }
+    const sourceComicInfo = analyzedComicInfo;
+
+    const sourceBaseName = path.basename(
+      file?.originalFilename || 'comic.cbz',
+      path.extname(file?.originalFilename || '')
+    );
+    const targetFileName = `${(String(payload.target?.fileName || '').trim() || sourceBaseName || 'comic').replace(
+      /\.[^.]+$/,
+      ''
+    )}.cbz`;
+    const comicTask = await createFormatConvertTask({
+      userId,
+      engine: FormatConvertEngine.COMIC,
+      mode: FormatConvertMode.LOCAL,
+      commandMode: payload.commandMode,
+      target: {
+        type: FormatConvertTargetType.DOWNLOAD,
+        fileName: targetFileName,
+      },
+      source,
+      option: comicOption,
+      sourceMediaInfo: sourceComicInfo,
+      convertSummary: {
+        mergeStrategy: comicOption.mergeStrategy || 'merge',
+        targetExtension: '.cbz',
+        normalizedExtension: comicOption.normalizeExtension !== false,
+        metadataWritten: true,
+        metadataFieldCount: countComicInfoFields(comicOption.metadata || {}),
+      },
+    });
+    void ensureFormatConvertQueueRunning();
+    return { task: toPublicFormatConvertTask(comicTask) };
+  }
+
   if (payload.engine === FormatConvertEngine.IMAGE) {
     const imageOption = normalizeFormatConvertImageOption((payload.imageOption || {}) as FormatConvertImageOption);
     const sourceImageInfo = await probeImageFile(storedUploadPath);
@@ -195,6 +249,28 @@ export const createLocalFormatConvertTask: MyMiddleware = async ctx => {
 
   void ensureFormatConvertQueueRunning();
   return { task: toPublicFormatConvertTask(task) };
+};
+
+export const analyzeLocalComicFile: MyMiddleware = async ctx => {
+  const file = ctx.request.files?.file as UploadedFileFormData | undefined;
+  if (!file) {
+    badRequest(t({ id: 'file.notFound', defaultMessage: '文件不存在' }));
+  }
+
+  const analysis = await analyzeComicArchive(String(file?.filepath || '')).catch(() => null);
+  if (!analysis) {
+    badRequest(
+      t({
+        id: 'formatConvert.error.invalidComicArchive',
+        defaultMessage: '本地漫画文件必须是可读取的 ZIP/CBZ 压缩包',
+      })
+    );
+    return;
+  }
+
+  return {
+    analysis,
+  };
 };
 
 export const createCloudFormatConvertTask: MyMiddleware = async ctx => {

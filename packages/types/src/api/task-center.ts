@@ -22,6 +22,7 @@ export interface ScheduledTask {
   cron: string;
   params: ScheduledTaskParams;
   lastRunAt?: string | null;
+  nextRunAt?: string | null;
   lastRunStatus?: ScheduledTaskRunStatus | null;
   lastRunError?: string | null;
   createdAt?: string;

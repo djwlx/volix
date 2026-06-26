@@ -8,13 +8,21 @@ import type {
   UpdateAccountConfigPayload,
 } from '@volix/types';
 import { badRequest, unauthorized } from '../../shared/http-handler';
-import { createAiSdk, createAstrbotSdk, createBangumiSdk, createOpenlistSdk, createQbittorrentSdk } from '../../../sdk';
+import {
+  createAiSdk,
+  createAstrbotSdk,
+  createBangumiSdk,
+  createKomgaSdk,
+  createOpenlistSdk,
+  createQbittorrentSdk,
+} from '../../../sdk';
 import { t } from '../../../utils/i18n';
 import {
   getUserAccountConfigs,
   normalizeAiConnection,
   normalizeAstrbotAccountConfig,
   normalizeBangumiAccountConfig,
+  normalizeKomgaAccountConfig,
   normalizeServiceAccountConfig,
   updateUserAccountConfig,
 } from '../service/user-config.service';
@@ -157,6 +165,25 @@ export const testAccountConfig: MyMiddleware = async ctx => {
       };
     }
 
+    if (platform === AccountConfigPlatform.KOMGA) {
+      const config = normalizeKomgaAccountConfig(param.config);
+      const sdk = createKomgaSdk({
+        baseUrl: config.baseUrl,
+        username: config.username,
+        password: config.password,
+        apiKey: config.apiKey,
+        userAgent: String(ctx.request.headers['user-agent'] || '').trim() || undefined,
+      });
+      const me = (await sdk.getCurrentUser()) as { email?: string; username?: string };
+
+      return {
+        success: true,
+        message: t('accountConfig.test.komgaSuccess', {
+          username: me.email || me.username || 'unknown',
+        }),
+      };
+    }
+
     badRequest(t('accountConfig.test.unsupported'));
   } catch (error) {
     const message =
@@ -173,6 +200,7 @@ export const testAccountConfig: MyMiddleware = async ctx => {
       [AccountConfigPlatform.BANGUMI]: 'Bangumi',
       [AccountConfigPlatform.AI]: 'AI',
       [AccountConfigPlatform.ASTRBOT]: 'AstrBot',
+      [AccountConfigPlatform.KOMGA]: t('setting.account.komga.title'),
     };
 
     badRequest(

@@ -2,6 +2,7 @@ import Router from '@koa/router';
 import authenticate from '../../middleware/authenticate';
 import { http } from '../shared/http-handler';
 import {
+  analyzeLocalComicFile,
   cleanupFormatConvertTaskFiles,
   createCloudFormatConvertTask,
   deleteFormatConvertTask,
@@ -20,6 +21,7 @@ const router = new Router({
 
 router.use(authenticate());
 router
+  .post('/local-comic/analyze', http(analyzeLocalComicFile))
   .post('/local-task', http(createLocalFormatConvertTask))
   .post('/cloud-task', http(createCloudFormatConvertTask))
   .get('/tasks', http(getFormatConvertTasks))

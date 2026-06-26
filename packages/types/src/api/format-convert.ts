@@ -1,3 +1,5 @@
+import type { FormatComicAnalysis, FormatComicMetadataOption, FormatComicSummary } from './format-comic';
+
 export enum FormatConvertMode {
   LOCAL = 'local',
   CLOUD = 'cloud',
@@ -6,6 +8,7 @@ export enum FormatConvertMode {
 export enum FormatConvertEngine {
   MEDIA = 'media',
   IMAGE = 'image',
+  COMIC = 'comic',
 }
 
 export enum FormatConvertCommandMode {
@@ -370,6 +373,7 @@ export interface CreateFormatConvertTaskRequest {
   presetId?: string;
   engine?: FormatConvertEngine;
   imageOption?: FormatConvertImageOption;
+  comicOption?: FormatComicMetadataOption;
 }
 
 export interface FormatConvertTaskItem {
@@ -389,6 +393,10 @@ export interface FormatConvertTaskItem {
   sourceImageInfo?: FormatConvertImageInfo;
   resultImageInfo?: FormatConvertImageInfo;
   imageSummary?: FormatConvertImageSummary;
+  comicOption?: FormatComicMetadataOption;
+  sourceComicInfo?: FormatComicAnalysis;
+  resultComicInfo?: FormatComicAnalysis;
+  comicSummary?: FormatComicSummary;
   presetId?: string;
   attemptCount: number;
   lastStage?: FormatConvertTaskStage;

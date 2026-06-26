@@ -3,6 +3,7 @@ import { http } from '@/utils';
 import { clearAuthToken, getAuthToken, getTokenHeaderKey } from '@/utils/auth';
 import { getStoredLocale } from '@/i18n';
 import type {
+  AnalyzeLocalComicFileResult,
   CreateFormatConvertTaskRequest,
   CreateFormatConvertTaskResult,
   FormatConvertOpenlistBrowserResult,
@@ -44,6 +45,16 @@ export function createLocalFormatConvertTask(
 
 export function createCloudFormatConvertTask(payload: CreateFormatConvertTaskRequest) {
   return http.post<CreateFormatConvertTaskResult>('/format-convert/cloud-task', payload);
+}
+
+export function analyzeLocalComicFile(file: File) {
+  const formData = new FormData();
+  formData.append('file', file);
+  return http.post<AnalyzeLocalComicFileResult>('/format-convert/local-comic/analyze', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
 }
 
 export function getFormatConvertTasks() {

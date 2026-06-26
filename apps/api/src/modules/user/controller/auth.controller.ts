@@ -16,9 +16,16 @@ import { hashPassword, isHashedPassword, verifyPassword } from '../../../utils/p
 import { badRequest, unauthorized } from '../../shared/http-handler';
 import {
   assertRegisterCodeCanSend,
+  assertResetPasswordCodeCanSend,
+  consumeResetPasswordToken,
   generateRegisterVerifyCode,
+  generateResetPasswordToken,
   saveRegisterVerifyCode,
+  saveResetPasswordToken,
+  saveResetPasswordVerifyCode,
   sendRegisterCodeMail,
+  sendResetPasswordMail,
+  verifyResetPasswordCode,
   verifyRegisterCode,
 } from '../service/email.service';
 import { addUser, countUsers, queryUser, updateUser } from '../service/user.service';
@@ -30,6 +37,17 @@ import {
   parseUserSettingsJson,
   toUserResponse,
 } from './shared';
+
+type SendForgotPasswordCodePayload = {
+  email: string;
+};
+
+type ResetPasswordPayload = {
+  email?: string;
+  verifyCode?: string;
+  token?: string;
+  newPassword: string;
+};
 
 const resolveRegisterSmtpConfig = async (): Promise<SmtpAccountConfigItem | null> => {
   return getSystemRegisterSmtpConfig();
@@ -50,6 +68,16 @@ const sendVerifyCodeEmail = async (params: { smtp: SmtpAccountConfigItem; email:
   });
   saveRegisterVerifyCode(params.email, code);
   log.info('已发送邮箱验证码', { email: params.email });
+};
+
+const buildResetPasswordLink = (ctx: Parameters<MyMiddleware>[0], email: string, token: string) => {
+  const baseUrl = ctx.origin || 'http://localhost:3000';
+  const query = new URLSearchParams({
+    mode: 'reset',
+    token,
+    email,
+  });
+  return `${baseUrl}/auth?${query.toString()}`;
 };
 
 export const loginUser: MyMiddleware = async ctx => {
@@ -193,6 +221,106 @@ export const sendRegisterCode: MyMiddleware = async ctx => {
     smtp: smtpConfig,
     email,
   });
+
+  return {
+    success: true,
+  };
+};
+
+export const sendForgotPasswordCode: MyMiddleware = async ctx => {
+  const param = (ctx.request.body || {}) as SendForgotPasswordCodePayload;
+  const email = param.email?.trim().toLowerCase();
+
+  if (!email || !EMAIL_REGEXP.test(email)) {
+    badRequest(t({ id: 'auth.validation.invalidEmail', defaultMessage: '邮箱格式错误' }));
+  }
+
+  const smtpConfig = await resolveRegisterSmtpConfig();
+  if (!smtpConfig) {
+    badRequest(t({ id: 'auth.register.smtpMissing', defaultMessage: '系统未配置可用 SMTP' }));
+    return;
+  }
+
+  const user = await queryUser({ email });
+  if (!user) {
+    log.warn('忘记密码请求用户不存在', { email });
+    return {
+      success: true,
+    };
+  }
+
+  assertResetPasswordCodeCanSend(email);
+  const code = generateRegisterVerifyCode();
+  const token = generateResetPasswordToken();
+  const resetLink = buildResetPasswordLink(ctx, email, token);
+
+  await sendResetPasswordMail({
+    smtpHost: smtpConfig.host,
+    smtpPort: smtpConfig.port,
+    smtpSecure: smtpConfig.secure,
+    smtpUsername: smtpConfig.username,
+    smtpPassword: smtpConfig.password,
+    fromEmail: smtpConfig.fromEmail,
+    toEmail: email,
+    code,
+    resetLink,
+  });
+
+  saveResetPasswordVerifyCode(email, code);
+  saveResetPasswordToken(email, token);
+  log.info('已发送重置密码邮件', { email, userId: user.dataValues.id });
+
+  return {
+    success: true,
+  };
+};
+
+export const resetPassword: MyMiddleware = async ctx => {
+  const param = (ctx.request.body || {}) as ResetPasswordPayload;
+  const newPassword = param.newPassword?.trim();
+  if (!newPassword) {
+    badRequest(t({ id: 'auth.password.required', defaultMessage: '请输入密码' }));
+  }
+  if (newPassword.length < 6) {
+    badRequest(t({ id: 'auth.password.min', defaultMessage: '密码至少 6 位' }));
+  }
+
+  let email = param.email?.trim().toLowerCase();
+  if (param.token?.trim()) {
+    email = consumeResetPasswordToken(param.token.trim()) || undefined;
+    if (!email) {
+      badRequest(t({ id: 'auth.reset.tokenInvalid', defaultMessage: '重置链接无效或已过期' }));
+    }
+  } else {
+    if (!email || !EMAIL_REGEXP.test(email)) {
+      badRequest(t({ id: 'auth.validation.invalidEmail', defaultMessage: '邮箱格式错误' }));
+      return;
+    }
+    const verifyCode = param.verifyCode?.trim();
+    if (!verifyCode) {
+      badRequest(t({ id: 'auth.verifyCode.required', defaultMessage: '请输入邮箱验证码' }));
+      return;
+    }
+    if (!verifyResetPasswordCode(email, verifyCode)) {
+      badRequest(t({ id: 'auth.verifyCode.invalid', defaultMessage: '验证码错误或已过期' }));
+    }
+  }
+
+  const user = await queryUser({ email });
+  if (!user) {
+    badRequest(t({ id: 'auth.user.notFound', defaultMessage: '用户不存在' }));
+    return;
+  }
+  const userId = user.dataValues.id;
+  if (userId === undefined || userId === null) {
+    badRequest(t({ id: 'auth.user.invalid', defaultMessage: '用户信息异常' }));
+    return;
+  }
+
+  await updateUser(userId, {
+    password: await hashPassword(newPassword),
+  });
+  log.info('用户重置密码成功', { userId, email });
 
   return {
     success: true,

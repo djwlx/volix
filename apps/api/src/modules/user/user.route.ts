@@ -12,7 +12,9 @@ import {
   getUserList,
   listAiModels,
   loginUser,
+  resetPassword,
   registerUser,
+  sendForgotPasswordCode,
   sendRegisterCode,
   sendCurrentUserEmailVerifyCode,
   setUserRole,
@@ -34,6 +36,8 @@ router
   .post('/register', http(registerUser))
   .get('/register-config', http(getRegisterConfig))
   .post('/register-code', http(sendRegisterCode))
+  .post('/forgot-password-code', http(sendForgotPasswordCode))
+  .post('/reset-password', http(resetPassword))
   .use(authenticate())
   .get('/me', http(getCurrentUser))
   .post('/me/email-verify-code', http(sendCurrentUserEmailVerifyCode))
